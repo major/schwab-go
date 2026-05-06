@@ -320,6 +320,7 @@ type EquityQuote struct {
 // OptionQuote contains option-specific quote data.
 type OptionQuote struct {
 	EquityQuote
+
 	Delta                  float64 `json:"delta"`
 	Gamma                  float64 `json:"gamma"`
 	Theta                  float64 `json:"theta"`

@@ -7,17 +7,29 @@ linters:
     - bidichk
     - bodyclose
     - canonicalheader
+    - containedctx
+    - contextcheck
+    - copyloopvar
     - cyclop
     - durationcheck
     - dupword
+    - embeddedstructfieldcheck
     - errchkjson
     - errname
     - errorlint
+    - fatcontext
     - forcetypeassert
+    - gocheckcompilerdirectives
     - gocritic
     - godoclint
+    - gomoddirectives
+    - inamedparam
+    - intrange
+    - ireturn
+    - loggercheck
     - gosec
     - makezero
+    - mirror
     - misspell
     - modernize
     - nilerr
@@ -28,12 +40,14 @@ linters:
     - perfsprint
     - prealloc
     - predeclared
+    - reassign
     - recvcheck
     - revive
     - testifylint
     - thelper
     - unconvert
     - unparam
+    - usetesting
     - usestdlibvars
     - wastedassign
     - wrapcheck
