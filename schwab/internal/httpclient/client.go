@@ -1,3 +1,5 @@
+// Package httpclient provides a shared HTTP client for executing API requests
+// and decoding responses used by the marketdata and trader packages.
 package httpclient
 
 import (
