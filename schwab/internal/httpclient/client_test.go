@@ -19,6 +19,11 @@ import (
 
 const relativeBaseURLError = "invalid base URL \"relative/path\": absolute URL with scheme and host required"
 
+type responsePayload struct {
+	Symbol string `json:"symbol"`
+	Price  int    `json:"price"`
+}
+
 func TestNewConfig(t *testing.T) {
 	defaultBase, err := url.Parse("https://api.example.test/base")
 	require.NoError(t, err)
@@ -115,11 +120,11 @@ func TestNewConfig(t *testing.T) {
 			}
 			assert.Equal(t, tt.wantToken, cfg.Token)
 			if tt.wantOptionError == "" {
-				assert.NoError(t, cfg.OptionError)
-				return
+				require.NoError(t, cfg.OptionError)
+			} else {
+				require.Error(t, cfg.OptionError)
+				require.ErrorContains(t, cfg.OptionError, tt.wantOptionError)
 			}
-			require.Error(t, cfg.OptionError)
-			assert.ErrorContains(t, cfg.OptionError, tt.wantOptionError)
 		})
 	}
 }
@@ -262,30 +267,27 @@ func TestNewRequest(t *testing.T) {
 }
 
 func TestDo(t *testing.T) {
-	type responsePayload struct {
-		Symbol string `json:"symbol"`
-		Price  int    `json:"price"`
-	}
-
 	tests := []struct {
-		name            string
-		status          int
-		responseBody    string
-		extractError    func([]byte) string
-		out             any
-		wantOut         any
-		wantAPIError    bool
-		wantStatus      int
-		wantMessage     string
-		wantBody        string
-		wantDecodeError bool
+		name                string
+		status              int
+		responseBody        string
+		responseContentType string
+		extractError        func([]byte) string
+		out                 any
+		wantOut             any
+		wantAPIError        bool
+		wantStatus          int
+		wantMessage         string
+		wantBody            string
+		wantDecodeError     bool
 	}{
 		{
-			name:         "success 200 decodes JSON body",
-			status:       http.StatusOK,
-			responseBody: `{"symbol":"AAPL","price":185}`,
-			out:          &responsePayload{},
-			wantOut:      &responsePayload{Symbol: "AAPL", Price: 185},
+			name:                "success 200 decodes JSON body",
+			status:              http.StatusOK,
+			responseBody:        `{"symbol":"AAPL","price":185}`,
+			responseContentType: "application/json",
+			out:                 &responsePayload{},
+			wantOut:             &responsePayload{Symbol: "AAPL", Price: 185},
 		},
 		{
 			name:         "non 2xx JSON error body uses extractError message",
@@ -341,11 +343,12 @@ func TestDo(t *testing.T) {
 			out:          nil,
 		},
 		{
-			name:            "malformed JSON response returns wrapped decode error",
-			status:          http.StatusOK,
-			responseBody:    `{broken`,
-			out:             &responsePayload{},
-			wantDecodeError: true,
+			name:                "malformed JSON response returns wrapped decode error",
+			status:              http.StatusOK,
+			responseBody:        `{broken`,
+			responseContentType: "application/json",
+			out:                 &responsePayload{},
+			wantDecodeError:     true,
 		},
 		{
 			name:         "status 301 returns API error",
@@ -384,6 +387,9 @@ func TestDo(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, http.MethodGet, r.Method)
 				assert.Equal(t, "/test", r.URL.Path)
+				if tt.responseContentType != "" {
+					w.Header().Set("Content-Type", tt.responseContentType)
+				}
 				w.WriteHeader(tt.status)
 				_, writeErr := io.WriteString(w, tt.responseBody)
 				assert.NoError(t, writeErr)
@@ -416,6 +422,61 @@ func TestDo(t *testing.T) {
 			if tt.wantOut != nil {
 				assert.Equal(t, tt.wantOut, tt.out)
 			}
+		})
+	}
+}
+
+func TestDoValidatesSuccessContentType(t *testing.T) {
+	tests := []struct {
+		name        string
+		contentType string
+		body        string
+		wantError   string
+	}{
+		{
+			name:        "accepts JSON content type with charset",
+			contentType: "application/json; charset=utf-8",
+			body:        `{"symbol":"AAPL","price":185}`,
+		},
+		{
+			name:        "rejects HTML content type without body preview",
+			contentType: "text/html; charset=utf-8",
+			body:        "<html><body>login required</body></html>",
+			wantError:   `unexpected Content-Type "text/html; charset=utf-8" (expected application/json)`,
+		},
+		{
+			name:      "rejects sniffed non JSON content type without body preview",
+			body:      `{"symbol":"AAPL","price":185}`,
+			wantError: `unexpected Content-Type "text/plain; charset=utf-8" (expected application/json)`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, http.MethodGet, r.Method)
+				assert.Equal(t, "/test", r.URL.Path)
+				if tt.contentType != "" {
+					w.Header().Set("Content-Type", tt.contentType)
+				}
+				_, writeErr := io.WriteString(w, tt.body)
+				assert.NoError(t, writeErr)
+			}))
+			defer ts.Close()
+
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL+"/test", http.NoBody)
+			require.NoError(t, err)
+
+			var got responsePayload
+			err = Do(Config{HTTPClient: ts.Client()}, req, &got, nil)
+			if tt.wantError != "" {
+				require.Error(t, err)
+				require.EqualError(t, err, tt.wantError)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, responsePayload{Symbol: "AAPL", Price: 185}, got)
 		})
 	}
 }
