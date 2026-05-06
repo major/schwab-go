@@ -10,7 +10,10 @@ import (
 	"github.com/major/schwab-go/schwab/internal/httpclient"
 )
 
-const defaultBaseURL = "https://api.schwabapi.com/marketdata/v1"
+const (
+	apiPathPrefix  = "/marketdata/v1"
+	defaultBaseURL = "https://api.schwabapi.com"
+)
 
 // Client is an HTTP client for the Schwab Market Data API.
 type Client struct {
@@ -25,11 +28,11 @@ type Client struct {
 func NewClient(opts ...schwab.Option) *Client {
 	defaultBase, err := url.Parse(defaultBaseURL)
 	if err != nil {
-		defaultBase = &url.URL{Scheme: "https", Host: "api.schwabapi.com", Path: "/marketdata/v1"}
+		defaultBase = &url.URL{Scheme: "https", Host: "api.schwabapi.com"}
 	}
 	cfg := httpclient.NewConfig(defaultBase, http.DefaultClient, opts)
 	return &Client{
-		baseURL:           cfg.BaseURL,
+		baseURL:           httpclient.WithPathPrefix(cfg.BaseURL, apiPathPrefix),
 		httpClient:        cfg.HTTPClient,
 		token:             cfg.Token,
 		optionError:       cfg.OptionError,
