@@ -105,7 +105,7 @@ type PreviewOrder struct {
 	OrderID               int64                  `json:"orderId"`
 	OrderStrategy         *OrderStrategy         `json:"orderStrategy"`
 	OrderValidationResult *OrderValidationResult `json:"orderValidationResult"`
-	CommissionAndFee      *CommissionAndFee       `json:"commissionAndFee"`
+	CommissionAndFee      *CommissionAndFee      `json:"commissionAndFee"`
 }
 
 // OrderStrategy contains the previewed order strategy details.
@@ -139,10 +139,10 @@ type OrderStrategy struct {
 
 // OrderBalance contains estimated balance details for a previewed order.
 type OrderBalance struct {
-	OrderValue                  float64 `json:"orderValue"`
-	ProjectedAvailableFund      float64 `json:"projectedAvailableFund"`
-	ProjectedBuyingPower        float64 `json:"projectedBuyingPower"`
-	ProjectedCommission         float64 `json:"projectedCommission"`
+	OrderValue             float64 `json:"orderValue"`
+	ProjectedAvailableFund float64 `json:"projectedAvailableFund"`
+	ProjectedBuyingPower   float64 `json:"projectedBuyingPower"`
+	ProjectedCommission    float64 `json:"projectedCommission"`
 }
 
 // PreviewOrderLeg represents one leg in an order preview response.
@@ -228,8 +228,8 @@ func (c *Client) CreateOrder(ctx context.Context, accountHash string, order *Ord
 }
 
 // GetOrder retrieves a single order for a single account.
-func (c *Client) GetOrder(ctx context.Context, accountHash string, orderID string) (*Order, error) {
-	path := fmt.Sprintf("/accounts/%s/orders/%s", url.PathEscape(accountHash), url.PathEscape(orderID))
+func (c *Client) GetOrder(ctx context.Context, accountHash string, orderID int64) (*Order, error) {
+	path := fmt.Sprintf("/accounts/%s/orders/%s", url.PathEscape(accountHash), strconv.FormatInt(orderID, 10))
 	req, err := c.newRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
@@ -243,8 +243,8 @@ func (c *Client) GetOrder(ctx context.Context, accountHash string, orderID strin
 }
 
 // ReplaceOrder replaces an existing order for a single account.
-func (c *Client) ReplaceOrder(ctx context.Context, accountHash string, orderID string, order *Order) error {
-	path := fmt.Sprintf("/accounts/%s/orders/%s", url.PathEscape(accountHash), url.PathEscape(orderID))
+func (c *Client) ReplaceOrder(ctx context.Context, accountHash string, orderID int64, order *Order) error {
+	path := fmt.Sprintf("/accounts/%s/orders/%s", url.PathEscape(accountHash), strconv.FormatInt(orderID, 10))
 	req, err := c.newRequest(ctx, "PUT", path, order)
 	if err != nil {
 		return err
@@ -253,8 +253,8 @@ func (c *Client) ReplaceOrder(ctx context.Context, accountHash string, orderID s
 }
 
 // CancelOrder cancels an existing order for a single account.
-func (c *Client) CancelOrder(ctx context.Context, accountHash string, orderID string) error {
-	path := fmt.Sprintf("/accounts/%s/orders/%s", url.PathEscape(accountHash), url.PathEscape(orderID))
+func (c *Client) CancelOrder(ctx context.Context, accountHash string, orderID int64) error {
+	path := fmt.Sprintf("/accounts/%s/orders/%s", url.PathEscape(accountHash), strconv.FormatInt(orderID, 10))
 	req, err := c.newRequest(ctx, "DELETE", path, nil)
 	if err != nil {
 		return err
@@ -283,6 +283,16 @@ func (c *Client) GetAllOrders(ctx context.Context, params *OrderListParams) ([]O
 }
 
 func (c *Client) getOrders(ctx context.Context, path string, params *OrderListParams) ([]Order, error) {
+	if params == nil {
+		return nil, fmt.Errorf("order list params are required")
+	}
+	if params.FromEnteredTime == "" {
+		return nil, fmt.Errorf("fromEnteredTime is required")
+	}
+	if params.ToEnteredTime == "" {
+		return nil, fmt.Errorf("toEnteredTime is required")
+	}
+
 	req, err := c.newRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err

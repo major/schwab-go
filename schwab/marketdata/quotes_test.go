@@ -59,6 +59,15 @@ func TestGetQuotes(t *testing.T) {
 	assert.Equal(t, "NASDAQ", equity.Exchange)
 	assert.Equal(t, int64(1712345678901), equity.TradeTime)
 	assert.Equal(t, int64(1712345678999), equity.QuoteTime)
+	reference, err := entry.EquityReference()
+	require.NoError(t, err)
+	assert.Equal(t, "037833100", reference.CUSIP)
+	require.NotNil(t, entry.Regular)
+	assert.Equal(t, 170.01, entry.Regular.LastPrice)
+	require.NotNil(t, entry.Extended)
+	assert.Equal(t, 170.05, entry.Extended.LastPrice)
+	require.NotNil(t, entry.Fundamental)
+	assert.Equal(t, 28.5, entry.Fundamental.PERatio)
 }
 
 func TestGetQuotesOption(t *testing.T) {
@@ -98,6 +107,11 @@ func TestGetQuotesOption(t *testing.T) {
 	assert.Equal(t, int64(1234), option.OpenInterest)
 	assert.Equal(t, 170.0, option.StrikePrice)
 	assert.Equal(t, 171.25, option.UnderlyingPrice)
+
+	reference, err := entry.OptionReference()
+	require.NoError(t, err)
+	assert.Equal(t, 170.0, reference.StrikePrice)
+	assert.Equal(t, "AAPL", reference.Underlying)
 }
 
 func TestGetQuotesMixed(t *testing.T) {
@@ -142,6 +156,11 @@ func TestGetQuotesMixed(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 5125.25, futureQuote.SettlementPrice)
 	assert.Equal(t, int64(987654), futureQuote.OpenInterest)
+
+	futureReference, err := (*quotes)["/ES"].FutureReference()
+	require.NoError(t, err)
+	assert.Equal(t, int64(20240621), futureReference.FutureExpirationDate)
+	assert.Equal(t, 5125.25, futureReference.FutureSettlementPrice)
 }
 
 func TestGetQuotesPartialFailure(t *testing.T) {
@@ -181,7 +200,9 @@ func TestGetQuote(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(indexQuoteEntry("$SPX"))
+		json.NewEncoder(w).Encode(map[string]QuoteEntry{
+			"$SPX": indexQuoteEntry("$SPX"),
+		})
 	}))
 	defer ts.Close()
 
@@ -190,8 +211,11 @@ func TestGetQuote(t *testing.T) {
 		schwab.WithBaseURL(ts.URL),
 	)
 
-	entry, err := client.GetQuote(context.Background(), "$SPX", "quote,reference")
+	quotes, err := client.GetQuote(context.Background(), "$SPX", "quote,reference")
 	require.NoError(t, err)
+	require.NotNil(t, quotes)
+
+	entry := (*quotes)["$SPX"]
 	require.NotNil(t, entry)
 	assert.Equal(t, schwab.AssetTypeIndex, entry.AssetMainType)
 	assert.Equal(t, "$SPX", entry.Symbol)
@@ -274,6 +298,36 @@ func equityQuoteEntry(symbol string) QuoteEntry {
 			"tradeTime":         1712345678901,
 			"quoteTime":         1712345678999,
 		}),
+		Reference: mustRaw(EquityReference{
+			CUSIP:        "037833100",
+			Description:  "Apple Inc",
+			Exchange:     "Q",
+			ExchangeName: "NASDAQ Global Select",
+			Shortable:    true,
+		}),
+		Regular: &RegularMarket{
+			LastPrice:     170.01,
+			LastSize:      50,
+			NetChange:     1.26,
+			PercentChange: 0.75,
+			TradeTime:     1712345678901,
+		},
+		Extended: &ExtendedMarket{
+			BidPrice:    169.95,
+			BidSize:     25,
+			AskPrice:    170.15,
+			AskSize:     30,
+			LastPrice:   170.05,
+			LastSize:    10,
+			TotalVolume: 1000,
+			TradeTime:   1712345680000,
+		},
+		Fundamental: &Fundamental{
+			DivAmount: 0.24,
+			DivYield:  0.45,
+			EPS:       6.05,
+			PERatio:   28.5,
+		},
 	}
 }
 
@@ -281,6 +335,23 @@ func optionQuoteEntry(symbol string) QuoteEntry {
 	entry := equityQuoteEntry(symbol)
 	entry.AssetMainType = schwab.AssetTypeOption
 	entry.AssetSubType = "O"
+	entry.Reference = mustRaw(OptionReference{
+		ContractType:     "CALL",
+		CUSIP:            "037833100",
+		DaysToExpiration: 30,
+		Description:      "AAPL 05/24/2024 $170 Call",
+		Exchange:         "OPR",
+		ExchangeName:     "Options Price Reporting Authority",
+		ExerciseType:     "A",
+		ExpirationDay:    24,
+		ExpirationMonth:  5,
+		ExpirationType:   "S",
+		ExpirationYear:   2024,
+		Multiplier:       100,
+		SettlementType:   "P",
+		StrikePrice:      170,
+		Underlying:       "AAPL",
+	})
 	entry.Quote = mustRaw(map[string]any{
 		"askPrice":               4.25,
 		"bidPrice":               4.15,
@@ -394,6 +465,19 @@ func futureQuoteEntry(symbol string) QuoteEntry {
 	return QuoteEntry{
 		AssetMainType: schwab.AssetTypeFuture,
 		Symbol:        symbol,
+		Reference: mustRaw(FutureReference{
+			Description:           "E-mini S&P 500 Future",
+			Exchange:              "CME",
+			ExchangeName:          "Chicago Mercantile Exchange",
+			FutureActiveSymbol:    "/ESM24",
+			FutureExpirationDate:  20240621,
+			FutureIsActive:        true,
+			FutureMultiplier:      50,
+			FuturePriceFormat:     "D",
+			FutureSettlementPrice: 5125.25,
+			FutureTradingHours:    "ETH",
+			Product:               "/ES",
+		}),
 		Quote: mustRaw(map[string]any{
 			"askPrice":         5126.0,
 			"bidPrice":         5125.5,

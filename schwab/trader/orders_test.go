@@ -112,7 +112,7 @@ func TestGetOrder(t *testing.T) {
 		schwab.WithBaseURL(ts.URL),
 	)
 
-	result, err := client.GetOrder(context.Background(), "HASH_ABC123", "9001")
+	result, err := client.GetOrder(context.Background(), "HASH_ABC123", 9001)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assertOrderFixture(t, *result)
@@ -145,7 +145,7 @@ func TestReplaceOrder(t *testing.T) {
 		schwab.WithBaseURL(ts.URL),
 	)
 
-	err := client.ReplaceOrder(context.Background(), "HASH_ABC123", "9001", order)
+	err := client.ReplaceOrder(context.Background(), "HASH_ABC123", 9001, order)
 	require.NoError(t, err)
 }
 
@@ -164,7 +164,7 @@ func TestCancelOrder(t *testing.T) {
 		schwab.WithBaseURL(ts.URL),
 	)
 
-	err := client.CancelOrder(context.Background(), "HASH_ABC123", "9001")
+	err := client.CancelOrder(context.Background(), "HASH_ABC123", 9001)
 	require.NoError(t, err)
 }
 
@@ -290,6 +290,19 @@ func TestGetAllOrders(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 	assert.Equal(t, int64(9001), result[0].OrderID)
+}
+
+func TestGetOrdersRequiresParams(t *testing.T) {
+	client := NewClient()
+
+	_, err := client.GetOrders(context.Background(), "HASH_ABC123", nil)
+	require.EqualError(t, err, "order list params are required")
+
+	_, err = client.GetAllOrders(context.Background(), &OrderListParams{ToEnteredTime: "2024-01-31"})
+	require.EqualError(t, err, "fromEnteredTime is required")
+
+	_, err = client.GetAllOrders(context.Background(), &OrderListParams{FromEnteredTime: "2024-01-01"})
+	require.EqualError(t, err, "toEnteredTime is required")
 }
 
 func TestRecursiveOrder(t *testing.T) {

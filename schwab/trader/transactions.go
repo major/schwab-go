@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 
 	schwab "github.com/major/schwab-go/schwab"
 )
@@ -40,14 +41,14 @@ type TransactionListParams struct {
 
 // UserDetails contains user information associated with a transaction.
 type UserDetails struct {
-	CDDomainID    string `json:"cdDomainId"`
-	Login         string `json:"login"`
-	Type          string `json:"type"`
-	UserID        int64  `json:"userId"`
+	CDDomainID     string `json:"cdDomainId"`
+	Login          string `json:"login"`
+	Type           string `json:"type"`
+	UserID         int64  `json:"userId"`
 	SystemUserName string `json:"systemUserName"`
-	FirstName     string `json:"firstName"`
-	LastName      string `json:"lastName"`
-	BrokerRepCode string `json:"brokerRepCode"`
+	FirstName      string `json:"firstName"`
+	LastName       string `json:"lastName"`
+	BrokerRepCode  string `json:"brokerRepCode"`
 }
 
 // Transaction represents a single account transaction.
@@ -85,23 +86,23 @@ type TransferItem struct {
 // are populated. For fixed income instruments, MaturityDate, Factor,
 // Multiplier, and VariableRate are populated.
 type TransactionInstrument struct {
-	AssetType               schwab.AssetType              `json:"assetType"`
-	Cusip                   string                        `json:"cusip"`
-	Symbol                  string                        `json:"symbol"`
-	Description             string                        `json:"description"`
-	InstrumentId            int64                         `json:"instrumentId"`
-	ExpirationDate          string                        `json:"expirationDate,omitempty"`
+	AssetType               schwab.AssetType               `json:"assetType"`
+	Cusip                   string                         `json:"cusip"`
+	Symbol                  string                         `json:"symbol"`
+	Description             string                         `json:"description"`
+	InstrumentId            int64                          `json:"instrumentId"`
+	ExpirationDate          string                         `json:"expirationDate,omitempty"`
 	OptionDeliverables      []TransactionOptionDeliverable `json:"optionDeliverables,omitempty"`
-	OptionPremiumMultiplier int64                         `json:"optionPremiumMultiplier,omitempty"`
-	PutCall                 string                        `json:"putCall,omitempty"`
-	StrikePrice             float64                       `json:"strikePrice,omitempty"`
-	Type                    string                        `json:"type,omitempty"`
-	UnderlyingSymbol        string                        `json:"underlyingSymbol,omitempty"`
-	UnderlyingCusip         string                        `json:"underlyingCusip,omitempty"`
-	MaturityDate            string                        `json:"maturityDate,omitempty"`
-	Factor                  float64                       `json:"factor,omitempty"`
-	Multiplier              float64                       `json:"multiplier,omitempty"`
-	VariableRate            float64                       `json:"variableRate,omitempty"`
+	OptionPremiumMultiplier int64                          `json:"optionPremiumMultiplier,omitempty"`
+	PutCall                 string                         `json:"putCall,omitempty"`
+	StrikePrice             float64                        `json:"strikePrice,omitempty"`
+	Type                    string                         `json:"type,omitempty"`
+	UnderlyingSymbol        string                         `json:"underlyingSymbol,omitempty"`
+	UnderlyingCusip         string                         `json:"underlyingCusip,omitempty"`
+	MaturityDate            string                         `json:"maturityDate,omitempty"`
+	Factor                  float64                        `json:"factor,omitempty"`
+	Multiplier              float64                        `json:"multiplier,omitempty"`
+	VariableRate            float64                        `json:"variableRate,omitempty"`
 }
 
 // TransactionOptionDeliverable represents a deliverable for a transaction option instrument.
@@ -116,6 +117,19 @@ type TransactionOptionDeliverable struct {
 // GetTransactions retrieves a list of transactions for the given account.
 // params must not be nil; StartDate and EndDate are required by the API.
 func (c *Client) GetTransactions(ctx context.Context, accountHash string, params *TransactionListParams) ([]Transaction, error) {
+	if params == nil {
+		return nil, fmt.Errorf("transaction list params are required")
+	}
+	if params.StartDate == "" {
+		return nil, fmt.Errorf("startDate is required")
+	}
+	if params.EndDate == "" {
+		return nil, fmt.Errorf("endDate is required")
+	}
+	if params.Types == "" {
+		return nil, fmt.Errorf("types is required")
+	}
+
 	path := fmt.Sprintf("/accounts/%s/transactions", url.PathEscape(accountHash))
 	req, err := c.newRequest(ctx, "GET", path, nil)
 	if err != nil {
@@ -138,17 +152,17 @@ func (c *Client) GetTransactions(ctx context.Context, accountHash string, params
 	return result, nil
 }
 
-// GetTransaction retrieves a single transaction by ID for the given account.
-func (c *Client) GetTransaction(ctx context.Context, accountHash string, transactionID string) (*Transaction, error) {
-	path := fmt.Sprintf("/accounts/%s/transactions/%s", url.PathEscape(accountHash), url.PathEscape(transactionID))
+// GetTransaction retrieves transactions matching one transaction ID for the given account.
+func (c *Client) GetTransaction(ctx context.Context, accountHash string, transactionID int64) ([]Transaction, error) {
+	path := fmt.Sprintf("/accounts/%s/transactions/%s", url.PathEscape(accountHash), strconv.FormatInt(transactionID, 10))
 	req, err := c.newRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var result Transaction
+	var result []Transaction
 	if err := c.do(req, &result); err != nil {
 		return nil, err
 	}
-	return &result, nil
+	return result, nil
 }

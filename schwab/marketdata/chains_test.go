@@ -150,6 +150,16 @@ func TestGetOptionChainMinimal(t *testing.T) {
 	assert.Equal(t, "AAPL", result.Symbol)
 }
 
+func TestGetOptionChainRequiresSymbol(t *testing.T) {
+	client := NewClient()
+
+	_, err := client.GetOptionChain(context.Background(), nil)
+	require.EqualError(t, err, "symbol is required")
+
+	_, err = client.GetOptionChain(context.Background(), &OptionChainParams{})
+	require.EqualError(t, err, "symbol is required")
+}
+
 func TestGetOptionChainAnalytical(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)

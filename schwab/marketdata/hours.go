@@ -13,13 +13,13 @@ type MarketHoursMap map[string]map[string]MarketHours
 
 // MarketHours contains trading hours for a specific market product.
 type MarketHours struct {
-	Date         string                     `json:"date"`
-	MarketType   string                     `json:"marketType"`
-	Exchange     string                     `json:"exchange"`
-	Category     string                     `json:"category"`
-	Product      string                     `json:"product"`
-	ProductName  string                     `json:"productName"`
-	IsOpen       bool                       `json:"isOpen"`
+	Date         string                    `json:"date"`
+	MarketType   string                    `json:"marketType"`
+	Exchange     string                    `json:"exchange"`
+	Category     string                    `json:"category"`
+	Product      string                    `json:"product"`
+	ProductName  string                    `json:"productName"`
+	IsOpen       bool                      `json:"isOpen"`
 	SessionHours map[string][]SessionHours `json:"sessionHours"`
 }
 
@@ -33,15 +33,17 @@ type SessionHours struct {
 // markets: comma-separated list of market IDs (e.g., ["equity", "option"])
 // date: optional date string (YYYY-MM-DD format); if empty, current date is used
 func (c *Client) GetMarketHours(ctx context.Context, markets []string, date string) (MarketHoursMap, error) {
+	if len(markets) == 0 {
+		return nil, fmt.Errorf("markets is required")
+	}
+
 	req, err := c.newRequest(ctx, "GET", "/markets", nil)
 	if err != nil {
 		return nil, err
 	}
 
 	q := req.URL.Query()
-	if len(markets) > 0 {
-		q.Set("markets", strings.Join(markets, ","))
-	}
+	q.Set("markets", strings.Join(markets, ","))
 	if date != "" {
 		q.Set("date", date)
 	}

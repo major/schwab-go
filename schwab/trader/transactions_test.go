@@ -53,6 +53,7 @@ func TestGetTransactions(t *testing.T) {
 		// Verify required query params
 		require.Equal(t, "2024-01-01", r.URL.Query().Get("startDate"))
 		require.Equal(t, "2024-01-31", r.URL.Query().Get("endDate"))
+		require.Equal(t, "TRADE", r.URL.Query().Get("types"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -69,6 +70,7 @@ func TestGetTransactions(t *testing.T) {
 	result, err := client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{
 		StartDate: "2024-01-01",
 		EndDate:   "2024-01-31",
+		Types:     "TRADE",
 	})
 	require.NoError(t, err)
 	require.Len(t, result, 1)
@@ -153,7 +155,7 @@ func TestGetTransaction(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(fixture)
+		json.NewEncoder(w).Encode([]Transaction{fixture})
 	}))
 	defer ts.Close()
 
@@ -163,16 +165,33 @@ func TestGetTransaction(t *testing.T) {
 		schwab.WithBaseURL(ts.URL),
 	)
 
-	result, err := client.GetTransaction(context.Background(), "HASH_ABC123", "2002")
+	result, err := client.GetTransaction(context.Background(), "HASH_ABC123", 2002)
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	require.Len(t, result, 1)
+	txn := result[0]
 
-	assert.Equal(t, int64(2002), result.ActivityId)
-	assert.Equal(t, "2024-02-10T14:00:00Z", result.Time)
-	assert.Equal(t, TransactionTypeDividendOrInterest, result.Type)
-	assert.Equal(t, "VALID", result.Status)
-	assert.Equal(t, 25.50, result.NetAmount)
-	assert.Equal(t, "DIVIDEND PAYMENT", result.Description)
+	assert.Equal(t, int64(2002), txn.ActivityId)
+	assert.Equal(t, "2024-02-10T14:00:00Z", txn.Time)
+	assert.Equal(t, TransactionTypeDividendOrInterest, txn.Type)
+	assert.Equal(t, "VALID", txn.Status)
+	assert.Equal(t, 25.50, txn.NetAmount)
+	assert.Equal(t, "DIVIDEND PAYMENT", txn.Description)
+}
+
+func TestGetTransactionsRequiresParams(t *testing.T) {
+	client := NewClient()
+
+	_, err := client.GetTransactions(context.Background(), "HASH_ABC123", nil)
+	require.EqualError(t, err, "transaction list params are required")
+
+	_, err = client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{EndDate: "2024-01-31", Types: "TRADE"})
+	require.EqualError(t, err, "startDate is required")
+
+	_, err = client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{StartDate: "2024-01-01", Types: "TRADE"})
+	require.EqualError(t, err, "endDate is required")
+
+	_, err = client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{StartDate: "2024-01-01", EndDate: "2024-01-31"})
+	require.EqualError(t, err, "types is required")
 }
 
 func TestGetTransactions_Error(t *testing.T) {
@@ -189,6 +208,7 @@ func TestGetTransactions_Error(t *testing.T) {
 	_, err := client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{
 		StartDate: "2024-01-01",
 		EndDate:   "2024-01-31",
+		Types:     "TRADE",
 	})
 	require.Error(t, err)
 

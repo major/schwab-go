@@ -128,6 +128,16 @@ func TestGetMarketHours_NoDate(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestGetMarketHoursRequiresMarkets(t *testing.T) {
+	client := NewClient()
+
+	_, err := client.GetMarketHours(context.Background(), nil, "")
+	require.EqualError(t, err, "markets is required")
+
+	_, err = client.GetMarketHours(context.Background(), []string{}, "")
+	require.EqualError(t, err, "markets is required")
+}
+
 func TestGetMarketHoursSingle(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
