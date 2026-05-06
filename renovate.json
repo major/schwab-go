@@ -33,6 +33,17 @@
       "depNameTemplate": "maratori/golangci-lint-config",
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Update Go tool versions pinned in Makefile variables",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n[A-Z0-9_]+_VERSION\\s*:?=\\s*(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
+      ],
+      "versioningTemplate": "semver"
     }
   ],
   "packageRules": [
@@ -90,6 +101,14 @@
       ],
       "groupName": "Go toolchain",
       "automerge": false
+    },
+    {
+      "description": "Group OpenAPI validation tool updates",
+      "matchPackageNames": [
+        "github.com/getkin/kin-openapi",
+        "github.com/daveshanley/vacuum"
+      ],
+      "groupName": "OpenAPI validation tools"
     }
   ],
   "schedule": [

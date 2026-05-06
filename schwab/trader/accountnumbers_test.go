@@ -13,14 +13,14 @@ import (
 )
 
 func TestGetAccountNumbers(t *testing.T) {
+	openapi := newOpenAPIValidator(t)
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/accounts/accountNumbers", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		openapi.ValidateRequest(t, r, "getAccountNumbers")
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		writeJSON(t, w, []AccountNumberHash{
+		response := []AccountNumberHash{
 			{
 				AccountNumber: "123456789",
 				HashValue:     "HASH_ABC123",
@@ -29,7 +29,12 @@ func TestGetAccountNumbers(t *testing.T) {
 				AccountNumber: "987654321",
 				HashValue:     "HASH_XYZ789",
 			},
-		})
+		}
+		openapi.ValidateJSONResponse(t, r, "getAccountNumbers", http.StatusOK, response)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, response)
 	})
 
 	result, err := client.GetAccountNumbers(context.Background())

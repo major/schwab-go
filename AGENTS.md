@@ -1,7 +1,7 @@
 # Repository instructions
 
 - Keep this file updated whenever project commands, package layout, CI, release flow, or repo-specific conventions change.
-- Module path is `github.com/major/schwab-go`; `go.mod` currently targets Go 1.26 and uses `testify` for tests.
+- Module path is `github.com/major/schwab-go`; `go.mod` currently targets Go 1.26 and uses `testify` plus `kin-openapi` for tests.
 - This is a library only. There is no `main` package or CLI, and GoReleaser is configured for source archives only.
 
 ## Commands
@@ -9,6 +9,7 @@
 - `make test` runs the CI test command: `go test -v -race -coverprofile=coverage.out ./...`.
 - `make build` runs `go build ./...`; use this instead of looking for a binary target.
 - `make lint` runs `golangci-lint run ./...`; CI uses golangci-lint v2.12.2.
+- `make spec-validate` validates `docs/*.openapi.json` with pinned `kin-openapi` and `vacuum` versions. `kin-openapi` disables example validation because Schwab's captured specs contain invalid example metadata; `.vacuum.yaml` keeps non-blocking warnings visible while disabling known upstream portal defects that should not fail local validation.
 - `make vuln` runs `govulncheck ./...`.
 - `make clean` removes `coverage.out` and `dist/`.
 - `make release VERSION=vX.Y.Z` must run from a clean `main` branch, runs test then lint, and creates a signed tag. Push the tag manually.
