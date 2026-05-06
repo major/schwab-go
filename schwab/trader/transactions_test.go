@@ -183,6 +183,19 @@ func TestGetTransaction(t *testing.T) {
 	assert.Equal(t, "DIVIDEND PAYMENT", txn.Description)
 }
 
+func TestGetTransaction_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	_, err := client.GetTransaction(context.Background(), "HASH_ABC123", 9999)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
+}
+
 func TestGetTransactionsRequiresParams(t *testing.T) {
 	client := NewClient()
 

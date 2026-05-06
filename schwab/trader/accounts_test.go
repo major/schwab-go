@@ -153,6 +153,19 @@ func TestGetAccounts_NoFields(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestGetAccounts_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+
+	_, err := client.GetAccounts(context.Background(), "")
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusUnauthorized, apiErr.StatusCode)
+}
+
 func TestGetAccount(t *testing.T) {
 	fixture := Account{
 		SecuritiesAccount: SecuritiesAccount{
@@ -194,6 +207,24 @@ func TestGetAccount(t *testing.T) {
 	assert.InDelta(t, 25000.00, acct.CurrentBalances.Equity, 0.000001)
 	assert.InDelta(t, 20000.00, acct.CurrentBalances.BuyingPower, 0.000001)
 	assert.InDelta(t, 25000.00, acct.CurrentBalances.AccountValue, 0.000001)
+}
+
+func TestGetAccount_WithFields(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123", r.URL.Path)
+		assert.Equal(t, "positions", r.URL.Query().Get("fields"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, Account{
+			SecuritiesAccount: SecuritiesAccount{AccountNumber: "123"},
+		})
+	})
+
+	result, err := client.GetAccount(context.Background(), "HASH_ABC123", "positions")
+	require.NoError(t, err)
+	assert.Equal(t, "123", result.SecuritiesAccount.AccountNumber)
 }
 
 func TestGetAccount_Error(t *testing.T) {
