@@ -123,13 +123,16 @@ func TestGetInstrumentByCUSIP(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		writeJSON(t, w, Instrument{
-			Cusip:       "037833100",
-			Symbol:      "AAPL",
-			Description: "Apple Inc",
-			Exchange:    "NASDAQ",
-			AssetType:   "EQUITY",
-			Type:        "SWEEP_VEHICLE",
+		writeJSON(t, w, InstrumentResponse{
+			Instruments: []Instrument{
+				{
+					Cusip:       "037833100",
+					Symbol:      "AAPL",
+					Description: "Apple Inc",
+					Exchange:    "NASDAQ",
+					AssetType:   "EQUITY",
+				},
+			},
 		})
 	})
 
@@ -143,7 +146,24 @@ func TestGetInstrumentByCUSIP(t *testing.T) {
 	assert.Equal(t, "Apple Inc", result.Description)
 	assert.Equal(t, "NASDAQ", result.Exchange)
 	assert.Equal(t, schwab.AssetType("EQUITY"), result.AssetType)
-	assert.Equal(t, "SWEEP_VEHICLE", result.Type)
+}
+
+func TestGetInstrumentByCUSIP_EmptyInstruments(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/instruments/000000000", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, InstrumentResponse{
+			Instruments: []Instrument{},
+		})
+	})
+
+	result, err := client.GetInstrumentByCUSIP(context.Background(), "000000000")
+	require.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "no instrument found for CUSIP")
 }
 
 func TestSearchInstruments_Error(t *testing.T) {
