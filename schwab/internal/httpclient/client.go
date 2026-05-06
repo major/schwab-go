@@ -14,6 +14,8 @@ import (
 	schwab "github.com/major/schwab-go/schwab"
 )
 
+const maxAPIErrorBodyBytes = 1 << 20
+
 // Config holds shared HTTP client settings for Schwab API packages.
 type Config struct {
 	BaseURL     *url.URL
@@ -78,11 +80,11 @@ func Do(cfg Config, req *http.Request, out any, extractError func([]byte) string
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= 300 {
-		bodyBytes, readErr := io.ReadAll(resp.Body)
+		bodyBytes, readErr := readAPIErrorBody(resp.Body)
 		apiErr := &schwab.APIError{StatusCode: resp.StatusCode}
 		if readErr == nil && len(bodyBytes) > 0 {
+			apiErr.Body = string(bodyBytes)
 			apiErr.Message = extractError(bodyBytes)
-			// Body intentionally omitted to avoid leaking sensitive API response data.
 		}
 		if apiErr.Message == "" {
 			apiErr.Message = http.StatusText(resp.StatusCode)
@@ -101,4 +103,15 @@ func Do(cfg Config, req *http.Request, out any, extractError func([]byte) string
 		return fmt.Errorf("decode response body: %w", decodeErr)
 	}
 	return nil
+}
+
+func readAPIErrorBody(body io.Reader) ([]byte, error) {
+	bodyBytes, readErr := io.ReadAll(io.LimitReader(body, maxAPIErrorBodyBytes))
+	if readErr != nil {
+		return nil, readErr
+	}
+	if _, drainErr := io.Copy(io.Discard, body); drainErr != nil {
+		return nil, drainErr
+	}
+	return bodyBytes, nil
 }

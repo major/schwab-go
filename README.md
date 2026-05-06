@@ -14,7 +14,7 @@ Go client library for the [Schwab API](https://developer.schwab.com/). Covers Ma
 - **Market Data** - quotes, price history, option chains, instruments, market hours, movers
 - **Trader** - accounts, orders (create/replace/cancel/preview), transactions, user preferences
 - **Typed quote accessors** - asset-specific quote and reference types for equities, options, indices, mutual funds, forex, futures, and future options
-- **Structured errors** - `*schwab.APIError` with status code, message, and raw body
+- **Structured errors** - `*schwab.APIError` with status code, message, and up to 1 MiB of the raw body
 - **Functional options** - `WithToken`, `WithHTTPClient`, `WithBaseURL` for flexible client configuration. Invalid base URL overrides fail when a request is created instead of falling back to the production Schwab API.
 - **Context propagation** - all request methods take `context.Context`
 - **Testable** - override HTTP client and base URL for `httptest` integration
@@ -116,7 +116,7 @@ func main() {
 
 ### Error handling
 
-All API errors are returned as `*schwab.APIError`, which includes the HTTP status code, a message, and the raw response body:
+All API errors are returned as `*schwab.APIError`, which includes the HTTP status code, a message, and up to 1 MiB of the raw response body:
 
 ```go
 import "errors"
