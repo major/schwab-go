@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -276,6 +277,7 @@ func TestDo(t *testing.T) {
 		wantAPIError    bool
 		wantStatus      int
 		wantMessage     string
+		wantBody        string
 		wantDecodeError bool
 	}{
 		{
@@ -302,6 +304,7 @@ func TestDo(t *testing.T) {
 			wantAPIError: true,
 			wantStatus:   http.StatusBadRequest,
 			wantMessage:  "bad request detail",
+			wantBody:     `{"message":"bad request detail"}`,
 		},
 		{
 			name:         "non 2xx empty body falls back to status text",
@@ -323,6 +326,7 @@ func TestDo(t *testing.T) {
 			wantAPIError: true,
 			wantStatus:   http.StatusInternalServerError,
 			wantMessage:  http.StatusText(http.StatusInternalServerError),
+			wantBody:     `{"message":"ignored"}`,
 		},
 		{
 			name:         "nil out with 200 drains body",
@@ -358,6 +362,20 @@ func TestDo(t *testing.T) {
 			wantAPIError: true,
 			wantStatus:   http.StatusMovedPermanently,
 			wantMessage:  "moved",
+			wantBody:     `{"message":"moved"}`,
+		},
+		{
+			name:         "non 2xx caps raw error body",
+			status:       http.StatusBadRequest,
+			responseBody: strings.Repeat("a", maxAPIErrorBodyBytes+1),
+			extractError: func([]byte) string {
+				return ""
+			},
+			out:          &responsePayload{},
+			wantAPIError: true,
+			wantStatus:   http.StatusBadRequest,
+			wantMessage:  http.StatusText(http.StatusBadRequest),
+			wantBody:     strings.Repeat("a", maxAPIErrorBodyBytes),
 		},
 	}
 
@@ -384,7 +402,7 @@ func TestDo(t *testing.T) {
 				require.True(t, ok)
 				assert.Equal(t, tt.wantStatus, apiErr.StatusCode)
 				assert.Equal(t, tt.wantMessage, apiErr.Message)
-				assert.Empty(t, apiErr.Body)
+				assert.Equal(t, tt.wantBody, apiErr.Body)
 				return
 			}
 
@@ -413,6 +431,18 @@ func TestDoReturnsHTTPClientError(t *testing.T) {
 	err = Do(Config{HTTPClient: client}, req, nil, nil)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, assert.AnError)
+}
+
+func TestReadAPIErrorBodyCapsStoredBodyAndDrainsRemainder(t *testing.T) {
+	body := strings.NewReader(strings.Repeat("a", maxAPIErrorBodyBytes+1))
+
+	bodyBytes, err := readAPIErrorBody(body)
+
+	require.NoError(t, err)
+	assert.Len(t, bodyBytes, maxAPIErrorBodyBytes)
+	remainingBytes, readErr := io.ReadAll(body)
+	require.NoError(t, readErr)
+	assert.Empty(t, remainingBytes)
 }
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)

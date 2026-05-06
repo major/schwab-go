@@ -3,6 +3,7 @@ package schwab
 import "fmt"
 
 // APIError represents an error returned by the Schwab API.
+// Body contains up to 1 MiB of the raw error response body.
 // Use [errors.AsType] with *APIError (Go 1.26) to extract the typed error.
 type APIError struct {
 	StatusCode int
