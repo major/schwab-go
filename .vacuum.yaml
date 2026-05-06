@@ -1,0 +1,9 @@
+extends: [[vacuum:oas, recommended]]
+rules:
+  # Schwab's captured Trader spec has overlapping templated paths and schema
+  # issues. Keep non-blocking warnings visible in docs review, but do not make
+  # the local validation target fail on upstream portal defects.
+  circular-references: false
+  no-ambiguous-paths: false
+  oas-schema-check: false
+  operation-tag-defined: false

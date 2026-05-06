@@ -13,18 +13,18 @@ import (
 )
 
 func TestGetPriceHistory(t *testing.T) {
+	openapi := newOpenAPIValidator(t)
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/pricehistory", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		openapi.ValidateRequest(t, r, "getPriceHistory")
 
 		// Verify symbol query param
 		symbol := r.URL.Query().Get("symbol")
 		assert.Equal(t, "AAPL", symbol)
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		writeJSON(t, w, map[string]any{
+		response := map[string]any{
 			"candles": []map[string]any{
 				{
 					"open":     150.0,
@@ -37,7 +37,12 @@ func TestGetPriceHistory(t *testing.T) {
 			},
 			"symbol": "AAPL",
 			"empty":  false,
-		})
+		}
+		openapi.ValidateJSONResponse(t, r, "getPriceHistory", http.StatusOK, response)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, response)
 	})
 
 	result, err := client.GetPriceHistory(context.Background(), "AAPL", nil)
