@@ -24,6 +24,23 @@ type responsePayload struct {
 	Price  int    `json:"price"`
 }
 
+type doTestCase struct {
+	name                string
+	status              int
+	responseBody        string
+	responseContentType string
+	responseLimit       int64
+	extractError        func([]byte) string
+	out                 any
+	wantOut             any
+	wantAPIError        bool
+	wantStatus          int
+	wantMessage         string
+	wantBody            string
+	wantDecodeError     bool
+	wantLimitError      bool
+}
+
 func TestNewConfig(t *testing.T) {
 	defaultBase, err := url.Parse("https://api.example.test/base")
 	require.NoError(t, err)
@@ -41,6 +58,7 @@ func TestNewConfig(t *testing.T) {
 		wantClientNonNil  bool
 		wantToken         string
 		wantOptionError   string
+		wantBodyLimit     int64
 		wantEmptyBase     bool
 		wantDistinctClone bool
 	}{
@@ -52,6 +70,7 @@ func TestNewConfig(t *testing.T) {
 			wantBase:         "https://api.example.test/base",
 			wantClient:       defaultClient,
 			wantClientNonNil: true,
+			wantBodyLimit:    schwab.DefaultResponseBodyLimit,
 		},
 		{
 			name:             "nil default base uses empty URL",
@@ -60,6 +79,7 @@ func TestNewConfig(t *testing.T) {
 			opts:             nil,
 			wantClient:       defaultClient,
 			wantClientNonNil: true,
+			wantBodyLimit:    schwab.DefaultResponseBodyLimit,
 			wantEmptyBase:    true,
 		},
 		{
@@ -69,6 +89,7 @@ func TestNewConfig(t *testing.T) {
 			opts:              nil,
 			wantBase:          "https://api.example.test/base",
 			wantClientNonNil:  true,
+			wantBodyLimit:     schwab.DefaultResponseBodyLimit,
 			wantDistinctClone: true,
 		},
 		{
@@ -79,11 +100,13 @@ func TestNewConfig(t *testing.T) {
 				schwab.WithToken("tok"),
 				schwab.WithBaseURL("http://example.com"),
 				schwab.WithHTTPClient(customClient),
+				schwab.WithResponseBodyLimit(512),
 			},
 			wantBase:         "http://example.com",
 			wantClient:       customClient,
 			wantClientNonNil: true,
 			wantToken:        "tok",
+			wantBodyLimit:    512,
 		},
 		{
 			name:          "invalid base URL option preserves default and stores error",
@@ -95,6 +118,7 @@ func TestNewConfig(t *testing.T) {
 			wantBase:        "https://api.example.test/base",
 			wantClient:      defaultClient,
 			wantOptionError: relativeBaseURLError,
+			wantBodyLimit:   schwab.DefaultResponseBodyLimit,
 		},
 	}
 
@@ -125,6 +149,7 @@ func TestNewConfig(t *testing.T) {
 				require.Error(t, cfg.OptionError)
 				require.ErrorContains(t, cfg.OptionError, tt.wantOptionError)
 			}
+			assert.Equal(t, tt.wantBodyLimit, cfg.ResponseBodyLimit)
 		})
 	}
 }
@@ -267,20 +292,7 @@ func TestNewRequest(t *testing.T) {
 }
 
 func TestDo(t *testing.T) {
-	tests := []struct {
-		name                string
-		status              int
-		responseBody        string
-		responseContentType string
-		extractError        func([]byte) string
-		out                 any
-		wantOut             any
-		wantAPIError        bool
-		wantStatus          int
-		wantMessage         string
-		wantBody            string
-		wantDecodeError     bool
-	}{
+	tests := []doTestCase{
 		{
 			name:                "success 200 decodes JSON body",
 			status:              http.StatusOK,
@@ -343,6 +355,51 @@ func TestDo(t *testing.T) {
 			out:          nil,
 		},
 		{
+			name:                "success JSON body at limit decodes",
+			status:              http.StatusOK,
+			responseBody:        `{"symbol":"AAPL","price":185}`,
+			responseContentType: "application/json",
+			responseLimit:       int64(len(`{"symbol":"AAPL","price":185}`)),
+			out:                 &responsePayload{},
+			wantOut:             &responsePayload{Symbol: "AAPL", Price: 185},
+		},
+		{
+			name:                "success JSON body over limit returns limit error",
+			status:              http.StatusOK,
+			responseBody:        `{"symbol":"AAPL","price":185}`,
+			responseContentType: "application/json",
+			responseLimit:       int64(len(`{"symbol":"AAPL","price":185}`) - 1),
+			out:                 &responsePayload{},
+			wantLimitError:      true,
+		},
+		{
+			name:                "success JSON with trailing over limit body returns limit error",
+			status:              http.StatusOK,
+			responseBody:        `{"symbol":"AAPL","price":185}` + strings.Repeat(" ", 9),
+			responseContentType: "application/json",
+			responseLimit:       int64(len(`{"symbol":"AAPL","price":185}`)),
+			out:                 &responsePayload{},
+			wantLimitError:      true,
+		},
+		{
+			name:           "non 2xx body over limit preserves API error",
+			status:         http.StatusBadRequest,
+			responseBody:   strings.Repeat("x", 9),
+			responseLimit:  8,
+			out:            &responsePayload{},
+			wantAPIError:   true,
+			wantStatus:     http.StatusBadRequest,
+			wantLimitError: true,
+		},
+		{
+			name:           "nil out body over limit returns limit error",
+			status:         http.StatusOK,
+			responseBody:   strings.Repeat("x", 9),
+			responseLimit:  8,
+			out:            nil,
+			wantLimitError: true,
+		},
+		{
 			name:                "malformed JSON response returns wrapped decode error",
 			status:              http.StatusOK,
 			responseBody:        `{broken`,
@@ -399,29 +456,10 @@ func TestDo(t *testing.T) {
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL+"/test", http.NoBody)
 			require.NoError(t, err)
 
-			cfg := Config{HTTPClient: ts.Client()}
+			cfg := Config{HTTPClient: ts.Client(), ResponseBodyLimit: tt.responseLimit}
 			err = Do(cfg, req, tt.out, tt.extractError)
 
-			if tt.wantAPIError {
-				require.Error(t, err)
-				apiErr, ok := errors.AsType[*schwab.APIError](err)
-				require.True(t, ok)
-				assert.Equal(t, tt.wantStatus, apiErr.StatusCode)
-				assert.Equal(t, tt.wantMessage, apiErr.Message)
-				assert.Equal(t, tt.wantBody, apiErr.Body)
-				return
-			}
-
-			if tt.wantDecodeError {
-				require.Error(t, err)
-				assert.ErrorContains(t, err, "decode response body:")
-				return
-			}
-
-			require.NoError(t, err)
-			if tt.wantOut != nil {
-				assert.Equal(t, tt.wantOut, tt.out)
-			}
+			assertDoResult(t, err, tt)
 		})
 	}
 }
@@ -478,6 +516,48 @@ func TestDoValidatesSuccessContentType(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, responsePayload{Symbol: "AAPL", Price: 185}, got)
 		})
+	}
+}
+
+func assertDoResult(t *testing.T, err error, tt doTestCase) {
+	t.Helper()
+
+	if tt.wantLimitError {
+		require.Error(t, err)
+		require.ErrorContains(t, err, "response body too large")
+		require.ErrorContains(t, err, "configured limit")
+		if tt.wantAPIError {
+			apiErr, ok := errors.AsType[*schwab.APIError](err)
+			require.True(t, ok)
+			assert.Equal(t, tt.wantStatus, apiErr.StatusCode)
+			assert.Contains(t, apiErr.Message, "response body too large")
+			assert.Contains(t, apiErr.Message, "configured limit")
+		} else {
+			var maxBytesErr *http.MaxBytesError
+			require.ErrorAs(t, err, &maxBytesErr)
+		}
+		return
+	}
+
+	if tt.wantAPIError {
+		require.Error(t, err)
+		apiErr, ok := errors.AsType[*schwab.APIError](err)
+		require.True(t, ok)
+		assert.Equal(t, tt.wantStatus, apiErr.StatusCode)
+		assert.Equal(t, tt.wantMessage, apiErr.Message)
+		assert.Equal(t, tt.wantBody, apiErr.Body)
+		return
+	}
+
+	if tt.wantDecodeError {
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "decode response body:")
+		return
+	}
+
+	require.NoError(t, err)
+	if tt.wantOut != nil {
+		assert.Equal(t, tt.wantOut, tt.out)
 	}
 }
 

@@ -14,10 +14,11 @@ const defaultBaseURL = "https://api.schwabapi.com/trader/v1"
 
 // Client is an HTTP client for the Schwab Trader API.
 type Client struct {
-	baseURL     *url.URL
-	httpClient  *http.Client
-	token       string
-	optionError error
+	baseURL           *url.URL
+	httpClient        *http.Client
+	token             string
+	optionError       error
+	responseBodyLimit int64
 }
 
 // NewClient creates a new Trader API client with the given options.
@@ -28,15 +29,22 @@ func NewClient(opts ...schwab.Option) *Client {
 	}
 	cfg := httpclient.NewConfig(defaultBase, http.DefaultClient, opts)
 	return &Client{
-		baseURL:     cfg.BaseURL,
-		httpClient:  cfg.HTTPClient,
-		token:       cfg.Token,
-		optionError: cfg.OptionError,
+		baseURL:           cfg.BaseURL,
+		httpClient:        cfg.HTTPClient,
+		token:             cfg.Token,
+		optionError:       cfg.OptionError,
+		responseBodyLimit: cfg.ResponseBodyLimit,
 	}
 }
 
 func (c *Client) config() httpclient.Config {
-	return httpclient.Config{BaseURL: c.baseURL, HTTPClient: c.httpClient, Token: c.token, OptionError: c.optionError}
+	return httpclient.Config{
+		BaseURL:           c.baseURL,
+		HTTPClient:        c.httpClient,
+		Token:             c.token,
+		OptionError:       c.optionError,
+		ResponseBodyLimit: c.responseBodyLimit,
+	}
 }
 
 // newRequest builds an HTTP request with the given method, path, and optional JSON body.
