@@ -1,0 +1,174 @@
+# schwab-go
+
+[![CI](https://github.com/major/schwab-go/actions/workflows/ci.yml/badge.svg)](https://github.com/major/schwab-go/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/major/schwab-go/branch/main/graph/badge.svg)](https://codecov.io/gh/major/schwab-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/major/schwab-go)](https://goreportcard.com/report/github.com/major/schwab-go)
+[![Go Reference](https://pkg.go.dev/badge/github.com/major/schwab-go.svg)](https://pkg.go.dev/github.com/major/schwab-go)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/major/schwab-go/badge)](https://scorecard.dev/viewer/?uri=github.com/major/schwab-go)
+[![License](https://img.shields.io/github/license/major/schwab-go)](LICENSE)
+
+Go client library for the [Schwab API](https://developer.schwab.com/). Covers Market Data and Trader API endpoints with typed responses, functional options, and structured error handling.
+
+## Features
+
+- **Market Data** - quotes, price history, option chains, instruments, market hours, movers
+- **Trader** - accounts, orders (create/replace/cancel/preview), transactions, user preferences
+- **Typed quote accessors** - asset-specific quote and reference types for equities, options, indices, mutual funds, forex, futures, and future options
+- **Structured errors** - `*schwab.APIError` with status code, message, and raw body
+- **Functional options** - `WithToken`, `WithHTTPClient`, `WithBaseURL` for flexible client configuration
+- **Context propagation** - all request methods take `context.Context`
+- **Testable** - override HTTP client and base URL for `httptest` integration
+- **Zero dependencies** - only `stretchr/testify` for tests
+
+## Installation
+
+```bash
+go get github.com/major/schwab-go
+```
+
+Requires Go 1.26 or later.
+
+## Quick start
+
+### Market Data
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	schwab "github.com/major/schwab-go/schwab"
+	"github.com/major/schwab-go/schwab/marketdata"
+)
+
+func main() {
+	client := marketdata.NewClient(
+		schwab.WithToken("your-bearer-token"),
+	)
+
+	// Fetch quotes for multiple symbols.
+	quotes, quoteErr, err := client.GetQuotes(
+		context.Background(),
+		[]string{"AAPL", "MSFT"},
+		"quote,reference", // fields
+		false,             // indicative
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if quoteErr != nil {
+		fmt.Printf("invalid symbols: %v\n", quoteErr.InvalidSymbols)
+	}
+
+	for symbol, entry := range *quotes {
+		eq, err := entry.EquityQuote()
+		if err != nil {
+			continue
+		}
+		fmt.Printf("%s: $%.2f\n", symbol, eq.LastPrice)
+	}
+}
+```
+
+### Trader
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	schwab "github.com/major/schwab-go/schwab"
+	"github.com/major/schwab-go/schwab/trader"
+)
+
+func main() {
+	client := trader.NewClient(
+		schwab.WithToken("your-bearer-token"),
+	)
+
+	// Get encrypted account hashes (required for all account-scoped calls).
+	accounts, err := client.GetAccountNumbers(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Fetch account details with positions.
+	for _, acct := range accounts {
+		detail, err := client.GetAccount(
+			context.Background(),
+			acct.HashValue,
+			"positions",
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sa := detail.SecuritiesAccount
+		fmt.Printf("Account %s: %d positions\n", sa.AccountNumber, len(sa.Positions))
+	}
+}
+```
+
+### Error handling
+
+All API errors are returned as `*schwab.APIError`, which includes the HTTP status code, a message, and the raw response body:
+
+```go
+import "errors"
+
+_, _, err := client.GetQuotes(ctx, []string{"AAPL"}, "", false)
+if apiErr, ok := errors.AsType[*schwab.APIError](err); ok {
+	fmt.Printf("HTTP %d: %s\n", apiErr.StatusCode, apiErr.Message)
+	fmt.Printf("Body: %s\n", apiErr.Body)
+}
+```
+
+## Authentication
+
+This library does not handle OAuth or token refresh. Pass a valid bearer token with `schwab.WithToken()`. See the [Schwab developer docs](https://developer.schwab.com/) for obtaining tokens through their OAuth flow.
+
+## API coverage
+
+### Market Data (`schwab/marketdata`)
+
+| Method | Description |
+|--------|-------------|
+| `GetQuotes` | Multi-symbol quotes with optional fields |
+| `GetQuote` | Single symbol quote |
+| `GetPriceHistory` | OHLCV candles with configurable period/frequency |
+| `SearchInstruments` | Search instruments by symbol or name |
+| `GetInstrumentByCUSIP` | Look up instrument by CUSIP |
+| `GetOptionChain` | Full option chain with strikes and expirations |
+| `GetExpirationChain` | Expiration dates for a symbol |
+| `GetMovers` | Market movers by index |
+| `GetMarketHours` | Market hours for multiple markets |
+| `GetMarketHoursSingle` | Market hours for a single market |
+
+### Trader (`schwab/trader`)
+
+| Method | Description |
+|--------|-------------|
+| `GetAccountNumbers` | Encrypted account hashes (call first) |
+| `GetAccounts` / `GetAccount` | Account details with optional positions |
+| `GetOrders` / `GetAllOrders` / `GetOrder` | Retrieve orders |
+| `CreateOrder` / `ReplaceOrder` / `CancelOrder` | Order lifecycle |
+| `PreviewOrder` | Preview an order before submission |
+| `GetTransactions` / `GetTransaction` | Transaction history |
+| `GetUserPreference` | User preferences |
+
+## Documentation
+
+Full API documentation is available on [pkg.go.dev](https://pkg.go.dev/github.com/major/schwab-go).
+
+## Contributing
+
+Contributions are welcome. Please open an issue to discuss larger changes before submitting a pull request.
+
+## License
+
+[Apache License 2.0](LICENSE)
