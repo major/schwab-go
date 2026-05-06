@@ -106,11 +106,12 @@ type TransactionInstrument struct {
 
 // TransactionOptionDeliverable represents a deliverable for a transaction option instrument.
 type TransactionOptionDeliverable struct {
-	RootSymbol        string           `json:"rootSymbol"`
-	StrikePercent     int64            `json:"strikePercent"`
-	DeliverableNumber int64            `json:"deliverableNumber"`
-	DeliverableUnits  float64          `json:"deliverableUnits"`
-	AssetType         schwab.AssetType `json:"assetType"`
+	RootSymbol        string                 `json:"rootSymbol"`
+	StrikePercent     int64                  `json:"strikePercent"`
+	DeliverableNumber int64                  `json:"deliverableNumber"`
+	DeliverableUnits  float64                `json:"deliverableUnits"`
+	Deliverable       *TransactionInstrument `json:"deliverable"`
+	AssetType         schwab.AssetType       `json:"assetType"`
 }
 
 // GetTransactions retrieves a list of transactions for the given account.
