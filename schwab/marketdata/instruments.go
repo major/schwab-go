@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 
 	schwab "github.com/major/schwab-go/schwab"
@@ -151,7 +150,7 @@ func (c *Client) SearchInstruments(ctx context.Context, symbol string, projectio
 // GetInstrumentByCUSIP retrieves an instrument by its CUSIP ID.
 // cusipID: the CUSIP identifier
 func (c *Client) GetInstrumentByCUSIP(ctx context.Context, cusipID string) (*Instrument, error) {
-	path := fmt.Sprintf("/instruments/%s", url.PathEscape(cusipID))
+	path := "/instruments/" + url.PathEscape(cusipID)
 	req, err := c.newRequest(ctx, path)
 	if err != nil {
 		return nil, err

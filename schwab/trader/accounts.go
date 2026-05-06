@@ -2,7 +2,6 @@ package trader
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 
 	schwab "github.com/major/schwab-go/schwab"
@@ -144,7 +143,7 @@ func (c *Client) GetAccounts(ctx context.Context, fields string) ([]Account, err
 // fields: optional comma-separated list of additional fields to include (e.g., "positions");
 // if empty, no fields param is sent.
 func (c *Client) GetAccount(ctx context.Context, accountHash, fields string) (*Account, error) {
-	path := fmt.Sprintf("/accounts/%s", url.PathEscape(accountHash))
+	path := "/accounts/" + url.PathEscape(accountHash)
 	req, err := c.newRequest(ctx, "GET", path, nil)
 	if err != nil {
 		return nil, err

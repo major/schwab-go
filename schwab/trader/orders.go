@@ -2,6 +2,7 @@ package trader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -284,13 +285,13 @@ func (c *Client) GetAllOrders(ctx context.Context, params *OrderListParams) ([]O
 
 func (c *Client) getOrders(ctx context.Context, path string, params *OrderListParams) ([]Order, error) {
 	if params == nil {
-		return nil, fmt.Errorf("order list params are required")
+		return nil, errors.New("order list params are required")
 	}
 	if params.FromEnteredTime == "" {
-		return nil, fmt.Errorf("fromEnteredTime is required")
+		return nil, errors.New("fromEnteredTime is required")
 	}
 	if params.ToEnteredTime == "" {
-		return nil, fmt.Errorf("toEnteredTime is required")
+		return nil, errors.New("toEnteredTime is required")
 	}
 
 	req, err := c.newRequest(ctx, "GET", path, nil)

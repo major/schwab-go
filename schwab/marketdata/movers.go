@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"strconv"
 )
@@ -40,7 +39,7 @@ type Screener struct {
 // sort: optional sort order; if empty, no sort param is sent
 // frequency: optional frequency; if zero, no frequency param is sent
 func (c *Client) GetMovers(ctx context.Context, symbolID string, sort MoverSort, frequency int) (*MoverResponse, error) {
-	path := fmt.Sprintf("/movers/%s", url.PathEscape(symbolID))
+	path := "/movers/" + url.PathEscape(symbolID)
 	req, err := c.newRequest(ctx, path)
 	if err != nil {
 		return nil, err

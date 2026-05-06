@@ -2,7 +2,7 @@ package marketdata
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/url"
 	"strings"
 )
@@ -34,7 +34,7 @@ type SessionHours struct {
 // date: optional date string (YYYY-MM-DD format); if empty, current date is used
 func (c *Client) GetMarketHours(ctx context.Context, markets []string, date string) (MarketHoursMap, error) {
 	if len(markets) == 0 {
-		return nil, fmt.Errorf("markets is required")
+		return nil, errors.New("markets is required")
 	}
 
 	req, err := c.newRequest(ctx, "/markets")
@@ -60,7 +60,7 @@ func (c *Client) GetMarketHours(ctx context.Context, markets []string, date stri
 // marketID: the market identifier (e.g., "equity")
 // date: optional date string (YYYY-MM-DD format); if empty, current date is used
 func (c *Client) GetMarketHoursSingle(ctx context.Context, marketID, date string) (MarketHoursMap, error) {
-	path := fmt.Sprintf("/markets/%s", url.PathEscape(marketID))
+	path := "/markets/" + url.PathEscape(marketID)
 	req, err := c.newRequest(ctx, path)
 	if err != nil {
 		return nil, err

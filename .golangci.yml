@@ -4,20 +4,31 @@ linters:
   default: standard
   enable:
     - bodyclose
+    - canonicalheader
+    - dupword
+    - errchkjson
     - errorlint
     - gocritic
     - gosec
+    - makezero
     - misspell
     - modernize
+    - nilerr
+    - nilnesserr
     - nilnil
     - nolintlint
+    - perfsprint
     - prealloc
+    - predeclared
+    - recvcheck
     - revive
     - testifylint
+    - thelper
     - unconvert
     - unparam
     - usestdlibvars
     - wastedassign
+    - whitespace
 
   settings:
     gocritic:
@@ -32,6 +43,7 @@ linters:
       comparison: true
 
     errcheck:
+      check-type-assertions: true
       check-blank: true
 
     misspell:

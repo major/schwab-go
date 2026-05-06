@@ -2,7 +2,7 @@ package marketdata
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strconv"
 )
 
@@ -137,7 +137,7 @@ type Underlying struct {
 // GetOptionChain retrieves an option chain for a symbol.
 func (c *Client) GetOptionChain(ctx context.Context, params *OptionChainParams) (*OptionChain, error) {
 	if params == nil || params.Symbol == "" {
-		return nil, fmt.Errorf("symbol is required")
+		return nil, errors.New("symbol is required")
 	}
 
 	req, err := c.newRequest(ctx, "/chains")

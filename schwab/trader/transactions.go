@@ -2,6 +2,7 @@ package trader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -118,16 +119,16 @@ type TransactionOptionDeliverable struct {
 // params must not be nil; StartDate and EndDate are required by the API.
 func (c *Client) GetTransactions(ctx context.Context, accountHash string, params *TransactionListParams) ([]Transaction, error) {
 	if params == nil {
-		return nil, fmt.Errorf("transaction list params are required")
+		return nil, errors.New("transaction list params are required")
 	}
 	if params.StartDate == "" {
-		return nil, fmt.Errorf("startDate is required")
+		return nil, errors.New("startDate is required")
 	}
 	if params.EndDate == "" {
-		return nil, fmt.Errorf("endDate is required")
+		return nil, errors.New("endDate is required")
 	}
 	if params.Types == "" {
-		return nil, fmt.Errorf("types is required")
+		return nil, errors.New("types is required")
 	}
 
 	path := fmt.Sprintf("/accounts/%s/transactions", url.PathEscape(accountHash))
