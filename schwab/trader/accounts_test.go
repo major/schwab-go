@@ -36,7 +36,7 @@ func TestGetAccounts(t *testing.T) {
 							Cusip:        "037833100",
 							Symbol:       "AAPL",
 							Description:  "Apple Inc",
-							InstrumentId: 1234567,
+							InstrumentID: 1234567,
 							NetChange:    1.5,
 						},
 						MarketValue:                 1530.00,
@@ -105,7 +105,7 @@ func TestGetAccounts(t *testing.T) {
 	assert.Equal(t, "037833100", inst.Cusip)
 	assert.Equal(t, "AAPL", inst.Symbol)
 	assert.Equal(t, "Apple Inc", inst.Description)
-	assert.Equal(t, int64(1234567), inst.InstrumentId)
+	assert.Equal(t, int64(1234567), inst.InstrumentID)
 	assert.InDelta(t, 1.5, inst.NetChange, 0.000001)
 
 	// Verify balances
@@ -197,7 +197,7 @@ func TestGetAccount(t *testing.T) {
 }
 
 func TestGetAccount_Error(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 

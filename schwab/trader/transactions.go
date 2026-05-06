@@ -2,7 +2,7 @@ package trader
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strconv"
 
 	schwab "github.com/major/schwab-go/schwab"
@@ -52,7 +52,7 @@ type UserDetails struct {
 
 // Transaction represents a single account transaction.
 type Transaction struct {
-	ActivityId     int64           `json:"activityId"`
+	ActivityID     int64           `json:"activityId"`
 	Time           string          `json:"time"`
 	User           *UserDetails    `json:"user"`
 	Type           TransactionType `json:"type"`
@@ -60,8 +60,8 @@ type Transaction struct {
 	SubAccount     string          `json:"subAccount"`
 	TradeDate      string          `json:"tradeDate"`
 	SettlementDate string          `json:"settlementDate"`
-	PositionId     int64           `json:"positionId"`
-	OrderId        int64           `json:"orderId"`
+	PositionID     int64           `json:"positionId"`
+	OrderID        int64           `json:"orderId"`
 	NetAmount      float64         `json:"netAmount"`
 	ActivityType   string          `json:"activityType"`
 	TransferItems  []TransferItem  `json:"transferItems"`
@@ -89,7 +89,7 @@ type TransactionInstrument struct {
 	Cusip                   string                         `json:"cusip"`
 	Symbol                  string                         `json:"symbol"`
 	Description             string                         `json:"description"`
-	InstrumentId            int64                          `json:"instrumentId"`
+	InstrumentID            int64                          `json:"instrumentId"`
 	ExpirationDate          string                         `json:"expirationDate,omitempty"`
 	OptionDeliverables      []TransactionOptionDeliverable `json:"optionDeliverables,omitempty"`
 	OptionPremiumMultiplier int64                          `json:"optionPremiumMultiplier,omitempty"`
@@ -115,18 +115,20 @@ type TransactionOptionDeliverable struct {
 
 // GetTransactions retrieves a list of transactions for the given account.
 // params must not be nil; StartDate and EndDate are required by the API.
-func (c *Client) GetTransactions(ctx context.Context, accountHash string, params *TransactionListParams) ([]Transaction, error) {
+func (c *Client) GetTransactions(
+	ctx context.Context, accountHash string, params *TransactionListParams,
+) ([]Transaction, error) {
 	if params == nil {
-		return nil, fmt.Errorf("transaction list params are required")
+		return nil, errors.New("transaction list params are required")
 	}
 	if params.StartDate == "" {
-		return nil, fmt.Errorf("startDate is required")
+		return nil, errors.New("startDate is required")
 	}
 	if params.EndDate == "" {
-		return nil, fmt.Errorf("endDate is required")
+		return nil, errors.New("endDate is required")
 	}
 	if params.Types == "" {
-		return nil, fmt.Errorf("types is required")
+		return nil, errors.New("types is required")
 	}
 
 	req, err := c.newRequest(ctx, "GET", accountPath(accountHash, "transactions"), nil)
@@ -142,22 +144,23 @@ func (c *Client) GetTransactions(ctx context.Context, accountHash string, params
 	req.URL.RawQuery = q.Encode()
 
 	var result []Transaction
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return result, nil
 }
 
 // GetTransaction retrieves transactions matching one transaction ID for the given account.
 func (c *Client) GetTransaction(ctx context.Context, accountHash string, transactionID int64) ([]Transaction, error) {
-	req, err := c.newRequest(ctx, "GET", accountPath(accountHash, "transactions", strconv.FormatInt(transactionID, 10)), nil)
+	txnPath := accountPath(accountHash, "transactions", strconv.FormatInt(transactionID, 10))
+	req, err := c.newRequest(ctx, "GET", txnPath, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	var result []Transaction
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return result, nil
 }

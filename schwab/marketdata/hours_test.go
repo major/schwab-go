@@ -181,7 +181,7 @@ func TestGetMarketHoursSingle_WithDate(t *testing.T) {
 }
 
 func TestGetMarketHours_Error(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
@@ -194,7 +194,7 @@ func TestGetMarketHours_Error(t *testing.T) {
 }
 
 func TestGetMarketHoursSingle_Error(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 

@@ -19,7 +19,9 @@ func setOptionalInt(q url.Values, key string, value int) {
 }
 
 func accountPath(accountHash string, segments ...string) string {
-	parts := make([]string, 0, 2+len(segments))
+	// initialCap accounts for the "accounts" and accountHash prefix segments.
+	const initialCap = 2
+	parts := make([]string, 0, initialCap+len(segments))
 	parts = append(parts, "accounts", url.PathEscape(accountHash))
 	parts = append(parts, segments...)
 	return "/" + strings.Join(parts, "/")

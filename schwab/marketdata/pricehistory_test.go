@@ -155,7 +155,7 @@ func TestGetPriceHistory_NilParams(t *testing.T) {
 }
 
 func TestGetPriceHistory_Error(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	})
 

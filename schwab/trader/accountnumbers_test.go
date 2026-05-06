@@ -63,7 +63,7 @@ func TestGetAccountNumbers_Empty(t *testing.T) {
 }
 
 func TestGetAccountNumbers_Error(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 

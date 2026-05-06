@@ -64,17 +64,17 @@ func TestGetUserPreference(t *testing.T) {
 	assert.Equal(t, "BROKERAGE", account.Type)
 	assert.Equal(t, "My Account", account.NickName)
 	assert.Equal(t, "Blue", account.AccountColor)
-	assert.Equal(t, "...6789", account.DisplayAcctId)
+	assert.Equal(t, "...6789", account.DisplayAcctID)
 	assert.False(t, account.AutoPositionEffect)
 
 	// Verify streamer info
 	require.Len(t, result[0].StreamerInfo, 1)
 	streamer := result[0].StreamerInfo[0]
-	assert.Equal(t, "wss://streamer.schwab.com/ws", streamer.StreamerSocketUrl)
-	assert.Equal(t, "customer123", streamer.SchwabClientCustomerId)
-	assert.Equal(t, "correl456", streamer.SchwabClientCorrelId)
+	assert.Equal(t, "wss://streamer.schwab.com/ws", streamer.StreamerSocketURL)
+	assert.Equal(t, "customer123", streamer.SchwabClientCustomerID)
+	assert.Equal(t, "correl456", streamer.SchwabClientCorrelID)
 	assert.Equal(t, "IO", streamer.SchwabClientChannel)
-	assert.Equal(t, "APIAPP", streamer.SchwabClientFunctionId)
+	assert.Equal(t, "APIAPP", streamer.SchwabClientFunctionID)
 
 	// Verify offers
 	require.Len(t, result[0].Offers, 1)
@@ -84,7 +84,7 @@ func TestGetUserPreference(t *testing.T) {
 }
 
 func TestGetUserPreference_Error(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 

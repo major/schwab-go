@@ -15,14 +15,14 @@ import (
 func TestGetTransactions(t *testing.T) {
 	fixture := []Transaction{
 		{
-			ActivityId:    1001,
+			ActivityID:    1001,
 			Time:          "2024-01-15T10:30:00Z",
 			Type:          TransactionTypeTrade,
 			Status:        "VALID",
 			SubAccount:    "CASH",
 			TradeDate:     "2024-01-15",
-			PositionId:    5001,
-			OrderId:       9001,
+			PositionID:    5001,
+			OrderID:       9001,
 			NetAmount:     -1500.00,
 			Description:   "Buy 10 AAPL",
 			AccountNumber: "123456789",
@@ -33,7 +33,7 @@ func TestGetTransactions(t *testing.T) {
 						Cusip:        "037833100",
 						Symbol:       "AAPL",
 						Description:  "Apple Inc",
-						InstrumentId: 1234567,
+						InstrumentID: 1234567,
 					},
 					Amount: 10,
 					Cost:   1500.00,
@@ -67,14 +67,14 @@ func TestGetTransactions(t *testing.T) {
 	require.Len(t, result, 1)
 
 	txn := result[0]
-	assert.Equal(t, int64(1001), txn.ActivityId)
+	assert.Equal(t, int64(1001), txn.ActivityID)
 	assert.Equal(t, "2024-01-15T10:30:00Z", txn.Time)
 	assert.Equal(t, TransactionTypeTrade, txn.Type)
 	assert.Equal(t, "VALID", txn.Status)
 	assert.Equal(t, "CASH", txn.SubAccount)
 	assert.Equal(t, "2024-01-15", txn.TradeDate)
-	assert.Equal(t, int64(5001), txn.PositionId)
-	assert.Equal(t, int64(9001), txn.OrderId)
+	assert.Equal(t, int64(5001), txn.PositionID)
+	assert.Equal(t, int64(9001), txn.OrderID)
 	assert.InDelta(t, -1500.00, txn.NetAmount, 0.000001)
 	assert.Equal(t, "Buy 10 AAPL", txn.Description)
 	assert.Equal(t, "123456789", txn.AccountNumber)
@@ -89,7 +89,7 @@ func TestGetTransactions(t *testing.T) {
 	assert.Equal(t, "037833100", item.Instrument.Cusip)
 	assert.Equal(t, "AAPL", item.Instrument.Symbol)
 	assert.Equal(t, "Apple Inc", item.Instrument.Description)
-	assert.Equal(t, int64(1234567), item.Instrument.InstrumentId)
+	assert.Equal(t, int64(1234567), item.Instrument.InstrumentID)
 }
 
 func TestGetTransactions_WithOptionalParams(t *testing.T) {
@@ -120,14 +120,14 @@ func TestGetTransactions_WithOptionalParams(t *testing.T) {
 
 func TestGetTransaction(t *testing.T) {
 	fixture := Transaction{
-		ActivityId:    2002,
+		ActivityID:    2002,
 		Time:          "2024-02-10T14:00:00Z",
 		Type:          TransactionTypeDividendOrInterest,
 		Status:        "VALID",
 		SubAccount:    "CASH",
 		TradeDate:     "2024-02-10",
-		PositionId:    6001,
-		OrderId:       0,
+		PositionID:    6001,
+		OrderID:       0,
 		NetAmount:     25.50,
 		Description:   "DIVIDEND PAYMENT",
 		AccountNumber: "123456789",
@@ -148,7 +148,7 @@ func TestGetTransaction(t *testing.T) {
 	require.Len(t, result, 1)
 	txn := result[0]
 
-	assert.Equal(t, int64(2002), txn.ActivityId)
+	assert.Equal(t, int64(2002), txn.ActivityID)
 	assert.Equal(t, "2024-02-10T14:00:00Z", txn.Time)
 	assert.Equal(t, TransactionTypeDividendOrInterest, txn.Type)
 	assert.Equal(t, "VALID", txn.Status)
@@ -162,18 +162,26 @@ func TestGetTransactionsRequiresParams(t *testing.T) {
 	_, err := client.GetTransactions(context.Background(), "HASH_ABC123", nil)
 	require.EqualError(t, err, "transaction list params are required")
 
-	_, err = client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{EndDate: "2024-01-31", Types: "TRADE"})
+	_, err = client.GetTransactions(
+		context.Background(), "HASH_ABC123", &TransactionListParams{EndDate: "2024-01-31", Types: "TRADE"},
+	)
 	require.EqualError(t, err, "startDate is required")
 
-	_, err = client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{StartDate: "2024-01-01", Types: "TRADE"})
+	_, err = client.GetTransactions(
+		context.Background(), "HASH_ABC123",
+		&TransactionListParams{StartDate: "2024-01-01", Types: "TRADE"},
+	)
 	require.EqualError(t, err, "endDate is required")
 
-	_, err = client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{StartDate: "2024-01-01", EndDate: "2024-01-31"})
+	_, err = client.GetTransactions(
+		context.Background(), "HASH_ABC123",
+		&TransactionListParams{StartDate: "2024-01-01", EndDate: "2024-01-31"},
+	)
 	require.EqualError(t, err, "types is required")
 }
 
 func TestGetTransactions_Error(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 

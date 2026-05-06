@@ -64,7 +64,8 @@ func NewRequest(ctx context.Context, cfg Config, method, path string, body any) 
 
 // Do executes the request and decodes the response into out.
 func Do(cfg Config, req *http.Request, out any, extractError func([]byte) string) error {
-	resp, err := cfg.HTTPClient.Do(req) //nolint:gosec // Base URLs are Schwab defaults or explicit caller-provided test/API endpoints.
+	//nolint:gosec // Base URLs are Schwab defaults or explicit caller-provided test/API endpoints.
+	resp, err := cfg.HTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -84,14 +85,14 @@ func Do(cfg Config, req *http.Request, out any, extractError func([]byte) string
 	}
 
 	if out == nil {
-		if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-			return err
+		if _, copyErr := io.Copy(io.Discard, resp.Body); copyErr != nil {
+			return copyErr
 		}
 		return nil
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("decode response body: %w", err)
+	if decodeErr := json.NewDecoder(resp.Body).Decode(out); decodeErr != nil {
+		return fmt.Errorf("decode response body: %w", decodeErr)
 	}
 	return nil
 }

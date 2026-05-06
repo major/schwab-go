@@ -3,7 +3,6 @@ package trader
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 
 	schwab "github.com/major/schwab-go/schwab"

@@ -2,7 +2,7 @@ package marketdata
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strconv"
 )
 
@@ -137,7 +137,7 @@ type Underlying struct {
 // GetOptionChain retrieves an option chain for a symbol.
 func (c *Client) GetOptionChain(ctx context.Context, params *OptionChainParams) (*OptionChain, error) {
 	if params == nil || params.Symbol == "" {
-		return nil, fmt.Errorf("symbol is required")
+		return nil, errors.New("symbol is required")
 	}
 
 	req, err := c.newRequest(ctx, "/chains")
@@ -168,8 +168,8 @@ func (c *Client) GetOptionChain(ctx context.Context, params *OptionChainParams) 
 	req.URL.RawQuery = q.Encode()
 
 	var result OptionChain
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }

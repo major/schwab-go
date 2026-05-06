@@ -89,7 +89,7 @@ func TestGetExpirationChain_SymbolParam(t *testing.T) {
 }
 
 func TestGetExpirationChain_Error(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 

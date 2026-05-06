@@ -135,7 +135,7 @@ func TestGetMovers_NoOptionalParams(t *testing.T) {
 }
 
 func TestGetMovers_Error(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 

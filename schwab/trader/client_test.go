@@ -59,7 +59,7 @@ func TestDo_Success(t *testing.T) {
 }
 
 func TestDo_ErrorWithEmptyBody(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
@@ -75,7 +75,7 @@ func TestDo_ErrorWithEmptyBody(t *testing.T) {
 }
 
 func TestDo_Created_NoBody(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	})
 	req, err := client.newRequest(context.Background(), http.MethodPost, "/orders", nil)
@@ -86,7 +86,7 @@ func TestDo_Created_NoBody(t *testing.T) {
 }
 
 func TestDo_OK_NoBody(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
@@ -97,7 +97,7 @@ func TestDo_OK_NoBody(t *testing.T) {
 }
 
 func TestDo_RedirectReturnsError(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusMovedPermanently)
 		writeJSON(t, w, map[string]string{"message": "moved"})
@@ -130,7 +130,7 @@ func TestNewRequest_WithBody(t *testing.T) {
 }
 
 func TestDo_MalformedJSONBody(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte("{invalid json"))

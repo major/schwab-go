@@ -115,7 +115,9 @@ func TestGetQuotesMixed(t *testing.T) {
 		})
 	})
 
-	quotes, quoteErr, err := client.GetQuotes(context.Background(), []string{"AAPL", "$SPX", "VFIAX", "EUR/USD", "/ES"}, "", false)
+	quotes, quoteErr, err := client.GetQuotes(
+		context.Background(), []string{"AAPL", "$SPX", "VFIAX", "EUR/USD", "/ES"}, "", false,
+	)
 	require.NoError(t, err)
 	require.Nil(t, quoteErr)
 	require.Len(t, *quotes, 5)
@@ -144,7 +146,7 @@ func TestGetQuotesMixed(t *testing.T) {
 }
 
 func TestGetQuotesPartialFailure(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, map[string]any{
@@ -195,7 +197,7 @@ func TestGetQuote(t *testing.T) {
 }
 
 func TestGetQuotesError(t *testing.T) {
-	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(t, w, map[string]string{
