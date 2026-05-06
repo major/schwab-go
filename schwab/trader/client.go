@@ -69,8 +69,6 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body any) 
 // On HTTP errors (status >= 400), returns *schwab.APIError.
 // Note: The Trader API returns empty bodies on errors; this is handled gracefully.
 func (c *Client) do(req *http.Request, out any) error {
-	// The request URL comes from the client's configured base URL. WithBaseURL is a documented escape hatch for tests and alternate deployments.
-	//nolint:gosec // Caller-controlled base URLs are intentional for this library API.
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return err

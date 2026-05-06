@@ -13,6 +13,12 @@
 - `make clean` removes `coverage.out` and `dist/`.
 - `make release VERSION=vX.Y.Z` must run from a clean `main` branch, runs test then lint, and creates a signed tag. Push the tag manually.
 
+## Tool version drift
+
+- Before trusting local tool output, compare local versions against repo-pinned versions in `go.mod`, `.github/workflows/ci.yml`, `Makefile`, and other checked-in automation.
+- Warn the user when a local tool is older or newer than the repo/CI pin. Version drift can change lint findings or config compatibility.
+- For golangci-lint specifically, check `golangci-lint version` against the CI `golangci/golangci-lint-action` `version:` value before running `make lint`. If they differ, say which version is local, which version CI uses, and whether the command was verified with the pinned version, the local version, or both.
+
 ## Layout and API boundaries
 
 - Public packages are `schwab` for shared types/options/errors, `schwab/marketdata` for Market Data API endpoints, and `schwab/trader` for Trader API endpoints.

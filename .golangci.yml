@@ -66,6 +66,10 @@ linters:
       - path: _test\.go
         linters:
           - modernize
+      - path: schwab/(marketdata|trader)/client\.go
+        text: "G704: SSRF via taint analysis"
+        linters:
+          - gosec
 
 run:
   timeout: 5m
