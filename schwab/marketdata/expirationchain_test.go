@@ -25,7 +25,7 @@ func TestGetExpirationChain(t *testing.T) {
 		json.NewEncoder(w).Encode(map[string]any{
 			"expirationList": []map[string]any{
 				{
-					"expirationDate":   "2024-01-19",
+					"expiration":       "2024-01-19",
 					"daysToExpiration": 4,
 					"expirationType":   "R",
 					"settlementType":   "P",
@@ -33,7 +33,7 @@ func TestGetExpirationChain(t *testing.T) {
 					"standard":         true,
 				},
 				{
-					"expirationDate":   "2024-01-26",
+					"expiration":       "2024-01-26",
 					"daysToExpiration": 11,
 					"expirationType":   "R",
 					"settlementType":   "P",

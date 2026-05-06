@@ -33,7 +33,16 @@ type Order struct {
 	StopPrice                float64         `json:"stopPrice"`
 	StopPriceLinkBasis       string          `json:"stopPriceLinkBasis"`
 	StopPriceLinkType        string          `json:"stopPriceLinkType"`
+	StopPriceOffset          float64         `json:"stopPriceOffset"`
 	StopType                 string          `json:"stopType"`
+	PriceLinkBasis           string          `json:"priceLinkBasis"`
+	PriceLinkType            string          `json:"priceLinkType"`
+	TaxLotMethod             string          `json:"taxLotMethod"`
+	ActivationPrice          float64         `json:"activationPrice"`
+	SpecialInstruction       string          `json:"specialInstruction"`
+	OrderStrategyType        string          `json:"orderStrategyType"`
+	CancelTime               string          `json:"cancelTime"`
+	ReleaseTime              string          `json:"releaseTime"`
 	OrderLegCollection       []OrderLeg      `json:"orderLegCollection"`
 	OrderActivityCollection  []OrderActivity `json:"orderActivityCollection"`
 	ChildOrderStrategies     []*Order        `json:"childOrderStrategies"`
@@ -57,6 +66,9 @@ type OrderLeg struct {
 	Instruction    string          `json:"instruction"`
 	PositionEffect string          `json:"positionEffect"`
 	Quantity       float64         `json:"quantity"`
+	QuantityType   string          `json:"quantityType"`
+	DivCapGains    string          `json:"divCapGains"`
+	ToSymbol       string          `json:"toSymbol"`
 }
 
 // OrderInstrument represents an instrument within an order leg.
@@ -90,22 +102,47 @@ type ExecutionLeg struct {
 
 // PreviewOrder is the response returned by the order preview endpoint.
 type PreviewOrder struct {
-	OrderID           int64             `json:"orderId"`
-	OrderStrategy     string            `json:"orderStrategy"`
-	CommissionAndFees CommissionAndFees `json:"commissionAndFees"`
-	OrderLegs         []PreviewOrderLeg `json:"orderLegs"`
+	OrderID               int64                  `json:"orderId"`
+	OrderStrategy         *OrderStrategy         `json:"orderStrategy"`
+	OrderValidationResult *OrderValidationResult `json:"orderValidationResult"`
+	CommissionAndFee      *CommissionAndFee       `json:"commissionAndFee"`
 }
 
-// CommissionAndFees contains previewed commission and fee details.
-type CommissionAndFees struct {
-	Commission float64 `json:"commission"`
-	Fees       []Fee   `json:"fees"`
+// OrderStrategy contains the previewed order strategy details.
+type OrderStrategy struct {
+	AccountNumber            string            `json:"accountNumber"`
+	AdvancedOrderType        string            `json:"advancedOrderType"`
+	CloseTime                string            `json:"closeTime"`
+	EnteredTime              string            `json:"enteredTime"`
+	OrderBalance             *OrderBalance     `json:"orderBalance"`
+	OrderStrategyType        string            `json:"orderStrategyType"`
+	OrderVersion             int               `json:"orderVersion"`
+	Session                  string            `json:"session"`
+	Status                   string            `json:"status"`
+	AllOrNone                bool              `json:"allOrNone"`
+	Discretionary            bool              `json:"discretionary"`
+	Duration                 string            `json:"duration"`
+	FilledQuantity           float64           `json:"filledQuantity"`
+	OrderType                string            `json:"orderType"`
+	OrderValue               float64           `json:"orderValue"`
+	Price                    float64           `json:"price"`
+	Quantity                 float64           `json:"quantity"`
+	RemainingQuantity        float64           `json:"remainingQuantity"`
+	SellNonMarginableFirst   bool              `json:"sellNonMarginableFirst"`
+	SettlementInstruction    string            `json:"settlementInstruction"`
+	SpecialInstruction       string            `json:"specialInstruction"`
+	ComplexOrderStrategyType string            `json:"complexOrderStrategyType"`
+	TaxLotMethod             string            `json:"taxLotMethod"`
+	OrderLegs                []PreviewOrderLeg `json:"orderLegs"`
+	ChildOrderStrategies     []OrderStrategy   `json:"childOrderStrategies"`
 }
 
-// Fee represents a single fee in an order preview.
-type Fee struct {
-	Type   string  `json:"type"`
-	Amount float64 `json:"amount"`
+// OrderBalance contains estimated balance details for a previewed order.
+type OrderBalance struct {
+	OrderValue                  float64 `json:"orderValue"`
+	ProjectedAvailableFund      float64 `json:"projectedAvailableFund"`
+	ProjectedBuyingPower        float64 `json:"projectedBuyingPower"`
+	ProjectedCommission         float64 `json:"projectedCommission"`
 }
 
 // PreviewOrderLeg represents one leg in an order preview response.
@@ -114,6 +151,64 @@ type PreviewOrderLeg struct {
 	Instrument  OrderInstrument `json:"instrument"`
 	Instruction string          `json:"instruction"`
 	Quantity    float64         `json:"quantity"`
+}
+
+// OrderValidationResult contains validation details for a previewed order.
+type OrderValidationResult struct {
+	Alerts  []OrderValidationDetail `json:"alerts"`
+	Accepts []OrderValidationDetail `json:"accepts"`
+	Rejects []OrderValidationDetail `json:"rejects"`
+	Reviews []OrderValidationDetail `json:"reviews"`
+	Warns   []OrderValidationDetail `json:"warns"`
+}
+
+// OrderValidationDetail represents a single validation message.
+type OrderValidationDetail struct {
+	ValidationRuleName string `json:"validationRuleName"`
+	Message            string `json:"message"`
+	ActivityMessage    string `json:"activityMessage"`
+	OriginalSeverity   string `json:"originalSeverity"`
+	OverrideName       string `json:"overrideName"`
+	OverrideSeverity   string `json:"overrideSeverity"`
+}
+
+// CommissionAndFee contains the commission and fee breakdown for a previewed order.
+type CommissionAndFee struct {
+	Commission     *Commission `json:"commission"`
+	Fee            *Fees       `json:"fee"`
+	TrueCommission *Commission `json:"trueCommission"`
+}
+
+// Commission contains commission leg details.
+type Commission struct {
+	CommissionLegs []CommissionLeg `json:"commissionLegs"`
+}
+
+// CommissionLeg represents a single commission leg.
+type CommissionLeg struct {
+	CommissionValues []CommissionValue `json:"commissionValues"`
+}
+
+// CommissionValue represents a single commission value entry.
+type CommissionValue struct {
+	Value float64 `json:"value"`
+	Type  string  `json:"type"`
+}
+
+// Fees contains fee leg details.
+type Fees struct {
+	FeeLegs []FeeLeg `json:"feeLegs"`
+}
+
+// FeeLeg represents a single fee leg.
+type FeeLeg struct {
+	FeeValues []FeeValue `json:"feeValues"`
+}
+
+// FeeValue represents a single fee value entry.
+type FeeValue struct {
+	Value float64 `json:"value"`
+	Type  string  `json:"type"`
 }
 
 // GetOrders retrieves orders for a single account.

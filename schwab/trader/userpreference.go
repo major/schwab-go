@@ -38,15 +38,16 @@ type Offer struct {
 }
 
 // GetUserPreference retrieves the authenticated user's account preferences and streaming configuration.
-func (c *Client) GetUserPreference(ctx context.Context) (*UserPreference, error) {
+// The API returns an array of UserPreference objects.
+func (c *Client) GetUserPreference(ctx context.Context) ([]UserPreference, error) {
 	req, err := c.newRequest(ctx, "GET", "/userPreference", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var result UserPreference
+	var result []UserPreference
 	if err := c.do(req, &result); err != nil {
 		return nil, err
 	}
-	return &result, nil
+	return result, nil
 }

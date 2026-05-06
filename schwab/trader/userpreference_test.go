@@ -22,31 +22,33 @@ func TestGetUserPreference(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"accounts": []map[string]interface{}{
-				{
-					"accountNumber":      "123456789",
-					"primaryAccount":     true,
-					"type":               "BROKERAGE",
-					"nickName":           "My Account",
-					"accountColor":       "Blue",
-					"displayAcctId":      "...6789",
-					"autoPositionEffect": false,
+		json.NewEncoder(w).Encode([]map[string]interface{}{
+			{
+				"accounts": []map[string]interface{}{
+					{
+						"accountNumber":      "123456789",
+						"primaryAccount":     true,
+						"type":               "BROKERAGE",
+						"nickName":           "My Account",
+						"accountColor":       "Blue",
+						"displayAcctId":      "...6789",
+						"autoPositionEffect": false,
+					},
 				},
-			},
-			"streamerInfo": []map[string]interface{}{
-				{
-					"streamerSocketUrl":      "wss://streamer.schwab.com/ws",
-					"schwabClientCustomerId": "customer123",
-					"schwabClientCorrelId":   "correl456",
-					"schwabClientChannel":    "IO",
-					"schwabClientFunctionId": "APIAPP",
+				"streamerInfo": []map[string]interface{}{
+					{
+						"streamerSocketUrl":      "wss://streamer.schwab.com/ws",
+						"schwabClientCustomerId": "customer123",
+						"schwabClientCorrelId":   "correl456",
+						"schwabClientChannel":    "IO",
+						"schwabClientFunctionId": "APIAPP",
+					},
 				},
-			},
-			"offers": []map[string]interface{}{
-				{
-					"level2Permissions": true,
-					"mktDataPermission":  "NP",
+				"offers": []map[string]interface{}{
+					{
+						"level2Permissions": true,
+						"mktDataPermission":  "NP",
+					},
 				},
 			},
 		})
@@ -61,11 +63,11 @@ func TestGetUserPreference(t *testing.T) {
 
 	result, err := client.GetUserPreference(context.Background())
 	require.NoError(t, err)
-	require.NotNil(t, result)
+	require.Len(t, result, 1)
 
 	// Verify accounts
-	require.Len(t, result.Accounts, 1)
-	account := result.Accounts[0]
+	require.Len(t, result[0].Accounts, 1)
+	account := result[0].Accounts[0]
 	assert.Equal(t, "123456789", account.AccountNumber)
 	assert.True(t, account.PrimaryAccount)
 	assert.Equal(t, "BROKERAGE", account.Type)
@@ -75,8 +77,8 @@ func TestGetUserPreference(t *testing.T) {
 	assert.False(t, account.AutoPositionEffect)
 
 	// Verify streamer info
-	require.Len(t, result.StreamerInfo, 1)
-	streamer := result.StreamerInfo[0]
+	require.Len(t, result[0].StreamerInfo, 1)
+	streamer := result[0].StreamerInfo[0]
 	assert.Equal(t, "wss://streamer.schwab.com/ws", streamer.StreamerSocketUrl)
 	assert.Equal(t, "customer123", streamer.SchwabClientCustomerId)
 	assert.Equal(t, "correl456", streamer.SchwabClientCorrelId)
@@ -84,8 +86,8 @@ func TestGetUserPreference(t *testing.T) {
 	assert.Equal(t, "APIAPP", streamer.SchwabClientFunctionId)
 
 	// Verify offers
-	require.Len(t, result.Offers, 1)
-	offer := result.Offers[0]
+	require.Len(t, result[0].Offers, 1)
+	offer := result[0].Offers[0]
 	assert.True(t, offer.Level2Permissions)
 	assert.Equal(t, "NP", offer.MktDataPermission)
 }

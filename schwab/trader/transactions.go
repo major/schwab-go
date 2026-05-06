@@ -30,45 +30,87 @@ const (
 )
 
 // TransactionListParams contains parameters for listing transactions.
-// StartDate and EndDate are required by the API.
+// StartDate, EndDate, and Types are required by the API.
 type TransactionListParams struct {
 	StartDate string // required, yyyy-MM-dd format
 	EndDate   string // required, yyyy-MM-dd format
-	Types     string // optional, comma-separated TransactionType values
+	Types     string // required, comma-separated TransactionType values
 	Symbol    string // optional, filter by symbol
+}
+
+// UserDetails contains user information associated with a transaction.
+type UserDetails struct {
+	CDDomainID    string `json:"cdDomainId"`
+	Login         string `json:"login"`
+	Type          string `json:"type"`
+	UserID        int64  `json:"userId"`
+	SystemUserName string `json:"systemUserName"`
+	FirstName     string `json:"firstName"`
+	LastName      string `json:"lastName"`
+	BrokerRepCode string `json:"brokerRepCode"`
 }
 
 // Transaction represents a single account transaction.
 type Transaction struct {
-	ActivityId    int64           `json:"activityId"`
-	Time          string          `json:"time"`
-	Type          TransactionType `json:"type"`
-	Status        string          `json:"status"`
-	SubAccount    string          `json:"subAccount"`
-	TradeDate     string          `json:"tradeDate"`
-	PositionId    int64           `json:"positionId"`
-	OrderId       int64           `json:"orderId"`
-	NetAmount     float64         `json:"netAmount"`
-	TransferItems []TransferItem  `json:"transferItems"`
-	Description   string          `json:"description"`
-	AccountNumber string          `json:"accountNumber"`
+	ActivityId     int64           `json:"activityId"`
+	Time           string          `json:"time"`
+	User           *UserDetails    `json:"user"`
+	Type           TransactionType `json:"type"`
+	Status         string          `json:"status"`
+	SubAccount     string          `json:"subAccount"`
+	TradeDate      string          `json:"tradeDate"`
+	SettlementDate string          `json:"settlementDate"`
+	PositionId     int64           `json:"positionId"`
+	OrderId        int64           `json:"orderId"`
+	NetAmount      float64         `json:"netAmount"`
+	ActivityType   string          `json:"activityType"`
+	TransferItems  []TransferItem  `json:"transferItems"`
+	Description    string          `json:"description"`
+	AccountNumber  string          `json:"accountNumber"`
 }
 
 // TransferItem represents an item within a transaction.
 type TransferItem struct {
-	Instrument TransactionInstrument `json:"instrument"`
-	Amount     float64               `json:"amount"`
-	Cost       float64               `json:"cost"`
-	Price      float64               `json:"price"`
+	Instrument     TransactionInstrument `json:"instrument"`
+	Amount         float64               `json:"amount"`
+	Cost           float64               `json:"cost"`
+	Price          float64               `json:"price"`
+	FeeType        string                `json:"feeType"`
+	PositionEffect string                `json:"positionEffect"`
 }
 
 // TransactionInstrument represents the financial instrument in a transaction.
+// For options, the ExpirationDate, OptionDeliverables, OptionPremiumMultiplier,
+// PutCall, StrikePrice, Type, UnderlyingSymbol, and UnderlyingCusip fields
+// are populated. For fixed income instruments, MaturityDate, Factor,
+// Multiplier, and VariableRate are populated.
 type TransactionInstrument struct {
-	AssetType    schwab.AssetType `json:"assetType"`
-	Cusip        string           `json:"cusip"`
-	Symbol       string           `json:"symbol"`
-	Description  string           `json:"description"`
-	InstrumentId int64            `json:"instrumentId"`
+	AssetType               schwab.AssetType              `json:"assetType"`
+	Cusip                   string                        `json:"cusip"`
+	Symbol                  string                        `json:"symbol"`
+	Description             string                        `json:"description"`
+	InstrumentId            int64                         `json:"instrumentId"`
+	ExpirationDate          string                        `json:"expirationDate,omitempty"`
+	OptionDeliverables      []TransactionOptionDeliverable `json:"optionDeliverables,omitempty"`
+	OptionPremiumMultiplier int64                         `json:"optionPremiumMultiplier,omitempty"`
+	PutCall                 string                        `json:"putCall,omitempty"`
+	StrikePrice             float64                       `json:"strikePrice,omitempty"`
+	Type                    string                        `json:"type,omitempty"`
+	UnderlyingSymbol        string                        `json:"underlyingSymbol,omitempty"`
+	UnderlyingCusip         string                        `json:"underlyingCusip,omitempty"`
+	MaturityDate            string                        `json:"maturityDate,omitempty"`
+	Factor                  float64                       `json:"factor,omitempty"`
+	Multiplier              float64                       `json:"multiplier,omitempty"`
+	VariableRate            float64                       `json:"variableRate,omitempty"`
+}
+
+// TransactionOptionDeliverable represents a deliverable for a transaction option instrument.
+type TransactionOptionDeliverable struct {
+	RootSymbol        string           `json:"rootSymbol"`
+	StrikePercent     int64            `json:"strikePercent"`
+	DeliverableNumber int64            `json:"deliverableNumber"`
+	DeliverableUnits  float64          `json:"deliverableUnits"`
+	AssetType         schwab.AssetType `json:"assetType"`
 }
 
 // GetTransactions retrieves a list of transactions for the given account.
@@ -83,9 +125,7 @@ func (c *Client) GetTransactions(ctx context.Context, accountHash string, params
 	q := req.URL.Query()
 	q.Set("startDate", params.StartDate)
 	q.Set("endDate", params.EndDate)
-	if params.Types != "" {
-		q.Set("types", params.Types)
-	}
+	q.Set("types", params.Types)
 	if params.Symbol != "" {
 		q.Set("symbol", params.Symbol)
 	}

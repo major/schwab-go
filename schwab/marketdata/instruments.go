@@ -27,12 +27,41 @@ type InstrumentResponse struct {
 
 // Instrument represents a financial instrument.
 type Instrument struct {
+	Cusip              string           `json:"cusip"`
+	Symbol             string           `json:"symbol"`
+	Description        string           `json:"description"`
+	Exchange           string           `json:"exchange"`
+	AssetType          schwab.AssetType `json:"assetType"`
+	BondFactor         string           `json:"bondFactor,omitempty"`
+	BondMultiplier     string           `json:"bondMultiplier,omitempty"`
+	BondPrice          float64          `json:"bondPrice,omitempty"`
+	BondInstrumentInfo *BondInfo        `json:"bondInstrumentInfo,omitempty"`
+	InstrumentInfo     *InstrumentInfo  `json:"instrumentInfo,omitempty"`
+	Type               string           `json:"type,omitempty"`
+	Fundamental        *FundamentalData `json:"fundamental,omitempty"`
+}
+
+// BondInfo contains bond-specific instrument details.
+type BondInfo struct {
+	AssetType      schwab.AssetType `json:"assetType"`
+	BondFactor     string           `json:"bondFactor"`
+	BondMultiplier string           `json:"bondMultiplier"`
+	BondPrice      float64          `json:"bondPrice"`
+	Cusip          string           `json:"cusip"`
+	Description    string           `json:"description"`
+	Exchange       string           `json:"exchange"`
+	Symbol         string           `json:"symbol"`
+	Type           string           `json:"type"`
+}
+
+// InstrumentInfo contains basic instrument details for nested references.
+type InstrumentInfo struct {
+	AssetType   schwab.AssetType `json:"assetType"`
 	Cusip       string           `json:"cusip"`
-	Symbol      string           `json:"symbol"`
 	Description string           `json:"description"`
 	Exchange    string           `json:"exchange"`
-	AssetType   schwab.AssetType `json:"assetType"`
-	Fundamental *FundamentalData `json:"fundamental,omitempty"`
+	Symbol      string           `json:"symbol"`
+	Type        string           `json:"type"`
 }
 
 // FundamentalData contains financial metrics returned when projection=fundamental.
@@ -83,7 +112,9 @@ type FundamentalData struct {
 	Vol1DayAvg              float64 `json:"vol1DayAvg"`
 	Vol10DayAvg             float64 `json:"vol10DayAvg"`
 	Vol3MonthAvg            float64 `json:"vol3MonthAvg"`
+	Avg1DayVolume           int64   `json:"avg1DayVolume"`
 	Avg10DaysVolume         int64   `json:"avg10DaysVolume"`
+	Avg3MonthVolume         int64   `json:"avg3MonthVolume"`
 	Avg1YearVolume          int64   `json:"avg1YearVolume"`
 	DeclarationDate         string  `json:"declarationDate"`
 	DividendFreq            int     `json:"dividendFreq"`
@@ -93,6 +124,7 @@ type FundamentalData struct {
 	NextDividendDate        string  `json:"nextDividendDate"`
 	FundLeverageFactor      float64 `json:"fundLeverageFactor"`
 	FundStrategy            string  `json:"fundStrategy"`
+	CorpactionDate          string  `json:"corpactionDate"`
 }
 
 // SearchInstruments searches for instruments by symbol with the given projection.

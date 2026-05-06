@@ -76,6 +76,14 @@ func (e *QuoteEntry) FutureQuote() (*FutureQuote, error) {
 	return decodeQuote[FutureQuote](e.Quote)
 }
 
+// FutureOptionQuote decodes the quote payload for a future option quote.
+func (e *QuoteEntry) FutureOptionQuote() (*FutureOptionQuote, error) {
+	if e.AssetMainType != schwab.AssetTypeFutureOption {
+		return nil, fmt.Errorf("quote is %s, not FUTURE_OPTION", e.AssetMainType)
+	}
+	return decodeQuote[FutureOptionQuote](e.Quote)
+}
+
 func decodeQuote[T any](raw json.RawMessage) (*T, error) {
 	var quote T
 	if err := json.Unmarshal(raw, &quote); err != nil {
@@ -86,16 +94,31 @@ func decodeQuote[T any](raw json.RawMessage) (*T, error) {
 
 // EquityQuote contains equity-specific quote data.
 type EquityQuote struct {
+	AskMICId          string  `json:"askMICId"`
 	AskPrice          float64 `json:"askPrice"`
+	AskSize           int64   `json:"askSize"`
+	AskTime           int64   `json:"askTime"`
+	BidMICId          string  `json:"bidMICId"`
 	BidPrice          float64 `json:"bidPrice"`
-	LastPrice         float64 `json:"lastPrice"`
-	TotalVolume       int64   `json:"totalVolume"`
-	HighPrice         float64 `json:"highPrice"`
-	LowPrice          float64 `json:"lowPrice"`
-	OpenPrice         float64 `json:"openPrice"`
+	BidSize           int64   `json:"bidSize"`
+	BidTime           int64   `json:"bidTime"`
 	ClosePrice        float64 `json:"closePrice"`
+	HighPrice         float64 `json:"highPrice"`
+	LastMICId         string  `json:"lastMICId"`
+	LastPrice         float64 `json:"lastPrice"`
+	LastSize          int64   `json:"lastSize"`
+	LowPrice          float64 `json:"lowPrice"`
+	Mark              float64 `json:"mark"`
+	MarkChange        float64 `json:"markChange"`
+	MarkPercentChange float64 `json:"markPercentChange"`
 	NetChange         float64 `json:"netChange"`
 	NetPercentChange  float64 `json:"netPercentChange"`
+	OpenPrice         float64 `json:"openPrice"`
+	QuoteTime         int64   `json:"quoteTime"`
+	SecurityStatus    string  `json:"securityStatus"`
+	TotalVolume       int64   `json:"totalVolume"`
+	TradeTime         int64   `json:"tradeTime"`
+	Volatility        float64 `json:"volatility"`
 	Week52High        float64 `json:"52WeekHigh"`
 	Week52Low         float64 `json:"52WeekLow"`
 	PeRatio           float64 `json:"peRatio"`
@@ -105,14 +128,6 @@ type EquityQuote struct {
 	EPS               float64 `json:"eps"`
 	Exchange          string  `json:"exchange"`
 	ExchangeName      string  `json:"exchangeName"`
-	Mark              float64 `json:"mark"`
-	MarkChange        float64 `json:"markChange"`
-	MarkPercentChange float64 `json:"markPercentChange"`
-	BidSize           int64   `json:"bidSize"`
-	AskSize           int64   `json:"askSize"`
-	LastSize          int64   `json:"lastSize"`
-	TradeTime         int64   `json:"tradeTime"`
-	QuoteTime         int64   `json:"quoteTime"`
 }
 
 // OptionQuote contains option-specific quote data.
@@ -138,58 +153,129 @@ type OptionQuote struct {
 
 // IndexQuote contains index-specific quote data.
 type IndexQuote struct {
-	LastPrice        float64 `json:"lastPrice"`
-	NetChange        float64 `json:"netChange"`
-	OpenPrice        float64 `json:"openPrice"`
 	ClosePrice       float64 `json:"closePrice"`
 	HighPrice        float64 `json:"highPrice"`
+	LastPrice        float64 `json:"lastPrice"`
 	LowPrice         float64 `json:"lowPrice"`
+	NetChange        float64 `json:"netChange"`
+	NetPercentChange float64 `json:"netPercentChange"`
+	OpenPrice        float64 `json:"openPrice"`
+	SecurityStatus   string  `json:"securityStatus"`
 	TotalVolume      int64   `json:"totalVolume"`
 	TradeTime        int64   `json:"tradeTime"`
-	Exchange         string  `json:"exchange"`
-	ExchangeName     string  `json:"exchangeName"`
-	NetPercentChange float64 `json:"netPercentChange"`
 	Week52High       float64 `json:"52WeekHigh"`
 	Week52Low        float64 `json:"52WeekLow"`
+	Exchange         string  `json:"exchange"`
+	ExchangeName     string  `json:"exchangeName"`
 }
 
 // MutualFundQuote contains mutual fund-specific quote data.
 type MutualFundQuote struct {
 	ClosePrice       float64 `json:"closePrice"`
+	NAV              float64 `json:"nAV"`
 	NetChange        float64 `json:"netChange"`
+	NetPercentChange float64 `json:"netPercentChange"`
+	SecurityStatus   string  `json:"securityStatus"`
 	TotalVolume      int64   `json:"totalVolume"`
 	TradeTime        int64   `json:"tradeTime"`
-	Exchange         string  `json:"exchange"`
-	ExchangeName     string  `json:"exchangeName"`
-	NetPercentChange float64 `json:"netPercentChange"`
 	Week52High       float64 `json:"52WeekHigh"`
 	Week52Low        float64 `json:"52WeekLow"`
+	Exchange         string  `json:"exchange"`
+	ExchangeName     string  `json:"exchangeName"`
 }
 
 // ForexQuote contains forex-specific quote data.
 type ForexQuote struct {
-	AskPrice         float64 `json:"askPrice"`
-	BidPrice         float64 `json:"bidPrice"`
-	LastPrice        float64 `json:"lastPrice"`
-	OpenPrice        float64 `json:"openPrice"`
-	ClosePrice       float64 `json:"closePrice"`
-	HighPrice        float64 `json:"highPrice"`
-	LowPrice         float64 `json:"lowPrice"`
-	NetChange        float64 `json:"netChange"`
-	NetPercentChange float64 `json:"netPercentChange"`
-	Mark             float64 `json:"mark"`
-	Tick             float64 `json:"tick"`
-	TickAmount       float64 `json:"tickAmount"`
-	Exchange         string  `json:"exchange"`
-	ExchangeName     string  `json:"exchangeName"`
-	TradeTime        int64   `json:"tradeTime"`
+	AskPrice             float64 `json:"askPrice"`
+	AskSize              int64   `json:"askSize"`
+	BidPrice             float64 `json:"bidPrice"`
+	BidSize              int64   `json:"bidSize"`
+	ClosePrice           float64 `json:"closePrice"`
+	FuturePercentChange  float64 `json:"futurePercentChange"`
+	HighPrice            float64 `json:"highPrice"`
+	LastPrice            float64 `json:"lastPrice"`
+	LastSize             int64   `json:"lastSize"`
+	LowPrice             float64 `json:"lowPrice"`
+	Mark                 float64 `json:"mark"`
+	MarkChange           float64 `json:"markChange"`
+	MarkPercentChange    float64 `json:"markPercentChange"`
+	NetChange            float64 `json:"netChange"`
+	NetPercentChange     float64 `json:"netPercentChange"`
+	OpenPrice            float64 `json:"openPrice"`
+	QuoteTime            int64   `json:"quoteTime"`
+	SecurityStatus       string  `json:"securityStatus"`
+	Tick                 float64 `json:"tick"`
+	TickAmount           float64 `json:"tickAmount"`
+	TotalVolume          int64   `json:"totalVolume"`
+	TradeTime            int64   `json:"tradeTime"`
+	Week52High           float64 `json:"52WeekHigh"`
+	Week52Low            float64 `json:"52WeekLow"`
+	Exchange             string  `json:"exchange"`
+	ExchangeName         string  `json:"exchangeName"`
 }
 
 // FutureQuote contains future-specific quote data.
 type FutureQuote struct {
-	ForexQuote
-	SettlementPrice float64 `json:"settlementPrice"`
-	OpenInterest    int64   `json:"openInterest"`
+	AskMICId            string  `json:"askMICId"`
+	AskPrice            float64 `json:"askPrice"`
+	AskSize             int64   `json:"askSize"`
+	AskTime             int64   `json:"askTime"`
+	BidMICId            string  `json:"bidMICId"`
+	BidPrice            float64 `json:"bidPrice"`
+	BidSize             int64   `json:"bidSize"`
+	BidTime             int64   `json:"bidTime"`
+	ClosePrice          float64 `json:"closePrice"`
+	FuturePercentChange float64 `json:"futurePercentChange"`
+	HighPrice           float64 `json:"highPrice"`
+	LastMICId           string  `json:"lastMICId"`
+	LastPrice           float64 `json:"lastPrice"`
+	LastSize            int64   `json:"lastSize"`
+	LowPrice            float64 `json:"lowPrice"`
+	Mark                float64 `json:"mark"`
+	NetChange           float64 `json:"netChange"`
+	NetPercentChange    float64 `json:"netPercentChange"`
+	OpenInterest        int64   `json:"openInterest"`
+	OpenPrice           float64 `json:"openPrice"`
+	QuoteTime           int64   `json:"quoteTime"`
+	QuotedInSession     bool    `json:"quotedInSession"`
+	SecurityStatus      string  `json:"securityStatus"`
+	SettlementPrice     float64 `json:"settlementPrice"`
+	SettleTime          int64   `json:"settleTime"`
+	Tick                float64 `json:"tick"`
+	TickAmount          float64 `json:"tickAmount"`
+	TotalVolume         int64   `json:"totalVolume"`
+	TradeTime           int64   `json:"tradeTime"`
+	Exchange            string  `json:"exchange"`
+	ExchangeName        string  `json:"exchangeName"`
+}
+
+// FutureOptionQuote contains future option-specific quote data.
+type FutureOptionQuote struct {
+	AskMICId         string  `json:"askMICId"`
+	AskPrice         float64 `json:"askPrice"`
+	AskSize          int64   `json:"askSize"`
+	BidMICId         string  `json:"bidMICId"`
+	BidPrice         float64 `json:"bidPrice"`
+	BidSize          int64   `json:"bidSize"`
+	ClosePrice       float64 `json:"closePrice"`
+	HighPrice        float64 `json:"highPrice"`
+	LastMICId        string  `json:"lastMICId"`
+	LastPrice        float64 `json:"lastPrice"`
+	LastSize         int64   `json:"lastSize"`
+	LowPrice         float64 `json:"lowPrice"`
+	Mark             float64 `json:"mark"`
+	MarkChange       float64 `json:"markChange"`
+	NetChange        float64 `json:"netChange"`
+	NetPercentChange float64 `json:"netPercentChange"`
+	OpenInterest     int64   `json:"openInterest"`
+	OpenPrice        float64 `json:"openPrice"`
+	QuoteTime        int64   `json:"quoteTime"`
+	SecurityStatus   string  `json:"securityStatus"`
+	SettlementPrice  float64 `json:"settlementPrice"`
+	Tick             float64 `json:"tick"`
+	TickAmount       float64 `json:"tickAmount"`
+	TotalVolume      int64   `json:"totalVolume"`
+	TradeTime        int64   `json:"tradeTime"`
 }
 
 // QuoteError contains invalid identifiers from a partial quote response.
@@ -248,7 +334,7 @@ func (c *Client) GetQuotes(ctx context.Context, symbols []string, fields string,
 
 // GetQuote retrieves a quote for a single symbol identifier.
 func (c *Client) GetQuote(ctx context.Context, symbolID string, fields string) (*QuoteEntry, error) {
-	path := fmt.Sprintf("/quotes/%s", url.PathEscape(symbolID))
+	path := fmt.Sprintf("/%s/quotes", url.PathEscape(symbolID))
 	req, err := c.newRequest(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err

@@ -176,7 +176,7 @@ func TestGetQuotesPartialFailure(t *testing.T) {
 func TestGetQuote(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/quotes/$SPX", r.URL.Path)
+		require.Equal(t, "/$SPX/quotes", r.URL.Path)
 		require.Equal(t, "quote,reference", r.URL.Query().Get("fields"))
 
 		w.Header().Set("Content-Type", "application/json")
@@ -391,28 +391,29 @@ func forexQuoteEntry(symbol string) QuoteEntry {
 }
 
 func futureQuoteEntry(symbol string) QuoteEntry {
-	entry := forexQuoteEntry(symbol)
-	entry.AssetMainType = schwab.AssetTypeFuture
-	entry.Quote = mustRaw(map[string]any{
-		"askPrice":         5126.0,
-		"bidPrice":         5125.5,
-		"lastPrice":        5125.75,
-		"openPrice":        5110.0,
-		"closePrice":       5120.0,
-		"highPrice":        5132.0,
-		"lowPrice":         5104.0,
-		"netChange":        5.75,
-		"netPercentChange": 0.11,
-		"mark":             5125.75,
-		"tick":             0.25,
-		"tickAmount":       12.5,
-		"exchange":         "CME",
-		"exchangeName":     "Chicago Mercantile Exchange",
-		"tradeTime":        1712345678901,
-		"settlementPrice":  5125.25,
-		"openInterest":     987654,
-	})
-	return entry
+	return QuoteEntry{
+		AssetMainType: schwab.AssetTypeFuture,
+		Symbol:        symbol,
+		Quote: mustRaw(map[string]any{
+			"askPrice":         5126.0,
+			"bidPrice":         5125.5,
+			"lastPrice":        5125.75,
+			"openPrice":        5110.0,
+			"closePrice":       5120.0,
+			"highPrice":        5132.0,
+			"lowPrice":         5104.0,
+			"netChange":        5.75,
+			"netPercentChange": 0.11,
+			"mark":             5125.75,
+			"tick":             0.25,
+			"tickAmount":       12.5,
+			"exchange":         "CME",
+			"exchangeName":     "Chicago Mercantile Exchange",
+			"tradeTime":        1712345678901,
+			"settlementPrice":  5125.25,
+			"openInterest":     987654,
+		}),
+	}
 }
 
 func mustRaw(value any) json.RawMessage {

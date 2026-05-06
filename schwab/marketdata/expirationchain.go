@@ -6,12 +6,13 @@ import (
 
 // ExpirationChain is the response from GET /expirationchain.
 type ExpirationChain struct {
+	Status         string       `json:"status"`
 	ExpirationList []Expiration `json:"expirationList"`
 }
 
 // Expiration represents a single option expiration date.
 type Expiration struct {
-	ExpirationDate   string `json:"expirationDate"`
+	ExpirationDate   string `json:"expiration"`
 	DaysToExpiration int    `json:"daysToExpiration"`
 	ExpirationType   string `json:"expirationType"`
 	SettlementType   string `json:"settlementType"`

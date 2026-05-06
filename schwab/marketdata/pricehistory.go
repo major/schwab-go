@@ -39,19 +39,23 @@ type PriceHistoryParams struct {
 
 // CandleList is the response from GET /pricehistory.
 type CandleList struct {
-	Candles []Candle `json:"candles"`
-	Symbol  string   `json:"symbol"`
-	Empty   bool     `json:"empty"`
+	Candles              []Candle `json:"candles"`
+	Symbol               string   `json:"symbol"`
+	Empty                bool     `json:"empty"`
+	PreviousClose        float64  `json:"previousClose"`
+	PreviousCloseDate    int64    `json:"previousCloseDate"`
+	PreviousCloseDateISO string   `json:"previousCloseDateISO8601"`
 }
 
 // Candle represents a single OHLCV candle.
 type Candle struct {
-	Open     float64 `json:"open"`
-	High     float64 `json:"high"`
-	Low      float64 `json:"low"`
-	Close    float64 `json:"close"`
-	Volume   int64   `json:"volume"`
-	Datetime int64   `json:"datetime"` // milliseconds since epoch
+	Open        float64 `json:"open"`
+	High        float64 `json:"high"`
+	Low         float64 `json:"low"`
+	Close       float64 `json:"close"`
+	Volume      int64   `json:"volume"`
+	Datetime    int64   `json:"datetime"`        // milliseconds since epoch
+	DatetimeISO string  `json:"datetimeISO8601"` // ISO 8601 formatted datetime
 }
 
 // GetPriceHistory retrieves price history candles for a symbol.

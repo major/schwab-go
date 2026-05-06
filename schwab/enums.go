@@ -11,6 +11,11 @@ const (
 	AssetTypeFuture       AssetType = "FUTURE"
 	AssetTypeFutureOption AssetType = "FUTURE_OPTION"
 	AssetTypeIndex        AssetType = "INDEX"
-	AssetTypeMutualFund   AssetType = "MUTUAL_FUND"
-	AssetTypeOption       AssetType = "OPTION"
+	AssetTypeMutualFund      AssetType = "MUTUAL_FUND"
+	AssetTypeOption          AssetType = "OPTION"
+	AssetTypeCashEquivalent  AssetType = "CASH_EQUIVALENT"
+	AssetTypeFixedIncome     AssetType = "FIXED_INCOME"
+	AssetTypeProduct         AssetType = "PRODUCT"
+	AssetTypeCurrency        AssetType = "CURRENCY"
+	AssetTypeCollectiveInvestment AssetType = "COLLECTIVE_INVESTMENT"
 )

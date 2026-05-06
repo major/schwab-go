@@ -25,24 +25,26 @@ func TestGetMovers(t *testing.T) {
 		json.NewEncoder(w).Encode(MoverResponse{
 			Screeners: []Screener{
 				{
-					Symbol:            "AAPL",
-					Description:       "Apple Inc.",
-					LastPrice:         150.25,
-					NetChange:         2.50,
-					NetPercentChange:  1.69,
-					MarketShare:       0.05,
-					TotalVolume:       50000000,
-					Trades:            1000000,
+					Symbol:           "AAPL",
+					Description:      "Apple Inc.",
+					Direction:        "up",
+					Last:             150.25,
+					Change:           2.50,
+					NetPercentChange: 1.69,
+					MarketShare:      0.05,
+					TotalVolume:      50000000,
+					Trades:           1000000,
 				},
 				{
-					Symbol:            "MSFT",
-					Description:       "Microsoft Corporation",
-					LastPrice:         380.50,
-					NetChange:         3.75,
-					NetPercentChange:  0.99,
-					MarketShare:       0.04,
-					TotalVolume:       40000000,
-					Trades:            900000,
+					Symbol:           "MSFT",
+					Description:      "Microsoft Corporation",
+					Direction:        "up",
+					Last:             380.50,
+					Change:           3.75,
+					NetPercentChange: 0.99,
+					MarketShare:      0.04,
+					TotalVolume:      40000000,
+					Trades:           900000,
 				},
 			},
 		})
@@ -65,8 +67,9 @@ func TestGetMovers(t *testing.T) {
 	// First screener
 	assert.Equal(t, "AAPL", result.Screeners[0].Symbol)
 	assert.Equal(t, "Apple Inc.", result.Screeners[0].Description)
-	assert.Equal(t, 150.25, result.Screeners[0].LastPrice)
-	assert.Equal(t, 2.50, result.Screeners[0].NetChange)
+	assert.Equal(t, 150.25, result.Screeners[0].Last)
+	assert.Equal(t, 2.50, result.Screeners[0].Change)
+	assert.Equal(t, "up", result.Screeners[0].Direction)
 	assert.Equal(t, 1.69, result.Screeners[0].NetPercentChange)
 	assert.Equal(t, 0.05, result.Screeners[0].MarketShare)
 	assert.Equal(t, int64(50000000), result.Screeners[0].TotalVolume)
@@ -75,7 +78,7 @@ func TestGetMovers(t *testing.T) {
 	// Second screener
 	assert.Equal(t, "MSFT", result.Screeners[1].Symbol)
 	assert.Equal(t, "Microsoft Corporation", result.Screeners[1].Description)
-	assert.Equal(t, 380.50, result.Screeners[1].LastPrice)
+	assert.Equal(t, 380.50, result.Screeners[1].Last)
 }
 
 func TestGetMovers_WithSort(t *testing.T) {

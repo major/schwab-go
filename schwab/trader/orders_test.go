@@ -175,22 +175,51 @@ func TestPreviewOrder(t *testing.T) {
 		OrderType: "MARKET",
 	}
 	fixture := PreviewOrder{
-		OrderID:       9001,
-		OrderStrategy: "SINGLE",
-		CommissionAndFees: CommissionAndFees{
-			Commission: 0,
-			Fees: []Fee{
-				{Type: "SEC_FEE", Amount: 0.02},
+		OrderID: 9001,
+		OrderStrategy: &OrderStrategy{
+			AccountNumber:     "123456789",
+			OrderStrategyType: "SINGLE",
+			OrderType:         "MARKET",
+			Session:           "NORMAL",
+			Duration:          "DAY",
+			Quantity:          1,
+			OrderLegs: []PreviewOrderLeg{
+				{
+					LegID:       1,
+					Instruction: "BUY",
+					Quantity:    1,
+					Instrument: OrderInstrument{
+						AssetType: schwab.AssetTypeEquity,
+						Symbol:    "AAPL",
+					},
+				},
 			},
 		},
-		OrderLegs: []PreviewOrderLeg{
-			{
-				LegID:       1,
-				Instruction: "BUY",
-				Quantity:    1,
-				Instrument: OrderInstrument{
-					AssetType: schwab.AssetTypeEquity,
-					Symbol:    "AAPL",
+		OrderValidationResult: &OrderValidationResult{
+			Alerts: []OrderValidationDetail{
+				{
+					ValidationRuleName: "MarketHoursRule",
+					Message:            "Market is currently closed",
+				},
+			},
+		},
+		CommissionAndFee: &CommissionAndFee{
+			Commission: &Commission{
+				CommissionLegs: []CommissionLeg{
+					{
+						CommissionValues: []CommissionValue{
+							{Value: 0.00, Type: "COMMISSION"},
+						},
+					},
+				},
+			},
+			Fee: &Fees{
+				FeeLegs: []FeeLeg{
+					{
+						FeeValues: []FeeValue{
+							{Value: 0.02, Type: "SEC_FEE"},
+						},
+					},
 				},
 			},
 		},
@@ -219,13 +248,19 @@ func TestPreviewOrder(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Equal(t, int64(9001), result.OrderID)
-	assert.Equal(t, "SINGLE", result.OrderStrategy)
-	assert.Equal(t, 0.0, result.CommissionAndFees.Commission)
-	require.Len(t, result.CommissionAndFees.Fees, 1)
-	assert.Equal(t, "SEC_FEE", result.CommissionAndFees.Fees[0].Type)
-	assert.Equal(t, 0.02, result.CommissionAndFees.Fees[0].Amount)
-	require.Len(t, result.OrderLegs, 1)
-	assert.Equal(t, "BUY", result.OrderLegs[0].Instruction)
+	require.NotNil(t, result.OrderStrategy)
+	assert.Equal(t, "SINGLE", result.OrderStrategy.OrderStrategyType)
+	assert.Equal(t, "MARKET", result.OrderStrategy.OrderType)
+	require.Len(t, result.OrderStrategy.OrderLegs, 1)
+	assert.Equal(t, "BUY", result.OrderStrategy.OrderLegs[0].Instruction)
+	require.NotNil(t, result.OrderValidationResult)
+	require.Len(t, result.OrderValidationResult.Alerts, 1)
+	assert.Equal(t, "MarketHoursRule", result.OrderValidationResult.Alerts[0].ValidationRuleName)
+	require.NotNil(t, result.CommissionAndFee)
+	require.NotNil(t, result.CommissionAndFee.Fee)
+	require.Len(t, result.CommissionAndFee.Fee.FeeLegs, 1)
+	assert.Equal(t, "SEC_FEE", result.CommissionAndFee.Fee.FeeLegs[0].FeeValues[0].Type)
+	assert.Equal(t, 0.02, result.CommissionAndFee.Fee.FeeLegs[0].FeeValues[0].Value)
 }
 
 func TestGetAllOrders(t *testing.T) {

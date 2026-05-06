@@ -36,25 +36,48 @@ type Position struct {
 	LongQuantity                   float64           `json:"longQuantity"`
 	SettledLongQuantity            float64           `json:"settledLongQuantity"`
 	SettledShortQuantity           float64           `json:"settledShortQuantity"`
+	AgedQuantity                   float64           `json:"agedQuantity"`
 	Instrument                     AccountInstrument `json:"instrument"`
 	MarketValue                    float64           `json:"marketValue"`
 	MaintenanceRequirement         float64           `json:"maintenanceRequirement"`
 	AverageLongPrice               float64           `json:"averageLongPrice"`
+	AverageShortPrice              float64           `json:"averageShortPrice"`
 	TaxLotAverageLongPrice         float64           `json:"taxLotAverageLongPrice"`
+	TaxLotAverageShortPrice        float64           `json:"taxLotAverageShortPrice"`
 	LongOpenProfitLoss             float64           `json:"longOpenProfitLoss"`
+	ShortOpenProfitLoss            float64           `json:"shortOpenProfitLoss"`
 	PreviousSessionLongQuantity    float64           `json:"previousSessionLongQuantity"`
+	PreviousSessionShortQuantity   float64           `json:"previousSessionShortQuantity"`
 	CurrentDayCost                 float64           `json:"currentDayCost"`
 }
 
 // AccountInstrument represents a financial instrument held in an account.
+// For options, the PutCall, OptionMultiplier, OptionDeliverables, and
+// UnderlyingSymbol fields are populated. For fixed income instruments,
+// MaturityDate, Factor, and VariableRate are populated.
 type AccountInstrument struct {
-	AssetType    schwab.AssetType `json:"assetType"`
-	Cusip        string           `json:"cusip"`
-	Symbol       string           `json:"symbol"`
-	Description  string           `json:"description"`
-	InstrumentId int64            `json:"instrumentId"`
-	NetChange    float64          `json:"netChange"`
-	Type         string           `json:"type"` // for options: "PUT" or "CALL"
+	AssetType          schwab.AssetType          `json:"assetType"`
+	Cusip              string                    `json:"cusip"`
+	Symbol             string                    `json:"symbol"`
+	Description        string                    `json:"description"`
+	InstrumentId       int64                     `json:"instrumentId"`
+	NetChange          float64                   `json:"netChange"`
+	Type               string                    `json:"type,omitempty"`
+	PutCall            string                    `json:"putCall,omitempty"`
+	OptionMultiplier   int32                     `json:"optionMultiplier,omitempty"`
+	OptionDeliverables []AccountOptionDeliverable `json:"optionDeliverables,omitempty"`
+	UnderlyingSymbol   string                    `json:"underlyingSymbol,omitempty"`
+	MaturityDate       string                    `json:"maturityDate,omitempty"`
+	Factor             float64                   `json:"factor,omitempty"`
+	VariableRate       float64                   `json:"variableRate,omitempty"`
+}
+
+// AccountOptionDeliverable represents a deliverable for an account option instrument.
+type AccountOptionDeliverable struct {
+	Symbol          string           `json:"symbol"`
+	DeliverableUnits float64         `json:"deliverableUnits"`
+	APICurrencyType string           `json:"apiCurrencyType"`
+	AssetType       schwab.AssetType `json:"assetType"`
 }
 
 // Balance contains financial balance information for an account.

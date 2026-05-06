@@ -23,14 +23,15 @@ type MoverResponse struct {
 
 // Screener represents a single mover entry.
 type Screener struct {
-	Symbol            string  `json:"symbol"`
-	Description       string  `json:"description"`
-	LastPrice         float64 `json:"lastPrice"`
-	NetChange         float64 `json:"netChange"`
-	NetPercentChange  float64 `json:"netPercentChange"`
-	MarketShare       float64 `json:"marketShare"`
-	TotalVolume       int64   `json:"totalVolume"`
-	Trades            int64   `json:"trades"`
+	Symbol           string  `json:"symbol"`
+	Description      string  `json:"description"`
+	Direction        string  `json:"direction"`
+	Last             float64 `json:"last"`
+	Change           float64 `json:"change"`
+	NetPercentChange float64 `json:"netPercentChange"`
+	MarketShare      float64 `json:"marketShare"`
+	TotalVolume      int64   `json:"totalVolume"`
+	Trades           int64   `json:"trades"`
 }
 
 // GetMovers retrieves market movers for a given symbol.

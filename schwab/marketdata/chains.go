@@ -49,10 +49,10 @@ type OptionContract struct {
 	Symbol                 string  `json:"symbol"`
 	Description            string  `json:"description"`
 	ExchangeName           string  `json:"exchangeName"`
-	BidPrice               float64 `json:"bid"`
-	AskPrice               float64 `json:"ask"`
-	LastPrice              float64 `json:"last"`
-	MarkPrice              float64 `json:"mark"`
+	BidPrice               float64 `json:"bidPrice"`
+	AskPrice               float64 `json:"askPrice"`
+	LastPrice              float64 `json:"lastPrice"`
+	MarkPrice              float64 `json:"markPrice"`
 	BidSize                int     `json:"bidSize"`
 	AskSize                int     `json:"askSize"`
 	LastSize               int     `json:"lastSize"`
@@ -61,9 +61,13 @@ type OptionContract struct {
 	OpenPrice              float64 `json:"openPrice"`
 	ClosePrice             float64 `json:"closePrice"`
 	TotalVolume            int64   `json:"totalVolume"`
+	TradeDate              string  `json:"tradeDate"`
 	TradeTimeInLong        int64   `json:"tradeTimeInLong"`
 	QuoteTimeInLong        int64   `json:"quoteTimeInLong"`
 	NetChange              float64 `json:"netChange"`
+	PercentChange          float64 `json:"percentChange"`
+	MarkChange             float64 `json:"markChange"`
+	MarkPercentChange      float64 `json:"markPercentChange"`
 	Volatility             float64 `json:"volatility"`
 	Delta                  float64 `json:"delta"`
 	Gamma                  float64 `json:"gamma"`
@@ -81,13 +85,25 @@ type OptionContract struct {
 	LastTradingDay         int64   `json:"lastTradingDay"`
 	Multiplier             float64 `json:"multiplier"`
 	SettlementType         string  `json:"settlementType"`
-	InTheMoney             bool    `json:"inTheMoney"`
-	NonStandard            bool    `json:"nonStandard"`
-	Mini                   bool    `json:"mini"`
-	PennyPilot             bool    `json:"pennyPilot"`
-	IntrinsicValue         float64 `json:"intrinsicValue"`
-	ExtrinsicValue         float64 `json:"extrinsicValue"`
-	ImpliedYield           float64 `json:"impliedYield"`
+	DeliverableNote        string  `json:"deliverableNote"`
+	InTheMoney             bool    `json:"isInTheMoney"`
+	NonStandard            bool    `json:"isNonStandard"`
+	Mini                   bool    `json:"isMini"`
+	PennyPilot             bool    `json:"isPennyPilot"`
+	IndexOption            bool    `json:"isIndexOption"`
+	OptionRoot             string  `json:"optionRoot"`
+	IntrinsicValue           float64              `json:"intrinsicValue"`
+	ExtrinsicValue           float64              `json:"extrinsicValue"`
+	ImpliedYield             float64              `json:"impliedYield"`
+	OptionDeliverablesList   []OptionDeliverable  `json:"optionDeliverablesList,omitempty"`
+}
+
+// OptionDeliverable represents a single deliverable in an option contract.
+type OptionDeliverable struct {
+	AssetType       string `json:"assetType"`
+	CurrencyType    string `json:"currencyType"`
+	DeliverableUnits string `json:"deliverableUnits"`
+	Symbol          string `json:"symbol"`
 }
 
 // Underlying represents the underlying quote returned with an option chain.

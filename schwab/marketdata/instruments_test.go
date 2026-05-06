@@ -144,6 +144,7 @@ func TestGetInstrumentByCUSIP(t *testing.T) {
 			Description: "Apple Inc",
 			Exchange:    "NASDAQ",
 			AssetType:   "EQUITY",
+			Type:        "SWEEP_VEHICLE",
 		})
 	}))
 	defer ts.Close()
@@ -164,6 +165,7 @@ func TestGetInstrumentByCUSIP(t *testing.T) {
 	assert.Equal(t, "Apple Inc", result.Description)
 	assert.Equal(t, "NASDAQ", result.Exchange)
 	assert.Equal(t, schwab.AssetType("EQUITY"), result.AssetType)
+	assert.Equal(t, "SWEEP_VEHICLE", result.Type)
 }
 
 func TestSearchInstruments_Error(t *testing.T) {
