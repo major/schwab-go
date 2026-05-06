@@ -313,6 +313,71 @@ func TestRecursiveOrder(t *testing.T) {
 	assert.Equal(t, int64(4), order.ReplacingOrderCollection[0].OrderID)
 }
 
+func TestGetOrder_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	_, err := client.GetOrder(context.Background(), "HASH_ABC123", 9999)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
+}
+
+func TestCreateOrder_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+
+	err := client.CreateOrder(context.Background(), "HASH_ABC123", &OrderRequest{})
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+}
+
+func TestReplaceOrder_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+
+	err := client.ReplaceOrder(context.Background(), "HASH_ABC123", 9001, &OrderRequest{})
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+}
+
+func TestCancelOrder_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	})
+
+	err := client.CancelOrder(context.Background(), "HASH_ABC123", 9001)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusForbidden, apiErr.StatusCode)
+}
+
+func TestPreviewOrder_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+
+	_, err := client.PreviewOrder(context.Background(), "HASH_ABC123", &PreviewOrderRequest{})
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+}
+
 func TestGetOrdersError(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
