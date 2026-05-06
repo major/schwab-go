@@ -37,12 +37,12 @@ type Screener struct {
 // GetMovers retrieves market movers for a given symbol.
 // symbolID: the symbol identifier (e.g., "$DJI", "$COMPX", "$SPX")
 // sort: optional sort order; if empty, no sort param is sent
-// frequency: optional frequency; if zero, no frequency param is sent
+// frequency: optional frequency; if nil, no frequency param is sent
 func (c *Client) GetMovers(
 	ctx context.Context,
 	symbolID string,
 	sort MoverSort,
-	frequency int,
+	frequency *int,
 ) (*MoverResponse, error) {
 	path := "/movers/" + url.PathEscape(symbolID)
 	req, err := c.newRequest(ctx, path)
@@ -54,8 +54,8 @@ func (c *Client) GetMovers(
 	if sort != "" {
 		q.Set("sort", string(sort))
 	}
-	if frequency != 0 {
-		q.Set("frequency", strconv.Itoa(frequency))
+	if frequency != nil {
+		q.Set("frequency", strconv.Itoa(*frequency))
 	}
 	req.URL.RawQuery = q.Encode()
 
