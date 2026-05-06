@@ -18,7 +18,7 @@ Go client library for the [Schwab API](https://developer.schwab.com/). Covers Ma
 - **Functional options** - `WithToken`, `WithHTTPClient`, `WithBaseURL` for flexible client configuration
 - **Context propagation** - all request methods take `context.Context`
 - **Testable** - override HTTP client and base URL for `httptest` integration
-- **Zero dependencies** - only `stretchr/testify` for tests
+- **No runtime dependencies** - public client packages stay dependency-free; tests use `stretchr/testify` and `kin-openapi`
 
 ## Installation
 

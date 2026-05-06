@@ -8,3 +8,5 @@ This directory stores pretty-printed OpenAPI specifications captured from Schwab
 | `trader_api.openapi.json` | `trader_api.har`, entry 20 | `TraderApi-Prod_05-11-2024.yaml` | 3.0.1 | Trader API - Account Access and User Preferences |
 
 The source HAR files are intentionally ignored by git because browser captures can contain authorization headers, cookies, and other session data. Commit only the extracted specification JSON files unless a capture has been reviewed and scrubbed.
+
+Run `make spec-validate` after updating these files. The target validates each spec with `kin-openapi` and lints them with `vacuum` using the repository ruleset in `.vacuum.yaml`.

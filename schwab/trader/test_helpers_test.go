@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	schwab "github.com/major/schwab-go/schwab"
+	"github.com/major/schwab-go/schwab/internal/openapitest"
 )
 
 func writeJSON(t *testing.T, w http.ResponseWriter, value any) {
@@ -25,4 +26,9 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) *Client {
 		schwab.WithHTTPClient(ts.Client()),
 		schwab.WithBaseURL(ts.URL),
 	)
+}
+
+func newOpenAPIValidator(t *testing.T) *openapitest.Validator {
+	t.Helper()
+	return openapitest.NewValidator(t, "trader_api.openapi.json")
 }
