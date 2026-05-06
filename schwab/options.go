@@ -1,6 +1,8 @@
 package schwab
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -9,9 +11,10 @@ import (
 // It is exported so sub-packages (marketdata, trader) can construct it with
 // defaults and call ApplyOptions to apply user-provided options.
 type ClientConfig struct {
-	Token      string
-	HTTPClient *http.Client
-	BaseURL    *url.URL
+	Token       string
+	HTTPClient  *http.Client
+	BaseURL     *url.URL
+	OptionError error
 }
 
 // Option is a functional option for configuring a Schwab API client.
@@ -33,13 +36,23 @@ func WithHTTPClient(c *http.Client) Option {
 	}
 }
 
-// WithBaseURL overrides the default base URL. An invalid or relative URL is silently ignored.
+// WithBaseURL overrides the default base URL.
+// Invalid or relative URLs are recorded as option errors so request creation fails before any HTTP call.
 func WithBaseURL(rawURL string) Option {
 	return func(cfg *ClientConfig) {
 		u, err := url.Parse(rawURL)
-		if err == nil && u.Scheme != "" && u.Host != "" {
-			cfg.BaseURL = u
+		if err != nil {
+			cfg.OptionError = errors.Join(cfg.OptionError, fmt.Errorf("invalid base URL %q: %w", rawURL, err))
+			return
 		}
+		if u.Scheme == "" || u.Host == "" {
+			cfg.OptionError = errors.Join(
+				cfg.OptionError,
+				fmt.Errorf("invalid base URL %q: absolute URL with scheme and host required", rawURL),
+			)
+			return
+		}
+		cfg.BaseURL = u
 	}
 }
 

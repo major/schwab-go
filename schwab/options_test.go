@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const relativeBaseURLError = "invalid base URL \"relative/path\": absolute URL with scheme and host required"
+
 func TestWithToken(t *testing.T) {
 	cfg := &ClientConfig{}
 	opt := WithToken("test-token-123")
@@ -37,20 +39,41 @@ func TestWithBaseURL_Valid(t *testing.T) {
 	opt(cfg)
 	require.NotNil(t, cfg.BaseURL)
 	require.Equal(t, "https://example.com/api", cfg.BaseURL.String())
+	require.NoError(t, cfg.OptionError)
 }
 
 func TestWithBaseURL_Invalid(t *testing.T) {
 	existingURL, err := url.Parse("https://existing.com")
 	require.NoError(t, err)
 
-	for _, rawURL := range []string{"://invalid", "", "relative/path"} {
-		t.Run(rawURL, func(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		rawURL  string
+		wantErr string
+	}{
+		{name: "parse error", rawURL: "://invalid", wantErr: "invalid base URL \"://invalid\":"},
+		{name: "empty", rawURL: "", wantErr: "invalid base URL \"\": absolute URL with scheme and host required"},
+		{name: "relative", rawURL: "relative/path", wantErr: relativeBaseURLError},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
 			cfg := &ClientConfig{BaseURL: existingURL}
-			opt := WithBaseURL(rawURL)
+			opt := WithBaseURL(tt.rawURL)
 			opt(cfg)
 			require.Equal(t, existingURL, cfg.BaseURL)
+			require.Error(t, cfg.OptionError)
+			require.ErrorContains(t, cfg.OptionError, tt.wantErr)
 		})
 	}
+}
+
+func TestWithBaseURL_JoinsInvalidOptions(t *testing.T) {
+	cfg := &ClientConfig{}
+	WithBaseURL("")(cfg)
+	WithBaseURL("relative/path")(cfg)
+
+	require.Error(t, cfg.OptionError)
+	require.ErrorContains(t, cfg.OptionError, "invalid base URL \"\": absolute URL with scheme and host required")
+	require.ErrorContains(t, cfg.OptionError, relativeBaseURLError)
 }
 
 func TestApplyOptions(t *testing.T) {
@@ -67,4 +90,5 @@ func TestApplyOptions(t *testing.T) {
 	require.Equal(t, customClient, cfg.HTTPClient)
 	require.NotNil(t, cfg.BaseURL)
 	require.Equal(t, "https://api.schwab.com", cfg.BaseURL.String())
+	require.NoError(t, cfg.OptionError)
 }

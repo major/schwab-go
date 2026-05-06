@@ -13,6 +13,8 @@ import (
 	schwab "github.com/major/schwab-go/schwab"
 )
 
+const relativeBaseURLError = "invalid base URL \"relative/path\": absolute URL with scheme and host required"
+
 func TestNewClient_Defaults(t *testing.T) {
 	client := NewClient()
 	require.NotNil(t, client)
@@ -32,6 +34,15 @@ func TestNewClient_WithBaseURL(t *testing.T) {
 	client := NewClient(schwab.WithBaseURL(customURL))
 	require.NotNil(t, client)
 	require.Equal(t, customURL, client.baseURL.String())
+	require.NoError(t, client.optionError)
+}
+
+func TestNewClient_WithInvalidBaseURL(t *testing.T) {
+	client := NewClient(schwab.WithBaseURL("relative/path"))
+	require.NotNil(t, client)
+	require.Equal(t, defaultBaseURL, client.baseURL.String())
+	require.Error(t, client.optionError)
+	require.ErrorContains(t, client.optionError, relativeBaseURLError)
 }
 
 func TestNewClient_WithHTTPClient(t *testing.T) {
@@ -119,6 +130,14 @@ func TestNewRequest_AuthHeader(t *testing.T) {
 	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
 	require.NoError(t, err)
 	require.Equal(t, "Bearer test-token", req.Header.Get("Authorization"))
+}
+
+func TestNewRequest_InvalidBaseURL(t *testing.T) {
+	client := NewClient(schwab.WithBaseURL("relative/path"))
+	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	require.Error(t, err)
+	require.ErrorContains(t, err, relativeBaseURLError)
+	require.Nil(t, req)
 }
 
 func TestNewRequest_WithBody(t *testing.T) {

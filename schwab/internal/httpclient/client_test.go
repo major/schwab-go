@@ -16,6 +16,8 @@ import (
 	schwab "github.com/major/schwab-go/schwab"
 )
 
+const relativeBaseURLError = "invalid base URL \"relative/path\": absolute URL with scheme and host required"
+
 func TestNewConfig(t *testing.T) {
 	defaultBase, err := url.Parse("https://api.example.test/base")
 	require.NoError(t, err)
@@ -32,6 +34,7 @@ func TestNewConfig(t *testing.T) {
 		wantClient        *http.Client
 		wantClientNonNil  bool
 		wantToken         string
+		wantOptionError   string
 		wantEmptyBase     bool
 		wantDistinctClone bool
 	}{
@@ -76,6 +79,17 @@ func TestNewConfig(t *testing.T) {
 			wantClientNonNil: true,
 			wantToken:        "tok",
 		},
+		{
+			name:          "invalid base URL option preserves default and stores error",
+			defaultBase:   defaultBase,
+			defaultClient: defaultClient,
+			opts: []schwab.Option{
+				schwab.WithBaseURL("relative/path"),
+			},
+			wantBase:        "https://api.example.test/base",
+			wantClient:      defaultClient,
+			wantOptionError: relativeBaseURLError,
+		},
 	}
 
 	for _, tt := range tests {
@@ -99,6 +113,12 @@ func TestNewConfig(t *testing.T) {
 				assert.NotSame(t, defaultClient, cfg.HTTPClient)
 			}
 			assert.Equal(t, tt.wantToken, cfg.Token)
+			if tt.wantOptionError == "" {
+				assert.NoError(t, cfg.OptionError)
+				return
+			}
+			require.Error(t, cfg.OptionError)
+			assert.ErrorContains(t, cfg.OptionError, tt.wantOptionError)
 		})
 	}
 }
@@ -121,6 +141,7 @@ func TestNewRequest(t *testing.T) {
 		wantNoBody       bool
 		wantNilBody      bool
 		wantMarshalError bool
+		wantOptionError  string
 	}{
 		{
 			name:        "GET request with http NoBody",
@@ -185,11 +206,25 @@ func TestNewRequest(t *testing.T) {
 			wantURL:     "https://api.example.test/root/empty",
 			wantNilBody: true,
 		},
+		{
+			name:            "option error returns before request construction",
+			cfg:             Config{BaseURL: baseURL, OptionError: assert.AnError},
+			method:          http.MethodGet,
+			path:            "quotes",
+			body:            http.NoBody,
+			wantOptionError: assert.AnError.Error(),
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req, reqErr := NewRequest(context.Background(), tt.cfg, tt.method, tt.path, tt.body)
+			if tt.wantOptionError != "" {
+				require.Error(t, reqErr)
+				require.ErrorContains(t, reqErr, tt.wantOptionError)
+				assert.Nil(t, req)
+				return
+			}
 			if tt.wantMarshalError {
 				require.Error(t, reqErr)
 				require.ErrorContains(t, reqErr, "marshal request body:")
