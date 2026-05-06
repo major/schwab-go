@@ -88,6 +88,13 @@ func TestNewClient_WithResponseBodyLimit(t *testing.T) {
 	require.Equal(t, int64(1234), client.config().ResponseBodyLimit)
 }
 
+func TestNewClient_WithHeaders(t *testing.T) {
+	client := NewClient(schwab.WithUserAgent("schwab-test/1.0"), schwab.WithHeader("X-Trace-Id", "trace-123"))
+	require.NotNil(t, client)
+	require.Equal(t, "schwab-test/1.0", client.headers.Get("User-Agent"))
+	require.Equal(t, "trace-123", client.config().Headers.Get("X-Trace-Id"))
+}
+
 func TestDo_Success(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)

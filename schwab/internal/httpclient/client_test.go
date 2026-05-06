@@ -154,6 +154,17 @@ func TestNewConfig(t *testing.T) {
 	}
 }
 
+func TestNewConfig_ClonesHeaders(t *testing.T) {
+	defaultBase, err := url.Parse("https://api.example.test/base")
+	require.NoError(t, err)
+
+	headers := http.Header{"X-Trace-Id": []string{"one"}}
+	cfg := NewConfig(defaultBase, http.DefaultClient, []schwab.Option{schwab.WithHeaders(headers)})
+	headers.Set("X-Trace-Id", "mutated")
+
+	require.Equal(t, []string{"one"}, cfg.Headers.Values("X-Trace-Id"))
+}
+
 func TestNewRequest(t *testing.T) {
 	baseURL, err := url.Parse("https://api.example.test/root")
 	require.NoError(t, err)
@@ -289,6 +300,57 @@ func TestNewRequest(t *testing.T) {
 			assert.JSONEq(t, tt.wantBody, string(bodyBytes))
 		})
 	}
+}
+
+func TestNewRequest_AppliesConfiguredHeaders(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{
+		BaseURL: baseURL,
+		Token:   "tok",
+		Headers: http.Header{
+			"Accept":        []string{"text/plain"},
+			"Authorization": []string{"Basic ignored"},
+			"Content-Type":  []string{"text/plain"},
+			"User-Agent":    []string{"schwab-test/1.0"},
+			"X-Trace-Id":    []string{"trace-123"},
+		},
+	}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodPost, "orders", map[string]string{"symbol": "AAPL"})
+	require.NoError(t, err)
+	require.NotNil(t, req)
+
+	require.Equal(t, "application/json", req.Header.Get("Accept"))
+	require.Equal(t, "Bearer tok", req.Header.Get("Authorization"))
+	require.Equal(t, "application/json", req.Header.Get("Content-Type"))
+	require.Equal(t, "schwab-test/1.0", req.Header.Get("User-Agent"))
+	require.Equal(t, "trace-123", req.Header.Get("X-Trace-Id"))
+}
+
+func TestNewRequest_IgnoresConfiguredLibraryHeaders(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{
+		BaseURL: baseURL,
+		Headers: http.Header{
+			"Accept":        []string{"text/plain"},
+			"Authorization": []string{"Basic ignored"},
+			"Content-Type":  []string{"text/plain"},
+			"X-Trace-Id":    []string{"trace-123"},
+		},
+	}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "quotes", http.NoBody)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+
+	require.Equal(t, "application/json", req.Header.Get("Accept"))
+	require.Empty(t, req.Header.Get("Authorization"))
+	require.Empty(t, req.Header.Get("Content-Type"))
+	require.Equal(t, "trace-123", req.Header.Get("X-Trace-Id"))
 }
 
 func TestDo(t *testing.T) {

@@ -95,6 +95,41 @@ func TestWithResponseBodyLimit_NonPositive(t *testing.T) {
 	}
 }
 
+func TestWithUserAgent(t *testing.T) {
+	cfg := &ClientConfig{}
+	opt := WithUserAgent("schwab-test/1.0")
+	opt(cfg)
+	require.Equal(t, "schwab-test/1.0", cfg.Headers.Get("User-Agent"))
+}
+
+func TestWithHeader(t *testing.T) {
+	cfg := &ClientConfig{}
+	opt := WithHeader("X-Request-ID", "abc123")
+	opt(cfg)
+	require.Equal(t, "abc123", cfg.Headers.Get("X-Request-ID"))
+}
+
+func TestWithHeader_EmptyName(t *testing.T) {
+	cfg := &ClientConfig{Headers: http.Header{"X-Keep": []string{"yes"}}}
+	opt := WithHeader("", "ignored")
+	opt(cfg)
+	require.Equal(t, "yes", cfg.Headers.Get("X-Keep"))
+}
+
+func TestWithHeaders(t *testing.T) {
+	headers := http.Header{
+		"X-Trace-Id": []string{"one", "two"},
+		"X-Empty":    []string{""},
+	}
+	cfg := &ClientConfig{}
+	opt := WithHeaders(headers)
+	opt(cfg)
+	headers.Add("X-Trace-Id", "mutated")
+
+	require.Equal(t, []string{"one", "two"}, cfg.Headers.Values("X-Trace-Id"))
+	require.Equal(t, []string{""}, cfg.Headers.Values("X-Empty"))
+}
+
 func TestApplyOptions(t *testing.T) {
 	customClient := &http.Client{Timeout: 0}
 	opts := []Option{
@@ -102,6 +137,8 @@ func TestApplyOptions(t *testing.T) {
 		WithHTTPClient(customClient),
 		WithBaseURL("https://api.schwab.com"),
 		WithResponseBodyLimit(2048),
+		WithUserAgent("schwab-test/1.0"),
+		WithHeader("X-Trace-Id", "trace-123"),
 	}
 	cfg := &ClientConfig{}
 	ApplyOptions(cfg, opts)
@@ -112,4 +149,6 @@ func TestApplyOptions(t *testing.T) {
 	require.Equal(t, "https://api.schwab.com", cfg.BaseURL.String())
 	require.NoError(t, cfg.OptionError)
 	require.Equal(t, int64(2048), cfg.ResponseBodyLimit)
+	require.Equal(t, "schwab-test/1.0", cfg.Headers.Get("User-Agent"))
+	require.Equal(t, "trace-123", cfg.Headers.Get("X-Trace-Id"))
 }

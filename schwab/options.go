@@ -16,6 +16,7 @@ type ClientConfig struct {
 	BaseURL           *url.URL
 	OptionError       error
 	ResponseBodyLimit int64
+	Headers           http.Header
 }
 
 // DefaultResponseBodyLimit is the maximum response body size read by default.
@@ -67,6 +68,44 @@ func WithResponseBodyLimit(limit int64) Option {
 	return func(cfg *ClientConfig) {
 		if limit > 0 {
 			cfg.ResponseBodyLimit = limit
+		}
+	}
+}
+
+// WithUserAgent sets the User-Agent header sent with each request.
+func WithUserAgent(userAgent string) Option {
+	return WithHeader("User-Agent", userAgent)
+}
+
+// WithHeader sets a request header sent with each request. An empty name is ignored.
+// Accept, Authorization, and Content-Type are controlled by the library and cannot be set this way.
+func WithHeader(name, value string) Option {
+	return func(cfg *ClientConfig) {
+		if name == "" {
+			return
+		}
+		if cfg.Headers == nil {
+			cfg.Headers = http.Header{}
+		}
+		cfg.Headers.Set(name, value)
+	}
+}
+
+// WithHeaders sets request headers sent with each request. Header values are copied.
+// Accept, Authorization, and Content-Type are controlled by the library and cannot be set this way.
+func WithHeaders(headers http.Header) Option {
+	return func(cfg *ClientConfig) {
+		for name, values := range headers {
+			if name == "" {
+				continue
+			}
+			if cfg.Headers == nil {
+				cfg.Headers = http.Header{}
+			}
+			cfg.Headers.Del(name)
+			for _, value := range values {
+				cfg.Headers.Add(name, value)
+			}
 		}
 	}
 }

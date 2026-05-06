@@ -22,6 +22,7 @@ type Client struct {
 	token             string
 	optionError       error
 	responseBodyLimit int64
+	headers           http.Header
 }
 
 // NewClient creates a new Trader API client with the given options.
@@ -37,6 +38,7 @@ func NewClient(opts ...schwab.Option) *Client {
 		token:             cfg.Token,
 		optionError:       cfg.OptionError,
 		responseBodyLimit: cfg.ResponseBodyLimit,
+		headers:           cfg.Headers.Clone(),
 	}
 }
 
@@ -47,6 +49,7 @@ func (c *Client) config() httpclient.Config {
 		Token:             c.token,
 		OptionError:       c.optionError,
 		ResponseBodyLimit: c.responseBodyLimit,
+		Headers:           c.headers.Clone(),
 	}
 }
 
