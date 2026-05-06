@@ -1,9 +1,11 @@
 package trader
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"testing"
 
@@ -34,7 +36,7 @@ func TestGetOrders(t *testing.T) {
 		MaxResults:      25,
 		FromEnteredTime: "2024-01-01",
 		ToEnteredTime:   "2024-01-31",
-		Status:          "FILLED",
+		Status:          OrderStatusFilled,
 	})
 	require.NoError(t, err)
 	require.Len(t, result, 1)
@@ -42,13 +44,13 @@ func TestGetOrders(t *testing.T) {
 }
 
 func TestCreateOrder(t *testing.T) {
-	order := &Order{
-		Session:   "NORMAL",
-		Duration:  "DAY",
-		OrderType: "MARKET",
-		OrderLegCollection: []OrderLeg{
+	order := &OrderRequest{
+		Session:   SessionNormal,
+		Duration:  DurationDay,
+		OrderType: OrderTypeRequestMarket,
+		OrderLegCollection: []OrderLegRequest{
 			{
-				Instruction: "BUY",
+				Instruction: InstructionBuy,
 				Quantity:    3,
 				Instrument: OrderInstrument{
 					AssetType: schwab.AssetTypeEquity,
@@ -63,16 +65,26 @@ func TestCreateOrder(t *testing.T) {
 		assert.Equal(t, "/accounts/HASH_ABC123/orders", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
-		var got Order
-		assert.NoError(t, json.NewDecoder(r.Body).Decode(&got))
-		assert.Equal(t, "NORMAL", got.Session)
-		assert.Equal(t, "DAY", got.Duration)
-		assert.Equal(t, "MARKET", got.OrderType)
+		body, err := io.ReadAll(r.Body)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		var got OrderRequest
+		assert.NoError(t, json.NewDecoder(bytes.NewReader(body)).Decode(&got))
+		assert.Equal(t, SessionNormal, got.Session)
+		assert.Equal(t, DurationDay, got.Duration)
+		assert.Equal(t, OrderTypeRequestMarket, got.OrderType)
 		if assert.Len(t, got.OrderLegCollection, 1) {
-			assert.Equal(t, "BUY", got.OrderLegCollection[0].Instruction)
+			assert.Equal(t, InstructionBuy, got.OrderLegCollection[0].Instruction)
 			assert.InDelta(t, 3.0, got.OrderLegCollection[0].Quantity, 0.000001)
 			assert.Equal(t, "MSFT", got.OrderLegCollection[0].Instrument.Symbol)
 		}
+
+		var raw map[string]json.RawMessage
+		assert.NoError(t, json.NewDecoder(bytes.NewReader(body)).Decode(&raw))
+		assert.NotContains(t, raw, "requestedDestination")
+		assert.NotContains(t, raw, "tag")
 
 		w.WriteHeader(http.StatusCreated)
 	})
@@ -100,10 +112,10 @@ func TestGetOrder(t *testing.T) {
 }
 
 func TestReplaceOrder(t *testing.T) {
-	order := &Order{
-		Session:   "NORMAL",
-		Duration:  "DAY",
-		OrderType: "LIMIT",
+	order := &OrderRequest{
+		Session:   SessionNormal,
+		Duration:  DurationDay,
+		OrderType: OrderTypeRequestLimit,
 		Price:     199.50,
 	}
 
@@ -112,9 +124,9 @@ func TestReplaceOrder(t *testing.T) {
 		assert.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
-		var got Order
+		var got OrderRequest
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&got))
-		assert.Equal(t, "LIMIT", got.OrderType)
+		assert.Equal(t, OrderTypeRequestLimit, got.OrderType)
 		assert.InDelta(t, 199.50, got.Price, 0.000001)
 
 		w.WriteHeader(http.StatusOK)
@@ -138,29 +150,31 @@ func TestCancelOrder(t *testing.T) {
 }
 
 func TestPreviewOrder(t *testing.T) {
-	order := &Order{
-		Session:   "NORMAL",
-		Duration:  "DAY",
-		OrderType: "MARKET",
+	order := &PreviewOrderRequest{
+		OrderStrategy: &OrderStrategy{
+			Session:   SessionNormal,
+			Duration:  DurationDay,
+			OrderType: OrderTypeMarket,
+		},
 	}
 	fixture := PreviewOrder{
 		OrderID: 9001,
 		OrderStrategy: &OrderStrategy{
 			AccountNumber:     "123456789",
-			OrderStrategyType: "SINGLE",
-			OrderType:         "MARKET",
-			Session:           "NORMAL",
-			Duration:          "DAY",
+			OrderStrategyType: OrderStrategyTypeSingle,
+			OrderType:         OrderTypeMarket,
+			Session:           SessionNormal,
+			Duration:          DurationDay,
 			Quantity:          1,
+			AmountIndicator:   AmountIndicatorShares,
+			Strategy:          ComplexOrderStrategyTypeNone,
 			OrderLegs: []PreviewOrderLeg{
 				{
 					LegID:       1,
-					Instruction: "BUY",
+					AssetType:   schwab.AssetTypeEquity,
+					FinalSymbol: "AAPL",
+					Instruction: InstructionBuy,
 					Quantity:    1,
-					Instrument: OrderInstrument{
-						AssetType: schwab.AssetTypeEquity,
-						Symbol:    "AAPL",
-					},
 				},
 			},
 		},
@@ -198,9 +212,12 @@ func TestPreviewOrder(t *testing.T) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/accounts/HASH_ABC123/previewOrder", r.URL.Path)
 
-		var got Order
+		var got PreviewOrderRequest
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&got))
-		assert.Equal(t, "MARKET", got.OrderType)
+		if !assert.NotNil(t, got.OrderStrategy) {
+			return
+		}
+		assert.Equal(t, OrderTypeMarket, got.OrderStrategy.OrderType)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -212,10 +229,14 @@ func TestPreviewOrder(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, int64(9001), result.OrderID)
 	require.NotNil(t, result.OrderStrategy)
-	assert.Equal(t, "SINGLE", result.OrderStrategy.OrderStrategyType)
-	assert.Equal(t, "MARKET", result.OrderStrategy.OrderType)
+	assert.Equal(t, OrderStrategyTypeSingle, result.OrderStrategy.OrderStrategyType)
+	assert.Equal(t, OrderTypeMarket, result.OrderStrategy.OrderType)
+	assert.Equal(t, AmountIndicatorShares, result.OrderStrategy.AmountIndicator)
+	assert.Equal(t, ComplexOrderStrategyTypeNone, result.OrderStrategy.Strategy)
 	require.Len(t, result.OrderStrategy.OrderLegs, 1)
-	assert.Equal(t, "BUY", result.OrderStrategy.OrderLegs[0].Instruction)
+	assert.Equal(t, InstructionBuy, result.OrderStrategy.OrderLegs[0].Instruction)
+	assert.Equal(t, schwab.AssetTypeEquity, result.OrderStrategy.OrderLegs[0].AssetType)
+	assert.Equal(t, "AAPL", result.OrderStrategy.OrderLegs[0].FinalSymbol)
 	require.NotNil(t, result.OrderValidationResult)
 	require.Len(t, result.OrderValidationResult.Alerts, 1)
 	assert.Equal(t, "MarketHoursRule", result.OrderValidationResult.Alerts[0].ValidationRuleName)
@@ -287,7 +308,7 @@ func TestRecursiveOrder(t *testing.T) {
 	assert.Equal(t, int64(2), order.ChildOrderStrategies[0].OrderID)
 	require.Len(t, order.ChildOrderStrategies[0].ChildOrderStrategies, 1)
 	assert.Equal(t, int64(3), order.ChildOrderStrategies[0].ChildOrderStrategies[0].OrderID)
-	assert.Equal(t, "STOP", order.ChildOrderStrategies[0].ChildOrderStrategies[0].OrderType)
+	assert.Equal(t, OrderTypeStop, order.ChildOrderStrategies[0].ChildOrderStrategies[0].OrderType)
 	require.Len(t, order.ReplacingOrderCollection, 1)
 	assert.Equal(t, int64(4), order.ReplacingOrderCollection[0].OrderID)
 }
@@ -310,24 +331,24 @@ func TestGetOrdersError(t *testing.T) {
 
 func testOrderFixture() Order {
 	return Order{
-		Session:                  "NORMAL",
-		Duration:                 "DAY",
-		OrderType:                "LIMIT",
-		ComplexOrderStrategyType: "NONE",
+		Session:                  SessionNormal,
+		Duration:                 DurationDay,
+		OrderType:                OrderTypeLimit,
+		ComplexOrderStrategyType: ComplexOrderStrategyTypeNone,
 		Quantity:                 10,
 		FilledQuantity:           10,
 		RemainingQuantity:        0,
-		RequestedDestination:     "AUTO",
+		RequestedDestination:     RequestedDestinationAuto,
 		DestinationLinkName:      "NYSE",
 		Price:                    150.25,
 		StopPrice:                145.00,
-		StopPriceLinkBasis:       "LAST",
-		StopPriceLinkType:        "VALUE",
-		StopType:                 "STANDARD",
+		StopPriceLinkBasis:       PriceLinkBasisLast,
+		StopPriceLinkType:        PriceLinkTypeValue,
+		StopType:                 StopTypeStandard,
 		OrderID:                  9001,
 		Cancelable:               false,
 		Editable:                 false,
-		Status:                   "FILLED",
+		Status:                   OrderStatusFilled,
 		EnteredTime:              "2024-01-15T10:30:00Z",
 		CloseTime:                "2024-01-15T10:31:00Z",
 		Tag:                      "client-tag",
@@ -335,10 +356,10 @@ func testOrderFixture() Order {
 		StatusDescription:        "Order filled",
 		OrderLegCollection: []OrderLeg{
 			{
-				OrderLegType:   "EQUITY",
+				OrderLegType:   OrderLegTypeEquity,
 				LegID:          1,
-				Instruction:    "BUY",
-				PositionEffect: "OPENING",
+				Instruction:    InstructionBuy,
+				PositionEffect: PositionEffectOpening,
 				Quantity:       10,
 				Instrument: OrderInstrument{
 					AssetType:    schwab.AssetTypeEquity,
@@ -374,24 +395,24 @@ func testOrderFixture() Order {
 func assertOrderFixture(t *testing.T, order *Order) {
 	t.Helper()
 
-	assert.Equal(t, "NORMAL", order.Session)
-	assert.Equal(t, "DAY", order.Duration)
-	assert.Equal(t, "LIMIT", order.OrderType)
-	assert.Equal(t, "NONE", order.ComplexOrderStrategyType)
+	assert.Equal(t, SessionNormal, order.Session)
+	assert.Equal(t, DurationDay, order.Duration)
+	assert.Equal(t, OrderTypeLimit, order.OrderType)
+	assert.Equal(t, ComplexOrderStrategyTypeNone, order.ComplexOrderStrategyType)
 	assert.InDelta(t, 10.0, order.Quantity, 0.000001)
 	assert.InDelta(t, 10.0, order.FilledQuantity, 0.000001)
 	assert.InDelta(t, 0.0, order.RemainingQuantity, 0.000001)
-	assert.Equal(t, "AUTO", order.RequestedDestination)
+	assert.Equal(t, RequestedDestinationAuto, order.RequestedDestination)
 	assert.Equal(t, "NYSE", order.DestinationLinkName)
 	assert.InDelta(t, 150.25, order.Price, 0.000001)
 	assert.InDelta(t, 145.00, order.StopPrice, 0.000001)
-	assert.Equal(t, "LAST", order.StopPriceLinkBasis)
-	assert.Equal(t, "VALUE", order.StopPriceLinkType)
-	assert.Equal(t, "STANDARD", order.StopType)
+	assert.Equal(t, PriceLinkBasisLast, order.StopPriceLinkBasis)
+	assert.Equal(t, PriceLinkTypeValue, order.StopPriceLinkType)
+	assert.Equal(t, StopTypeStandard, order.StopType)
 	assert.Equal(t, int64(9001), order.OrderID)
 	assert.False(t, order.Cancelable)
 	assert.False(t, order.Editable)
-	assert.Equal(t, "FILLED", order.Status)
+	assert.Equal(t, OrderStatusFilled, order.Status)
 	assert.Equal(t, "2024-01-15T10:30:00Z", order.EnteredTime)
 	assert.Equal(t, "2024-01-15T10:31:00Z", order.CloseTime)
 	assert.Equal(t, "client-tag", order.Tag)
@@ -400,10 +421,10 @@ func assertOrderFixture(t *testing.T, order *Order) {
 
 	require.Len(t, order.OrderLegCollection, 1)
 	leg := order.OrderLegCollection[0]
-	assert.Equal(t, "EQUITY", leg.OrderLegType)
+	assert.Equal(t, OrderLegTypeEquity, leg.OrderLegType)
 	assert.Equal(t, int64(1), leg.LegID)
-	assert.Equal(t, "BUY", leg.Instruction)
-	assert.Equal(t, "OPENING", leg.PositionEffect)
+	assert.Equal(t, InstructionBuy, leg.Instruction)
+	assert.Equal(t, PositionEffectOpening, leg.PositionEffect)
 	assert.InDelta(t, 10.0, leg.Quantity, 0.000001)
 	assert.Equal(t, schwab.AssetTypeEquity, leg.Instrument.AssetType)
 	assert.Equal(t, "037833100", leg.Instrument.CUSIP)

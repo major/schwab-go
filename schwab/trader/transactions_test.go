@@ -2,6 +2,7 @@ package trader
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -90,6 +91,32 @@ func TestGetTransactions(t *testing.T) {
 	assert.Equal(t, "AAPL", item.Instrument.Symbol)
 	assert.Equal(t, "Apple Inc", item.Instrument.Description)
 	assert.Equal(t, int64(1234567), item.Instrument.InstrumentID)
+}
+
+func TestTransactionOptionDeliverableUnmarshal(t *testing.T) {
+	data := []byte(`{
+		"rootSymbol": "XYZ",
+		"strikePercent": 100,
+		"deliverableNumber": 1,
+		"deliverableUnits": 100,
+		"deliverable": {
+			"assetType": "EQUITY",
+			"symbol": "XYZ",
+			"description": "XYZ Corp"
+		},
+		"assetType": "OPTION"
+	}`)
+
+	var deliverable TransactionOptionDeliverable
+	require.NoError(t, json.Unmarshal(data, &deliverable))
+	assert.Equal(t, "XYZ", deliverable.RootSymbol)
+	assert.Equal(t, int64(100), deliverable.StrikePercent)
+	assert.Equal(t, int64(1), deliverable.DeliverableNumber)
+	assert.InDelta(t, 100.0, deliverable.DeliverableUnits, 0.000001)
+	assert.Equal(t, schwab.AssetTypeOption, deliverable.AssetType)
+	require.NotNil(t, deliverable.Deliverable)
+	assert.Equal(t, schwab.AssetTypeEquity, deliverable.Deliverable.AssetType)
+	assert.Equal(t, "XYZ", deliverable.Deliverable.Symbol)
 }
 
 func TestGetTransactions_WithOptionalParams(t *testing.T) {
