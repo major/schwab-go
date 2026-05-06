@@ -268,13 +268,232 @@ func TestGetQuotesError(t *testing.T) {
 	assert.Equal(t, "invalid fields parameter", apiErr.Message)
 }
 
-func TestQuoteWrongHelper(t *testing.T) {
+func TestQuoteWrongAssetType(t *testing.T) {
+	// Use an equity entry for all tests so the AssetMainType is always wrong.
 	entry := equityQuoteEntry("AAPL")
 
-	option, err := entry.OptionQuote()
-	require.Error(t, err)
-	require.Nil(t, option)
-	assert.EqualError(t, err, "quote is EQUITY, not OPTION")
+	tests := []struct {
+		name    string
+		call    func() (any, error)
+		wantErr string
+	}{
+		{
+			"OptionQuote",
+			func() (any, error) { return entry.OptionQuote() },
+			"quote is EQUITY, not OPTION",
+		},
+		{
+			"OptionReference",
+			func() (any, error) { return entry.OptionReference() },
+			"quote is EQUITY, not OPTION",
+		},
+		{
+			"IndexQuote",
+			func() (any, error) { return entry.IndexQuote() },
+			"quote is EQUITY, not INDEX",
+		},
+		{
+			"IndexReference",
+			func() (any, error) { return entry.IndexReference() },
+			"quote is EQUITY, not INDEX",
+		},
+		{
+			"MutualFundQuote",
+			func() (any, error) { return entry.MutualFundQuote() },
+			"quote is EQUITY, not MUTUAL_FUND",
+		},
+		{
+			"MutualFundReference",
+			func() (any, error) { return entry.MutualFundReference() },
+			"quote is EQUITY, not MUTUAL_FUND",
+		},
+		{
+			"ForexQuote",
+			func() (any, error) { return entry.ForexQuote() },
+			"quote is EQUITY, not FOREX",
+		},
+		{
+			"ForexReference",
+			func() (any, error) { return entry.ForexReference() },
+			"quote is EQUITY, not FOREX",
+		},
+		{
+			"FutureQuote",
+			func() (any, error) { return entry.FutureQuote() },
+			"quote is EQUITY, not FUTURE",
+		},
+		{
+			"FutureReference",
+			func() (any, error) { return entry.FutureReference() },
+			"quote is EQUITY, not FUTURE",
+		},
+		{
+			"FutureOptionQuote",
+			func() (any, error) { return entry.FutureOptionQuote() },
+			"quote is EQUITY, not FUTURE_OPTION",
+		},
+		{
+			"FutureOptionReference",
+			func() (any, error) { return entry.FutureOptionReference() },
+			"quote is EQUITY, not FUTURE_OPTION",
+		},
+	}
+
+	// Also test EquityQuote/EquityReference with a wrong type (INDEX entry).
+	indexEntry := indexQuoteEntry("$DJI")
+	tests = append(tests,
+		struct {
+			name    string
+			call    func() (any, error)
+			wantErr string
+		}{
+			"EquityQuote",
+			func() (any, error) { return indexEntry.EquityQuote() },
+			"quote is INDEX, not EQUITY",
+		},
+		struct {
+			name    string
+			call    func() (any, error)
+			wantErr string
+		}{
+			"EquityReference",
+			func() (any, error) { return indexEntry.EquityReference() },
+			"quote is INDEX, not EQUITY",
+		},
+	)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.call()
+			require.Error(t, err)
+			require.Nil(t, result)
+			assert.EqualError(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestQuoteDecodeError(t *testing.T) {
+	invalidJSON := json.RawMessage(`{not valid json`)
+
+	tests := []struct {
+		name string
+		call func() (any, error)
+	}{
+		{"EquityQuote", func() (any, error) {
+			e := equityQuoteEntry("AAPL")
+			e.Quote = invalidJSON
+			return e.EquityQuote()
+		}},
+		{"EquityReference", func() (any, error) {
+			e := equityQuoteEntry("AAPL")
+			e.Reference = invalidJSON
+			return e.EquityReference()
+		}},
+		{"OptionQuote", func() (any, error) {
+			e := optionQuoteEntry("AAPL_C170")
+			e.Quote = invalidJSON
+			return e.OptionQuote()
+		}},
+		{"OptionReference", func() (any, error) {
+			e := optionQuoteEntry("AAPL_C170")
+			e.Reference = invalidJSON
+			return e.OptionReference()
+		}},
+		{"IndexQuote", func() (any, error) {
+			e := indexQuoteEntry("$SPX")
+			e.Quote = invalidJSON
+			return e.IndexQuote()
+		}},
+		{"IndexReference", func() (any, error) {
+			e := indexQuoteEntry("$SPX")
+			e.Reference = invalidJSON
+			return e.IndexReference()
+		}},
+		{"MutualFundQuote", func() (any, error) {
+			e := mutualFundQuoteEntry("VFIAX")
+			e.Quote = invalidJSON
+			return e.MutualFundQuote()
+		}},
+		{"MutualFundReference", func() (any, error) {
+			e := mutualFundQuoteEntry("VFIAX")
+			e.Reference = invalidJSON
+			return e.MutualFundReference()
+		}},
+		{"ForexQuote", func() (any, error) {
+			e := forexQuoteEntry("EUR/USD")
+			e.Quote = invalidJSON
+			return e.ForexQuote()
+		}},
+		{"ForexReference", func() (any, error) {
+			e := forexQuoteEntry("EUR/USD")
+			e.Reference = invalidJSON
+			return e.ForexReference()
+		}},
+		{"FutureQuote", func() (any, error) {
+			e := futureQuoteEntry("/ES")
+			e.Quote = invalidJSON
+			return e.FutureQuote()
+		}},
+		{"FutureReference", func() (any, error) {
+			e := futureQuoteEntry("/ES")
+			e.Reference = invalidJSON
+			return e.FutureReference()
+		}},
+		{"FutureOptionQuote", func() (any, error) {
+			e := futureOptionQuoteEntry("./EW1H24C5000")
+			e.Quote = invalidJSON
+			return e.FutureOptionQuote()
+		}},
+		{"FutureOptionReference", func() (any, error) {
+			e := futureOptionQuoteEntry("./EW1H24C5000")
+			e.Reference = invalidJSON
+			return e.FutureOptionReference()
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.call()
+			require.Error(t, err)
+			require.Nil(t, result)
+			assert.Contains(t, err.Error(), "decode quote payload:")
+		})
+	}
+}
+
+func TestIndexReferenceHappyPath(t *testing.T) {
+	entry := QuoteEntry{
+		AssetMainType: schwab.AssetTypeIndex,
+		Symbol:        "$SPX",
+		Reference: mustRaw(IndexReference{
+			Description:  "S&P 500 Index",
+			Exchange:     "IND",
+			ExchangeName: "Indices",
+		}),
+	}
+
+	ref, err := entry.IndexReference()
+	require.NoError(t, err)
+	assert.Equal(t, "S&P 500 Index", ref.Description)
+	assert.Equal(t, "IND", ref.Exchange)
+}
+
+func TestMutualFundReferenceHappyPath(t *testing.T) {
+	entry := QuoteEntry{
+		AssetMainType: schwab.AssetTypeMutualFund,
+		Symbol:        "VFIAX",
+		Reference: mustRaw(MutualFundReference{
+			CUSIP:        "922908710",
+			Description:  "Vanguard 500 Index Fund",
+			Exchange:     "NASDAQ",
+			ExchangeName: "NASDAQ Mutual Funds",
+		}),
+	}
+
+	ref, err := entry.MutualFundReference()
+	require.NoError(t, err)
+	assert.Equal(t, "922908710", ref.CUSIP)
+	assert.Equal(t, "Vanguard 500 Index Fund", ref.Description)
 }
 
 func equityQuoteEntry(symbol string) QuoteEntry {

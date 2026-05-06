@@ -129,6 +129,59 @@ func TestNewRequest_WithBody(t *testing.T) {
 	require.Equal(t, "application/json", req.Header.Get("Content-Type"))
 }
 
+func TestDo_ErrorWithErrorFieldFallback(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		writeJSON(t, w, map[string]string{"error": "access denied"})
+	})
+	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+
+	err = client.do(req, nil)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, "access denied", apiErr.Message)
+}
+
+func TestDo_ErrorWithMalformedJSONErrorBody(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, writeErr := w.Write([]byte("{not json"))
+		assert.NoError(t, writeErr)
+	})
+	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+
+	err = client.do(req, nil)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	// extractError returns "" for malformed JSON, so falls back to StatusText.
+	assert.Equal(t, "Bad Request", apiErr.Message)
+}
+
+func TestDo_ErrorWithNoMatchingFields(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		writeJSON(t, w, map[string]string{"other": "field"})
+	})
+	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+
+	err = client.do(req, nil)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	// Neither message nor error present, falls back to StatusText.
+	assert.Equal(t, "Forbidden", apiErr.Message)
+}
+
 func TestDo_MalformedJSONBody(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
