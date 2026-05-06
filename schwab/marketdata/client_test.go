@@ -128,6 +128,59 @@ func TestNewRequest_AuthHeader(t *testing.T) {
 	require.Equal(t, "Bearer test-token", req.Header.Get("Authorization"))
 }
 
+func TestDo_ErrorWithTitleFallback(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		writeJSON(t, w, map[string]string{"title": "validation error"})
+	})
+	req, err := client.newRequest(context.Background(), "/test")
+	require.NoError(t, err)
+
+	err = client.do(req, nil)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, "validation error", apiErr.Message)
+}
+
+func TestDo_ErrorWithMalformedJSONErrorBody(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, writeErr := w.Write([]byte("{not json"))
+		assert.NoError(t, writeErr)
+	})
+	req, err := client.newRequest(context.Background(), "/test")
+	require.NoError(t, err)
+
+	err = client.do(req, nil)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	// extractError returns "" for malformed JSON, so falls back to StatusText.
+	assert.Equal(t, "Bad Request", apiErr.Message)
+}
+
+func TestDo_ErrorWithNoMatchingFields(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		writeJSON(t, w, map[string]string{"other": "field"})
+	})
+	req, err := client.newRequest(context.Background(), "/test")
+	require.NoError(t, err)
+
+	err = client.do(req, nil)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	// Neither detail nor title present, falls back to StatusText.
+	assert.Equal(t, "Forbidden", apiErr.Message)
+}
+
 func TestDo_MalformedJSONBody(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

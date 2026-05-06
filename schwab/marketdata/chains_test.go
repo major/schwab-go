@@ -104,6 +104,34 @@ func TestOptionContractTradeDateStringUnmarshal(t *testing.T) {
 	assert.Equal(t, "2024-01-19", contract.TradeDate)
 }
 
+func TestOptionContractTradeDateNumericUnmarshal(t *testing.T) {
+	var contract OptionContract
+	err := json.Unmarshal([]byte(`{"tradeDate":20240119}`), &contract)
+	require.NoError(t, err)
+	assert.Equal(t, "20240119", contract.TradeDate)
+}
+
+func TestOptionContractTradeDateNullUnmarshal(t *testing.T) {
+	var contract OptionContract
+	err := json.Unmarshal([]byte(`{"tradeDate":null}`), &contract)
+	require.NoError(t, err)
+	assert.Empty(t, contract.TradeDate)
+}
+
+func TestOptionContractTradeDateAbsentUnmarshal(t *testing.T) {
+	var contract OptionContract
+	err := json.Unmarshal([]byte(`{"symbol":"SPY_C470"}`), &contract)
+	require.NoError(t, err)
+	assert.Empty(t, contract.TradeDate)
+	assert.Equal(t, "SPY_C470", contract.Symbol)
+}
+
+func TestOptionContractUnmarshalInvalidJSON(t *testing.T) {
+	var contract OptionContract
+	err := json.Unmarshal([]byte(`{not valid`), &contract)
+	require.Error(t, err)
+}
+
 func TestGetOptionChainMinimal(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
