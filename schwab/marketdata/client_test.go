@@ -116,6 +116,27 @@ func TestDo_NilOutput(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestDo_RedirectReturnsError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMovedPermanently)
+		writeJSON(t, w, map[string]string{"detail": "moved"})
+	}))
+	defer ts.Close()
+
+	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
+	req, err := client.newRequest(context.Background(), "/test")
+	require.NoError(t, err)
+
+	err = client.do(req, nil)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	require.Equal(t, http.StatusMovedPermanently, apiErr.StatusCode)
+	require.Equal(t, "moved", apiErr.Message)
+}
+
 func TestNewRequest_AuthHeader(t *testing.T) {
 	client := NewClient(schwab.WithToken("test-token"))
 	req, err := client.newRequest(context.Background(), "/test")
