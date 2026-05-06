@@ -15,7 +15,7 @@ Go client library for the [Schwab API](https://developer.schwab.com/). Covers Ma
 - **Trader** - accounts, orders (create/replace/cancel/preview), transactions, user preferences
 - **Typed quote accessors** - asset-specific quote and reference types for equities, options, indices, mutual funds, forex, futures, and future options
 - **Structured errors** - `*schwab.APIError` with status code, message, and up to 1 MiB of the raw body
-- **Functional options** - `WithToken`, `WithHTTPClient`, `WithBaseURL`, `WithResponseBodyLimit` for flexible client configuration. Invalid base URL overrides fail when a request is created instead of falling back to the production Schwab API. Sub-clients append their own API path prefixes, so custom base URLs can point at the API root. Response bodies are capped at 10 MiB by default; non-positive custom limits are ignored.
+- **Functional options** - `WithToken`, `WithHTTPClient`, `WithBaseURL`, `WithResponseBodyLimit`, `WithUserAgent`, `WithHeader`, and `WithHeaders` for flexible client configuration. Invalid base URL overrides fail when a request is created instead of falling back to the production Schwab API. Sub-clients append their own API path prefixes, so custom base URLs can point at the API root. Response bodies are capped at 10 MiB by default; non-positive custom limits are ignored.
 - **Context propagation** - all request methods take `context.Context`
 - **Testable** - override HTTP client and base URL for `httptest` integration
 - **No runtime dependencies** - public client packages stay dependency-free; tests use `stretchr/testify` and `kin-openapi`

@@ -23,6 +23,12 @@ const (
 	maxAPIErrorBodyBytes = 1 << 20
 )
 
+const (
+	acceptHeader        = "Accept"
+	authorizationHeader = "Authorization"
+	contentTypeHeader   = "Content-Type"
+)
+
 // Config holds shared HTTP client settings for Schwab API packages.
 type Config struct {
 	BaseURL           *url.URL
@@ -30,6 +36,7 @@ type Config struct {
 	Token             string
 	OptionError       error
 	ResponseBodyLimit int64
+	Headers           http.Header
 }
 
 // NewConfig applies shared Schwab client options to default HTTP settings.
@@ -54,6 +61,7 @@ func NewConfig(defaultBase *url.URL, defaultClient *http.Client, opts []schwab.O
 		Token:             cfg.Token,
 		OptionError:       cfg.OptionError,
 		ResponseBodyLimit: cfg.ResponseBodyLimit,
+		Headers:           cfg.Headers.Clone(),
 	}
 }
 
@@ -78,14 +86,36 @@ func NewRequest(ctx context.Context, cfg Config, method, path string, body any) 
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", jsonContentType)
+	applyHeaders(req.Header, cfg.Headers)
+	req.Header.Set(acceptHeader, jsonContentType)
 	if cfg.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+cfg.Token)
+		req.Header.Set(authorizationHeader, "Bearer "+cfg.Token)
 	}
 	if body != nil && body != http.NoBody {
-		req.Header.Set("Content-Type", jsonContentType)
+		req.Header.Set(contentTypeHeader, jsonContentType)
 	}
 	return req, nil
+}
+
+func applyHeaders(dst, src http.Header) {
+	for name, values := range src {
+		if isLibraryHeader(name) {
+			continue
+		}
+		dst.Del(name)
+		for _, value := range values {
+			dst.Add(name, value)
+		}
+	}
+}
+
+func isLibraryHeader(name string) bool {
+	switch http.CanonicalHeaderKey(name) {
+	case acceptHeader, authorizationHeader, contentTypeHeader:
+		return true
+	default:
+		return false
+	}
 }
 
 // Do executes the request and decodes the response into out.
