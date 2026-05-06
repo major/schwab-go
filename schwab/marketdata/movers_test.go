@@ -48,7 +48,7 @@ func TestGetMovers(t *testing.T) {
 		})
 	})
 
-	result, err := client.GetMovers(context.Background(), "$DJI", "", 0)
+	result, err := client.GetMovers(context.Background(), "$DJI", "", nil)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -88,11 +88,13 @@ func TestGetMovers_WithSort(t *testing.T) {
 		})
 	})
 
-	_, err := client.GetMovers(context.Background(), "$COMPX", MoverSortVolume, 0)
+	_, err := client.GetMovers(context.Background(), "$COMPX", MoverSortVolume, nil)
 	require.NoError(t, err)
 }
 
 func TestGetMovers_WithFrequency(t *testing.T) {
+	freq := 60
+
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/movers/$SPX", r.URL.Path)
@@ -108,7 +110,28 @@ func TestGetMovers_WithFrequency(t *testing.T) {
 		})
 	})
 
-	_, err := client.GetMovers(context.Background(), "$SPX", "", 60)
+	_, err := client.GetMovers(context.Background(), "$SPX", "", &freq)
+	require.NoError(t, err)
+}
+
+func TestGetMovers_FrequencyZero(t *testing.T) {
+	zero := 0
+
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/movers/$DJI", r.URL.Path)
+
+		frequency := r.URL.Query().Get("frequency")
+		assert.Equal(t, "0", frequency)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, MoverResponse{
+			Screeners: []Screener{},
+		})
+	})
+
+	_, err := client.GetMovers(context.Background(), "$DJI", "", &zero)
 	require.NoError(t, err)
 }
 
@@ -130,7 +153,7 @@ func TestGetMovers_NoOptionalParams(t *testing.T) {
 		})
 	})
 
-	_, err := client.GetMovers(context.Background(), "$DJI", "", 0)
+	_, err := client.GetMovers(context.Background(), "$DJI", "", nil)
 	require.NoError(t, err)
 }
 
@@ -139,7 +162,7 @@ func TestGetMovers_Error(t *testing.T) {
 		w.WriteHeader(http.StatusNotFound)
 	})
 
-	_, err := client.GetMovers(context.Background(), "$DJI", "", 0)
+	_, err := client.GetMovers(context.Background(), "$DJI", "", nil)
 	require.Error(t, err)
 
 	apiErr, ok := errors.AsType[*schwab.APIError](err)
