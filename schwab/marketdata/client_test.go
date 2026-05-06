@@ -2,6 +2,7 @@ package marketdata
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -120,4 +121,27 @@ func TestNewRequest_AuthHeader(t *testing.T) {
 	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 	require.Equal(t, "Bearer test-token", req.Header.Get("Authorization"))
+}
+
+func TestDo_MalformedJSONBody(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte("{invalid json"))
+		assert.NoError(t, err)
+	}))
+	defer ts.Close()
+
+	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
+	req, err := client.newRequest(context.Background(), "/test")
+	require.NoError(t, err)
+
+	var result map[string]string
+	err = client.do(req, &result)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decode response body:")
+
+	// Verify error chain: the underlying error should be a JSON syntax error
+	var syntaxErr *json.SyntaxError
+	require.ErrorAs(t, err, &syntaxErr)
 }
