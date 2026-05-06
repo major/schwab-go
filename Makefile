@@ -1,7 +1,7 @@
 # renovate: datasource=go depName=github.com/getkin/kin-openapi
 KIN_OPENAPI_VERSION := v0.137.0
 # renovate: datasource=go depName=github.com/daveshanley/vacuum
-VACUUM_VERSION := v0.18.0
+VACUUM_VERSION := v0.26.4
 OPENAPI_SPECS := docs/market_data.openapi.json docs/trader_api.openapi.json
 
 .PHONY: build test lint spec-validate vuln clean release
