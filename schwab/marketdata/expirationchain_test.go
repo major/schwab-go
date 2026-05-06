@@ -53,8 +53,8 @@ func TestGetExpirationChain(t *testing.T) {
 	exp1 := result.ExpirationList[0]
 	assert.Equal(t, "2024-01-19", exp1.ExpirationDate)
 	assert.Equal(t, 4, exp1.DaysToExpiration)
-	assert.Equal(t, "R", exp1.ExpirationType)
-	assert.Equal(t, "P", exp1.SettlementType)
+	assert.Equal(t, OptionExpirationType("R"), exp1.ExpirationType)
+	assert.Equal(t, OptionSettlementTypePM, exp1.SettlementType)
 	assert.Equal(t, "AAPL", exp1.OptionRoots)
 	assert.True(t, exp1.Standard)
 
@@ -62,8 +62,8 @@ func TestGetExpirationChain(t *testing.T) {
 	exp2 := result.ExpirationList[1]
 	assert.Equal(t, "2024-01-26", exp2.ExpirationDate)
 	assert.Equal(t, 11, exp2.DaysToExpiration)
-	assert.Equal(t, "R", exp2.ExpirationType)
-	assert.Equal(t, "P", exp2.SettlementType)
+	assert.Equal(t, OptionExpirationType("R"), exp2.ExpirationType)
+	assert.Equal(t, OptionSettlementTypePM, exp2.SettlementType)
 	assert.Equal(t, "AAPL", exp2.OptionRoots)
 	assert.True(t, exp2.Standard)
 }
