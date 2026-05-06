@@ -1,0 +1,116 @@
+# CodeRabbit Configuration for schwab-go
+# Docs: https://docs.coderabbit.ai/configuration/
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: en-US
+tone_instructions: >
+  You are a brilliant but world-weary senior developer who has seen too much.
+  Deliver feedback with dry wit and gentle sarcasm, but always be helpful.
+  Use programming puns when the opportunity arises.
+
+reviews:
+  profile: chill
+  collapse_walkthrough: false
+  poem: false
+  request_changes_workflow: true
+  high_level_summary: false
+  high_level_summary_placeholder: "@coderabbitai summary"
+  abort_on_close: true
+  review_status: true
+  suggested_labels: false
+  suggested_reviewers: false
+  in_progress_fortune: false
+
+  pre_merge_checks:
+    title:
+      mode: "off"
+    docstrings:
+      mode: "off"
+    description:
+      mode: warning
+
+  auto_review:
+    # Keep automatic reviews off so maintainers can request CodeRabbit manually when quota is available.
+    enabled: false
+    drafts: false
+    auto_pause_after_reviewed_commits: 0
+    base_branches:
+      - main
+    ignore_title_keywords:
+      - "WIP"
+      - "[WIP]"
+      - "DO NOT MERGE"
+
+  path_filters:
+    - "!**/vendor/**"
+    - "!**/dist/**"
+    - "!**/coverage.out"
+    - "!market_data.har"
+    - "!trader_api.har"
+    - "!.sisyphus/**"
+
+  path_instructions:
+    - path: "schwab/**/*.go"
+      instructions: |
+        Library API review:
+        - Public methods should preserve context propagation and return values plus errors without process-level side effects
+        - Request paths, query names, JSON tags, and response structs must match Schwab API documentation
+        - Keep account hashes, tokens, and credentials out of logs, errors, tests, and docs
+        - Exported identifiers need useful Go comments
+        - Don't nitpick style because gofmt and golangci-lint handle formatting and lint
+
+    - path: "schwab/marketdata/**/*.go"
+      instructions: |
+        Market Data API review:
+        - Verify quote, option chain, price history, movers, market hours, and instruments methods match documented endpoints
+        - Required query parameters should be validated before sending requests
+        - Response structs should expose typed fields for common payloads while preserving raw asset-specific quote payloads where needed
+
+    - path: "schwab/trader/**/*.go"
+      instructions: |
+        Trader API review:
+        - Verify account, order, transaction, and user preference paths use escaped account hashes and numeric IDs accurately
+        - Order placement, replacement, cancellation, and preview payloads should not silently mutate caller data
+        - Required list parameters should be validated before sending requests
+        - Never expose credentials, tokens, or account hashes in error messages beyond the caller-provided request context
+
+    - path: "schwab/errors.go"
+      instructions: |
+        Error handling review:
+        - Preserve typed API errors for caller matching
+        - Include status code and response body context where useful without leaking secrets
+        - Use error wrapping where it improves caller diagnostics
+
+    - path: "**/*_test.go"
+      instructions: |
+        Focus on test quality:
+        - Use testify/assert and testify/require, not bare if-checks
+        - Mock HTTP with httptest.NewServer and inline request validation
+        - Test helpers should be marked with t.Helper()
+        - Prefer table-driven subtests with t.Run() when cases share setup
+        - Don't nitpick coverage percentages
+
+    - path: ".github/workflows/**"
+      instructions: "Validate workflow syntax and security, including minimum permissions and pinned actions."
+
+    - path: "Makefile"
+      instructions: |
+        Makefile validation:
+        - .PHONY declarations for all non-file targets
+        - Build target should run go build ./... because this is a library
+        - Avoid flags that are already defaults
+
+    - path: ".goreleaser.yml"
+      instructions: "Verify GoReleaser v2 config skips binary builds, publishes source archives, creates checksums, and keeps keyless cosign signing."
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: global
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "guidelines.md"
+      - "**/AGENTS.md"

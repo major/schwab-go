@@ -1,0 +1,34 @@
+version: 2
+project_name: schwab-go
+
+release:
+  github:
+    owner: major
+    name: schwab-go
+
+builds:
+  - skip: true
+
+source:
+  enabled: true
+  format: tar.gz
+  name_template: "{{ .ProjectName }}-{{ .Version }}"
+  prefix_template: "{{ .ProjectName }}-{{ .Version }}/"
+
+checksum:
+  algorithm: sha256
+
+# Keyless cosign signing via Sigstore/Fulcio OIDC (no private key needed).
+# Signs the checksums file only; users verify source artifacts, then verify SHAs.
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - "sign-blob"
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+
+changelog:
+  sort: asc
