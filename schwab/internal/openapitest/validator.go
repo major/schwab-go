@@ -129,11 +129,11 @@ func repoPath(t testing.TB, elem ...string) string {
 }
 
 type propertySummary struct {
-	Types    []string `json:"types,omitempty"`
-	Format   string   `json:"format,omitempty"`
-	Ref      string   `json:"ref,omitempty"`
-	Nullable bool     `json:"nullable,omitempty"`
-	Items    *propertySummary
+	Types    []string         `json:"types,omitempty"`
+	Format   string           `json:"format,omitempty"`
+	Ref      string           `json:"ref,omitempty"`
+	Nullable bool             `json:"nullable,omitempty"`
+	Items    *propertySummary `json:"items,omitempty"`
 }
 
 func summarizeSchemaProperties(properties openapi3.Schemas) map[string]propertySummary {

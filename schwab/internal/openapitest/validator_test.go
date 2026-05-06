@@ -55,8 +55,6 @@ func TestValidateGoSchemaProperties(t *testing.T) {
 }
 
 func TestSummarizeSchemaRef(t *testing.T) {
-	types := &openapi3.Types{"number", "string"}
-
 	tests := []struct {
 		name string
 		ref  *openapi3.SchemaRef
@@ -94,7 +92,7 @@ func TestSummarizeSchemaRef(t *testing.T) {
 		},
 		{
 			name: "types sorted before comparison",
-			ref:  openapi3.NewSchemaRef("", &openapi3.Schema{Type: types}),
+			ref:  openapi3.NewSchemaRef("", &openapi3.Schema{Type: &openapi3.Types{"string", "number"}}),
 			want: propertySummary{Types: []string{"number", "string"}},
 		},
 	}
