@@ -21,9 +21,9 @@ func TestGetUserPreference(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		writeJSON(t, w, []map[string]interface{}{
+		writeJSON(t, w, []map[string]any{
 			{
-				"accounts": []map[string]interface{}{
+				"accounts": []map[string]any{
 					{
 						"accountNumber":      "123456789",
 						"primaryAccount":     true,
@@ -34,7 +34,7 @@ func TestGetUserPreference(t *testing.T) {
 						"autoPositionEffect": false,
 					},
 				},
-				"streamerInfo": []map[string]interface{}{
+				"streamerInfo": []map[string]any{
 					{
 						"streamerSocketUrl":      "wss://streamer.schwab.com/ws",
 						"schwabClientCustomerId": "customer123",
@@ -43,7 +43,7 @@ func TestGetUserPreference(t *testing.T) {
 						"schwabClientFunctionId": "APIAPP",
 					},
 				},
-				"offers": []map[string]interface{}{
+				"offers": []map[string]any{
 					{
 						"level2Permissions": true,
 						"mktDataPermission": "NP",

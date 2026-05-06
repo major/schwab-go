@@ -3,12 +3,19 @@ version: "2"
 linters:
   default: standard
   enable:
+    - asciicheck
+    - bidichk
     - bodyclose
     - canonicalheader
+    - cyclop
+    - durationcheck
     - dupword
     - errchkjson
+    - errname
     - errorlint
+    - forcetypeassert
     - gocritic
+    - godoclint
     - gosec
     - makezero
     - misspell
@@ -16,6 +23,7 @@ linters:
     - nilerr
     - nilnesserr
     - nilnil
+    - noctx
     - nolintlint
     - perfsprint
     - prealloc
@@ -31,6 +39,9 @@ linters:
     - whitespace
 
   settings:
+    cyclop:
+      max-complexity: 20
+
     gocritic:
       enabled-tags:
         - diagnostic

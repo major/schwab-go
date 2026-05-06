@@ -25,8 +25,8 @@ func TestGetPriceHistory(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		writeJSON(t, w, map[string]interface{}{
-			"candles": []map[string]interface{}{
+		writeJSON(t, w, map[string]any{
+			"candles": []map[string]any{
 				{
 					"open":     150.0,
 					"high":     155.0,
@@ -102,8 +102,8 @@ func TestGetPriceHistory_WithParams(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		writeJSON(t, w, map[string]interface{}{
-			"candles": []map[string]interface{}{},
+		writeJSON(t, w, map[string]any{
+			"candles": []map[string]any{},
 			"symbol":  "AAPL",
 			"empty":   true,
 		})
@@ -156,8 +156,8 @@ func TestGetPriceHistory_NilParams(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		writeJSON(t, w, map[string]interface{}{
-			"candles": []map[string]interface{}{},
+		writeJSON(t, w, map[string]any{
+			"candles": []map[string]any{},
 			"symbol":  "AAPL",
 			"empty":   true,
 		})

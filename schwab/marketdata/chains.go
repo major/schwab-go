@@ -3,6 +3,7 @@ package marketdata
 import (
 	"context"
 	"errors"
+	"net/url"
 	"strconv"
 )
 
@@ -146,6 +147,17 @@ func (c *Client) GetOptionChain(ctx context.Context, params *OptionChainParams) 
 	}
 
 	q := req.URL.Query()
+	setOptionChainQuery(q, params)
+	req.URL.RawQuery = q.Encode()
+
+	var result OptionChain
+	if err := c.do(req, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func setOptionChainQuery(q url.Values, params *OptionChainParams) {
 	q.Set("symbol", params.Symbol)
 	if params.ContractType != "" {
 		q.Set("contractType", params.ContractType)
@@ -195,11 +207,4 @@ func (c *Client) GetOptionChain(ctx context.Context, params *OptionChainParams) 
 	if params.Entitlement != "" {
 		q.Set("entitlement", params.Entitlement)
 	}
-	req.URL.RawQuery = q.Encode()
-
-	var result OptionChain
-	if err := c.do(req, &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
 }
