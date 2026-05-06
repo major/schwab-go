@@ -33,8 +33,8 @@ func (c *Client) GetExpirationChain(ctx context.Context, symbol string) (*Expira
 	req.URL.RawQuery = q.Encode()
 
 	var result ExpirationChain
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }

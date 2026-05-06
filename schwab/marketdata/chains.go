@@ -151,8 +151,8 @@ func (c *Client) GetOptionChain(ctx context.Context, params *OptionChainParams) 
 	req.URL.RawQuery = q.Encode()
 
 	var result OptionChain
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }

@@ -175,7 +175,7 @@ func TestGetPriceHistory_NilParams(t *testing.T) {
 }
 
 func TestGetPriceHistory_Error(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer ts.Close()

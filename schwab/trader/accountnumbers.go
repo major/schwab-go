@@ -21,8 +21,8 @@ func (c *Client) GetAccountNumbers(ctx context.Context) ([]AccountNumberHash, er
 	}
 
 	var result []AccountNumberHash
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return result, nil
 }

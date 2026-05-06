@@ -18,17 +18,17 @@ type PreferenceAccount struct {
 	Type               string `json:"type"`
 	NickName           string `json:"nickName"`
 	AccountColor       string `json:"accountColor"`
-	DisplayAcctId      string `json:"displayAcctId"`
+	DisplayAcctID      string `json:"displayAcctId"`
 	AutoPositionEffect bool   `json:"autoPositionEffect"`
 }
 
 // StreamerInfo contains streaming connection configuration.
 type StreamerInfo struct {
-	StreamerSocketUrl      string `json:"streamerSocketUrl"`
-	SchwabClientCustomerId string `json:"schwabClientCustomerId"`
-	SchwabClientCorrelId   string `json:"schwabClientCorrelId"`
+	StreamerSocketURL      string `json:"streamerSocketUrl"`
+	SchwabClientCustomerID string `json:"schwabClientCustomerId"`
+	SchwabClientCorrelID   string `json:"schwabClientCorrelId"`
 	SchwabClientChannel    string `json:"schwabClientChannel"`
-	SchwabClientFunctionId string `json:"schwabClientFunctionId"`
+	SchwabClientFunctionID string `json:"schwabClientFunctionId"`
 }
 
 // Offer represents an available service offer.
@@ -46,8 +46,8 @@ func (c *Client) GetUserPreference(ctx context.Context) ([]UserPreference, error
 	}
 
 	var result []UserPreference
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return result, nil
 }

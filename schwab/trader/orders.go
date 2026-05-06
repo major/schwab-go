@@ -237,8 +237,8 @@ func (c *Client) GetOrder(ctx context.Context, accountHash string, orderID int64
 	}
 
 	var result Order
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }
@@ -272,8 +272,8 @@ func (c *Client) PreviewOrder(ctx context.Context, accountHash string, order *Or
 	}
 
 	var result PreviewOrder
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }
@@ -311,8 +311,8 @@ func (c *Client) getOrders(ctx context.Context, path string, params *OrderListPa
 	req.URL.RawQuery = q.Encode()
 
 	var result []Order
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return result, nil
 }

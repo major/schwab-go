@@ -63,7 +63,7 @@ func TestDo_Success(t *testing.T) {
 }
 
 func TestDo_ErrorWithEmptyBody(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	defer ts.Close()
@@ -82,7 +82,7 @@ func TestDo_ErrorWithEmptyBody(t *testing.T) {
 }
 
 func TestDo_Created_NoBody(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer ts.Close()
@@ -96,7 +96,7 @@ func TestDo_Created_NoBody(t *testing.T) {
 }
 
 func TestDo_OK_NoBody(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
@@ -125,7 +125,7 @@ func TestNewRequest_WithBody(t *testing.T) {
 }
 
 func TestDo_MalformedJSONBody(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte("{invalid json"))

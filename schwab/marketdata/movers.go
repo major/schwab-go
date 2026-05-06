@@ -38,7 +38,12 @@ type Screener struct {
 // symbolID: the symbol identifier (e.g., "$DJI", "$COMPX", "$SPX")
 // sort: optional sort order; if empty, no sort param is sent
 // frequency: optional frequency; if zero, no frequency param is sent
-func (c *Client) GetMovers(ctx context.Context, symbolID string, sort MoverSort, frequency int) (*MoverResponse, error) {
+func (c *Client) GetMovers(
+	ctx context.Context,
+	symbolID string,
+	sort MoverSort,
+	frequency int,
+) (*MoverResponse, error) {
 	path := "/movers/" + url.PathEscape(symbolID)
 	req, err := c.newRequest(ctx, path)
 	if err != nil {
@@ -55,8 +60,8 @@ func (c *Client) GetMovers(ctx context.Context, symbolID string, sort MoverSort,
 	req.URL.RawQuery = q.Encode()
 
 	var result MoverResponse
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }

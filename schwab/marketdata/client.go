@@ -62,37 +62,41 @@ func (c *Client) do(req *http.Request, out any) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		bodyBytes, readErr := io.ReadAll(resp.Body)
-		apiErr := &schwab.APIError{StatusCode: resp.StatusCode}
-		if readErr == nil && len(bodyBytes) > 0 {
-			// Try to decode structured error response
-			var errResp struct {
-				Detail string `json:"detail"`
-				Title  string `json:"title"`
-			}
-			if jsonErr := json.Unmarshal(bodyBytes, &errResp); jsonErr == nil && errResp.Detail != "" {
-				apiErr.Message = errResp.Detail
-			} else if jsonErr == nil && errResp.Title != "" {
-				apiErr.Message = errResp.Title
-			}
-			apiErr.Body = string(bodyBytes)
-		}
-		if apiErr.Message == "" {
-			apiErr.Message = http.StatusText(resp.StatusCode)
-		}
-		return apiErr
+	if resp.StatusCode >= http.StatusBadRequest {
+		return decodeAPIError(resp)
 	}
 
 	if out == nil {
-		if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-			return fmt.Errorf("discard response body: %w", err)
+		if _, copyErr := io.Copy(io.Discard, resp.Body); copyErr != nil {
+			return fmt.Errorf("discard response body: %w", copyErr)
 		}
 		return nil
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return fmt.Errorf("decode response body: %w", err)
+	if decodeErr := json.NewDecoder(resp.Body).Decode(out); decodeErr != nil {
+		return fmt.Errorf("decode response body: %w", decodeErr)
 	}
 	return nil
+}
+
+func decodeAPIError(resp *http.Response) *schwab.APIError {
+	bodyBytes, readErr := io.ReadAll(resp.Body)
+	apiErr := &schwab.APIError{StatusCode: resp.StatusCode}
+	if readErr == nil && len(bodyBytes) > 0 {
+		// Try to decode the structured Market Data error response before falling back to HTTP text.
+		var errResp struct {
+			Detail string `json:"detail"`
+			Title  string `json:"title"`
+		}
+		if jsonErr := json.Unmarshal(bodyBytes, &errResp); jsonErr == nil && errResp.Detail != "" {
+			apiErr.Message = errResp.Detail
+		} else if jsonErr == nil && errResp.Title != "" {
+			apiErr.Message = errResp.Title
+		}
+		apiErr.Body = string(bodyBytes)
+	}
+	if apiErr.Message == "" {
+		apiErr.Message = http.StatusText(resp.StatusCode)
+	}
+	return apiErr
 }

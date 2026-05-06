@@ -129,7 +129,11 @@ type FundamentalData struct {
 // SearchInstruments searches for instruments by symbol with the given projection.
 // symbol: the symbol to search for (required)
 // projection: the type of search to perform (required)
-func (c *Client) SearchInstruments(ctx context.Context, symbol string, projection InstrumentProjection) (*InstrumentResponse, error) {
+func (c *Client) SearchInstruments(
+	ctx context.Context,
+	symbol string,
+	projection InstrumentProjection,
+) (*InstrumentResponse, error) {
 	req, err := c.newRequest(ctx, "/instruments")
 	if err != nil {
 		return nil, err
@@ -141,14 +145,14 @@ func (c *Client) SearchInstruments(ctx context.Context, symbol string, projectio
 	req.URL.RawQuery = q.Encode()
 
 	var result InstrumentResponse
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }
 
 // GetInstrumentByCUSIP retrieves an instrument by its CUSIP ID.
-// cusipID: the CUSIP identifier
+// cusipID: the CUSIP identifier.
 func (c *Client) GetInstrumentByCUSIP(ctx context.Context, cusipID string) (*Instrument, error) {
 	path := "/instruments/" + url.PathEscape(cusipID)
 	req, err := c.newRequest(ctx, path)
@@ -157,8 +161,8 @@ func (c *Client) GetInstrumentByCUSIP(ctx context.Context, cusipID string) (*Ins
 	}
 
 	var result Instrument
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }

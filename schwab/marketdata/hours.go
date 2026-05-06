@@ -50,8 +50,8 @@ func (c *Client) GetMarketHours(ctx context.Context, markets []string, date stri
 	req.URL.RawQuery = q.Encode()
 
 	var result MarketHoursMap
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return result, nil
 }
@@ -73,8 +73,8 @@ func (c *Client) GetMarketHoursSingle(ctx context.Context, marketID, date string
 	}
 
 	var result MarketHoursMap
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return result, nil
 }

@@ -474,7 +474,12 @@ type QuoteError struct {
 }
 
 // GetQuotes retrieves quotes for multiple symbols.
-func (c *Client) GetQuotes(ctx context.Context, symbols []string, fields string, indicative bool) (*QuoteResponse, *QuoteError, error) {
+func (c *Client) GetQuotes(
+	ctx context.Context,
+	symbols []string,
+	fields string,
+	indicative bool,
+) (*QuoteResponse, *QuoteError, error) {
 	req, err := c.newRequest(ctx, "/quotes")
 	if err != nil {
 		return nil, nil, err
@@ -491,8 +496,8 @@ func (c *Client) GetQuotes(ctx context.Context, symbols []string, fields string,
 	req.URL.RawQuery = q.Encode()
 
 	var raw map[string]json.RawMessage
-	if err := c.do(req, &raw); err != nil {
-		return nil, nil, err
+	if doErr := c.do(req, &raw); doErr != nil {
+		return nil, nil, doErr
 	}
 
 	result := make(QuoteResponse)
@@ -501,18 +506,18 @@ func (c *Client) GetQuotes(ctx context.Context, symbols []string, fields string,
 		var errProbe struct {
 			InvalidSymbols []string `json:"invalidSymbols"`
 		}
-		if err := json.Unmarshal(message, &errProbe); err == nil && errProbe.InvalidSymbols != nil {
+		if unmarshalErr := json.Unmarshal(message, &errProbe); unmarshalErr == nil && errProbe.InvalidSymbols != nil {
 			var parsedErr QuoteError
-			if err := json.Unmarshal(message, &parsedErr); err != nil {
-				return nil, nil, fmt.Errorf("decode quote error: %w", err)
+			if parseErr := json.Unmarshal(message, &parsedErr); parseErr != nil {
+				return nil, nil, fmt.Errorf("decode quote error: %w", parseErr)
 			}
 			quoteErr = &parsedErr
 			continue
 		}
 
 		var entry QuoteEntry
-		if err := json.Unmarshal(message, &entry); err != nil {
-			return nil, nil, fmt.Errorf("decode quote %s: %w", symbol, err)
+		if unmarshalErr := json.Unmarshal(message, &entry); unmarshalErr != nil {
+			return nil, nil, fmt.Errorf("decode quote %s: %w", symbol, unmarshalErr)
 		}
 		result[symbol] = &entry
 	}
@@ -535,8 +540,8 @@ func (c *Client) GetQuote(ctx context.Context, symbolID, fields string) (*QuoteR
 	}
 
 	var result QuoteResponse
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }

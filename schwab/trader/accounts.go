@@ -59,7 +59,7 @@ type AccountInstrument struct {
 	Cusip              string                     `json:"cusip"`
 	Symbol             string                     `json:"symbol"`
 	Description        string                     `json:"description"`
-	InstrumentId       int64                      `json:"instrumentId"`
+	InstrumentID       int64                      `json:"instrumentId"`
 	NetChange          float64                    `json:"netChange"`
 	Type               string                     `json:"type,omitempty"`
 	PutCall            string                     `json:"putCall,omitempty"`
@@ -132,8 +132,8 @@ func (c *Client) GetAccounts(ctx context.Context, fields string) ([]Account, err
 	}
 
 	var result []Account
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return result, nil
 }
@@ -156,8 +156,8 @@ func (c *Client) GetAccount(ctx context.Context, accountHash, fields string) (*A
 	}
 
 	var result Account
-	if err := c.do(req, &result); err != nil {
-		return nil, err
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
 	}
 	return &result, nil
 }
