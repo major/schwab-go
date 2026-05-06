@@ -43,7 +43,7 @@ func (c *Client) newRequest(ctx context.Context, path string) (*http.Request, er
 	u := c.baseURL.JoinPath(path)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
 	if c.token != "" {
@@ -58,7 +58,7 @@ func (c *Client) newRequest(ctx context.Context, path string) (*http.Request, er
 func (c *Client) do(req *http.Request, out any) error {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("send request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -86,7 +86,7 @@ func (c *Client) do(req *http.Request, out any) error {
 
 	if out == nil {
 		if _, err := io.Copy(io.Discard, resp.Body); err != nil {
-			return err
+			return fmt.Errorf("discard response body: %w", err)
 		}
 		return nil
 	}

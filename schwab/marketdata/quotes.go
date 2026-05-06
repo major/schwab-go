@@ -274,7 +274,7 @@ func (e *QuoteEntry) FutureOptionReference() (*FutureOptionReference, error) {
 func decodeQuote[T any](raw json.RawMessage) (*T, error) {
 	var quote T
 	if err := json.Unmarshal(raw, &quote); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode quote payload: %w", err)
 	}
 	return &quote, nil
 }
