@@ -169,7 +169,7 @@ func TestGetInstrumentByCUSIP_RecordedWrappedResponse(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, err := fmt.Fprint(w, recordedInstrumentByCUSIPResponse)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	})
 
 	result, err := client.GetInstrumentByCUSIP(context.Background(), "037833100")
