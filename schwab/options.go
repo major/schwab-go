@@ -33,11 +33,11 @@ func WithHTTPClient(c *http.Client) Option {
 	}
 }
 
-// WithBaseURL overrides the default base URL. An invalid URL is silently ignored.
+// WithBaseURL overrides the default base URL. An invalid or relative URL is silently ignored.
 func WithBaseURL(rawURL string) Option {
 	return func(cfg *ClientConfig) {
 		u, err := url.Parse(rawURL)
-		if err == nil {
+		if err == nil && u.Scheme != "" && u.Host != "" {
 			cfg.BaseURL = u
 		}
 	}

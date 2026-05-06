@@ -40,11 +40,17 @@ func TestWithBaseURL_Valid(t *testing.T) {
 }
 
 func TestWithBaseURL_Invalid(t *testing.T) {
-	existingURL, _ := url.Parse("https://existing.com")
-	cfg := &ClientConfig{BaseURL: existingURL}
-	opt := WithBaseURL("://invalid")
-	opt(cfg)
-	require.Equal(t, existingURL, cfg.BaseURL)
+	existingURL, err := url.Parse("https://existing.com")
+	require.NoError(t, err)
+
+	for _, rawURL := range []string{"://invalid", "", "relative/path"} {
+		t.Run(rawURL, func(t *testing.T) {
+			cfg := &ClientConfig{BaseURL: existingURL}
+			opt := WithBaseURL(rawURL)
+			opt(cfg)
+			require.Equal(t, existingURL, cfg.BaseURL)
+		})
+	}
 }
 
 func TestApplyOptions(t *testing.T) {
