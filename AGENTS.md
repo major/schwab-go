@@ -19,6 +19,10 @@
 - Warn the user when a local tool is older or newer than the repo/CI pin. Version drift can change lint findings or config compatibility.
 - For golangci-lint specifically, check `golangci-lint version` against the CI `golangci/golangci-lint-action` `version:` value before running `make lint`. If they differ, say which version is local, which version CI uses, and whether the command was verified with the pinned version, the local version, or both.
 
+## Git workflow
+
+- Always use Conventional Commits style for commit messages.
+
 ## Layout and API boundaries
 
 - Public packages are `schwab` for shared types/options/errors, `schwab/marketdata` for Market Data API endpoints, and `schwab/trader` for Trader API endpoints.
