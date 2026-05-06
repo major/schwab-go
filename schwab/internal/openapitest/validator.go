@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -177,12 +178,7 @@ func schemaTypes(types *openapi3.Types) []string {
 }
 
 func schemaHasType(types []string, target string) bool {
-	for _, typ := range types {
-		if typ == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(types, target)
 }
 
 func componentName(ref string) string {
