@@ -3,18 +3,24 @@
 package httpclient
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
+	"strings"
 
 	schwab "github.com/major/schwab-go/schwab"
 )
 
-const maxAPIErrorBodyBytes = 1 << 20
+const (
+	jsonContentType      = "application/json"
+	maxAPIErrorBodyBytes = 1 << 20
+)
 
 // Config holds shared HTTP client settings for Schwab API packages.
 type Config struct {
@@ -60,12 +66,12 @@ func NewRequest(ctx context.Context, cfg Config, method, path string, body any) 
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", jsonContentType)
 	if cfg.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+cfg.Token)
 	}
 	if body != nil && body != http.NoBody {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", jsonContentType)
 	}
 	return req, nil
 }
@@ -99,7 +105,11 @@ func Do(cfg Config, req *http.Request, out any, extractError func([]byte) string
 		return nil
 	}
 
-	if decodeErr := json.NewDecoder(resp.Body).Decode(out); decodeErr != nil {
+	bodyReader := bufio.NewReader(resp.Body)
+	if contentTypeErr := validateJSONContentType(resp.Header.Get("Content-Type"), bodyReader); contentTypeErr != nil {
+		return contentTypeErr
+	}
+	if decodeErr := json.NewDecoder(bodyReader).Decode(out); decodeErr != nil {
 		return fmt.Errorf("decode response body: %w", decodeErr)
 	}
 	return nil
@@ -114,4 +124,18 @@ func readAPIErrorBody(body io.Reader) ([]byte, error) {
 		return nil, drainErr
 	}
 	return bodyBytes, nil
+}
+
+func validateJSONContentType(contentType string, bodyReader *bufio.Reader) error {
+	if _, err := bodyReader.Peek(1); err != nil {
+		if err != io.EOF {
+			return fmt.Errorf("read response body prefix: %w", err)
+		}
+		return nil
+	}
+	mediaType, _, err := mime.ParseMediaType(strings.TrimSpace(contentType))
+	if err == nil && mediaType == jsonContentType {
+		return nil
+	}
+	return fmt.Errorf("unexpected Content-Type %q (expected %s)", contentType, jsonContentType)
 }
