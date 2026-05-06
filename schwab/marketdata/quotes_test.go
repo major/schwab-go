@@ -220,6 +220,42 @@ func TestGetQuotesPartialFailure(t *testing.T) {
 	assert.Equal(t, []int64{12345}, quoteErr.InvalidSSIDs)
 }
 
+func TestGetQuotesQuoteDecodeFailure(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Return a raw JSON string value for "BAD" instead of a JSON object.
+		// This can't be unmarshaled into a QuoteEntry struct.
+		_, err := w.Write([]byte(`{"AAPL": "not-a-quote-object"}`))
+		assert.NoError(t, err)
+	})
+
+	quotes, quoteErr, err := client.GetQuotes(context.Background(), []string{"AAPL"}, "", false)
+	require.Error(t, err)
+	require.Nil(t, quotes)
+	require.Nil(t, quoteErr)
+	assert.Contains(t, err.Error(), "decode quote AAPL:")
+}
+
+func TestGetQuotesQuoteErrorDecodeFailure(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// invalidSymbols probes successfully as []string, but invalidSSIDs as a
+		// string can't be decoded into []int64 when the full QuoteError is parsed.
+		_, err := w.Write([]byte(
+			`{"errors": {"invalidSymbols": ["NOTREAL"], "invalidSSIDs": "bad"}}`,
+		))
+		assert.NoError(t, err)
+	})
+
+	quotes, quoteErr, err := client.GetQuotes(context.Background(), []string{"NOTREAL"}, "", false)
+	require.Error(t, err)
+	require.Nil(t, quotes)
+	require.Nil(t, quoteErr)
+	assert.Contains(t, err.Error(), "decode quote error:")
+}
+
 func TestGetQuote(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -246,6 +282,23 @@ func TestGetQuote(t *testing.T) {
 	require.NoError(t, err)
 	assert.InDelta(t, 5123.45, indexQuote.LastPrice, 0.000001)
 	assert.Equal(t, "CBOE", indexQuote.Exchange)
+}
+
+func TestGetQuote_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		writeJSON(t, w, map[string]string{"detail": "symbol not found"})
+	})
+
+	quotes, err := client.GetQuote(context.Background(), "NOTREAL", "")
+	require.Error(t, err)
+	require.Nil(t, quotes)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
+	assert.Equal(t, "symbol not found", apiErr.Message)
 }
 
 func TestGetQuotesError(t *testing.T) {
