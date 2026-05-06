@@ -145,8 +145,12 @@ This library does not handle OAuth or token refresh. Pass a valid bearer token w
 | `GetOptionChain` | Full option chain with strikes and expirations |
 | `GetExpirationChain` | Expiration dates for a symbol |
 | `GetMovers` | Market movers by index |
-| `GetMarketHours` | Market hours for multiple markets |
-| `GetMarketHoursSingle` | Market hours for a single market |
+| `GetMarketHours` | Market hours for string market IDs with date validation |
+| `GetMarketHoursTyped` | Market hours for typed market IDs with date validation |
+| `GetMarketHoursSingle` | Market hours for a single string market ID with date validation |
+| `GetMarketHoursSingleTyped` | Market hours for a single typed market ID with date validation |
+
+Typed market hours methods use `MarketID` constants such as `marketdata.MarketIDEquity`. All market hours methods validate supported market values and optional dates as `YYYY-MM-DD` values from today through one year out.
 
 ### Trader (`schwab/trader`)
 
