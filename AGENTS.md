@@ -8,7 +8,7 @@
 
 - `make test` runs the CI test command: `go test -v -race -coverprofile=coverage.out ./...`.
 - `make build` runs `go build ./...`; use this instead of looking for a binary target.
-- `make lint` runs `golangci-lint run ./...`; CI uses golangci-lint v2.11.
+- `make lint` runs `golangci-lint run ./...`; CI uses golangci-lint v2.12.2.
 - `make vuln` runs `govulncheck ./...`.
 - `make clean` removes `coverage.out` and `dist/`.
 - `make release VERSION=vX.Y.Z` must run from a clean `main` branch, runs test then lint, and creates a signed tag. Push the tag manually.

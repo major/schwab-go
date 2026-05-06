@@ -2,7 +2,25 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:best-practices"],
   "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update golangci-lint binary version used by golangci-lint-action",
+      "managerFilePatterns": ["/(^|/)\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "uses: golangci/golangci-lint-action@[^\\n]+\\n\\s+with:\\n\\s+version:\\s*[\\\"']?(?<currentValue>v?\\d+\\.\\d+(?:\\.\\d+)?)[\\\"']?"
+      ],
+      "depNameTemplate": "golangci/golangci-lint",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    }
+  ],
   "packageRules": [
+    {
+      "description": "Group golangci-lint action and binary updates",
+      "matchPackageNames": ["golangci/golangci-lint-action", "golangci/golangci-lint"],
+      "groupName": "golangci-lint"
+    },
     {
       "description": "Auto-merge patch, minor, and digest updates",
       "matchUpdateTypes": ["patch", "minor", "digest"],
