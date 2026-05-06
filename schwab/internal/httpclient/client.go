@@ -16,9 +16,10 @@ import (
 
 // Config holds shared HTTP client settings for Schwab API packages.
 type Config struct {
-	BaseURL    *url.URL
-	HTTPClient *http.Client
-	Token      string
+	BaseURL     *url.URL
+	HTTPClient  *http.Client
+	Token       string
+	OptionError error
 }
 
 // NewConfig applies shared Schwab client options to default HTTP settings.
@@ -33,11 +34,14 @@ func NewConfig(defaultBase *url.URL, defaultClient *http.Client, opts []schwab.O
 	}
 	cfg := schwab.ClientConfig{BaseURL: defaultBase, HTTPClient: defaultClient}
 	schwab.ApplyOptions(&cfg, opts)
-	return Config{BaseURL: cfg.BaseURL, HTTPClient: cfg.HTTPClient, Token: cfg.Token}
+	return Config{BaseURL: cfg.BaseURL, HTTPClient: cfg.HTTPClient, Token: cfg.Token, OptionError: cfg.OptionError}
 }
 
 // NewRequest builds an HTTP request with optional JSON request body.
 func NewRequest(ctx context.Context, cfg Config, method, path string, body any) (*http.Request, error) {
+	if cfg.OptionError != nil {
+		return nil, cfg.OptionError
+	}
 	u := cfg.BaseURL.JoinPath(path)
 	var bodyReader io.Reader
 	if body != nil && body != http.NoBody {
