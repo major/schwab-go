@@ -6,12 +6,12 @@
 
 ## Commands
 
-- `make test` runs the CI test command: `go test -v -race -coverprofile=coverage.out ./...`.
+- `make test` runs the CI test command through gotestsum: `go run gotest.tools/gotestsum@v1.13.0 --junitfile junit.xml -- -v -race -coverprofile=coverage.out ./...`.
 - `make build` runs `go build ./...`; use this instead of looking for a binary target.
 - `make lint` runs `golangci-lint run ./...`; CI uses golangci-lint v2.12.2.
 - `make spec-validate` validates `docs/*.openapi.json` with pinned `kin-openapi` and `vacuum` versions. `kin-openapi` disables example validation because Schwab's captured specs contain invalid example metadata; `.vacuum.yaml` keeps non-blocking warnings visible while disabling known upstream portal defects that should not fail local validation.
 - `make vuln` runs `govulncheck ./...`.
-- `make clean` removes `coverage.out` and `dist/`.
+- `make clean` removes `coverage.out`, `junit.xml`, and `dist/`.
 - `make release VERSION=vX.Y.Z` must run from a clean `main` branch, runs test then lint, and creates a signed tag. Push the tag manually.
 
 ## Tool version drift
@@ -49,6 +49,6 @@
 - Tests use same-package test files, `httptest.NewServer`, inline request validation, `schwab.WithHTTPClient(ts.Client())`, and `schwab.WithBaseURL(ts.URL)`.
 - Use `require` for assertions that must stop the test and `assert` for field checks that can continue.
 - Reusable assertion helpers should call `t.Helper()`; existing fixtures are inline Go helpers, not `testdata/` files.
-- CI also runs CodeQL, OpenSSF Scorecard, `govulncheck`, `go build ./...`, and coverage upload when `CODECOV_TOKEN` is present.
+- CI also runs CodeQL, OpenSSF Scorecard, `govulncheck`, `go build ./...`, and Codecov coverage/test-results uploads when `CODECOV_TOKEN` is present.
 - Preserve high-signal guidance in `.github/copilot-instructions.md`, `.github/instructions/*.md`, `.coderabbit.yaml`, `Makefile`, and `.goreleaser.yml` when changing related areas.
 - Keep `README.md` up to date when adding, removing, or renaming public API methods, changing package structure, updating badges, or modifying build/install requirements.
