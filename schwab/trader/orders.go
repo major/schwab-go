@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"strconv"
 
 	schwab "github.com/major/schwab-go/schwab"
@@ -214,14 +213,12 @@ type FeeValue struct {
 
 // GetOrders retrieves orders for a single account.
 func (c *Client) GetOrders(ctx context.Context, accountHash string, params *OrderListParams) ([]Order, error) {
-	path := fmt.Sprintf("/accounts/%s/orders", url.PathEscape(accountHash))
-	return c.getOrders(ctx, path, params)
+	return c.getOrders(ctx, accountPath(accountHash, "orders"), params)
 }
 
 // CreateOrder creates an order for a single account.
 func (c *Client) CreateOrder(ctx context.Context, accountHash string, order *Order) error {
-	path := fmt.Sprintf("/accounts/%s/orders", url.PathEscape(accountHash))
-	req, err := c.newRequest(ctx, "POST", path, order)
+	req, err := c.newRequest(ctx, "POST", accountPath(accountHash, "orders"), order)
 	if err != nil {
 		return err
 	}
@@ -230,8 +227,7 @@ func (c *Client) CreateOrder(ctx context.Context, accountHash string, order *Ord
 
 // GetOrder retrieves a single order for a single account.
 func (c *Client) GetOrder(ctx context.Context, accountHash string, orderID int64) (*Order, error) {
-	path := fmt.Sprintf("/accounts/%s/orders/%s", url.PathEscape(accountHash), strconv.FormatInt(orderID, 10))
-	req, err := c.newRequest(ctx, "GET", path, nil)
+	req, err := c.newRequest(ctx, "GET", accountPath(accountHash, "orders", strconv.FormatInt(orderID, 10)), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -245,8 +241,7 @@ func (c *Client) GetOrder(ctx context.Context, accountHash string, orderID int64
 
 // ReplaceOrder replaces an existing order for a single account.
 func (c *Client) ReplaceOrder(ctx context.Context, accountHash string, orderID int64, order *Order) error {
-	path := fmt.Sprintf("/accounts/%s/orders/%s", url.PathEscape(accountHash), strconv.FormatInt(orderID, 10))
-	req, err := c.newRequest(ctx, "PUT", path, order)
+	req, err := c.newRequest(ctx, "PUT", accountPath(accountHash, "orders", strconv.FormatInt(orderID, 10)), order)
 	if err != nil {
 		return err
 	}
@@ -255,8 +250,7 @@ func (c *Client) ReplaceOrder(ctx context.Context, accountHash string, orderID i
 
 // CancelOrder cancels an existing order for a single account.
 func (c *Client) CancelOrder(ctx context.Context, accountHash string, orderID int64) error {
-	path := fmt.Sprintf("/accounts/%s/orders/%s", url.PathEscape(accountHash), strconv.FormatInt(orderID, 10))
-	req, err := c.newRequest(ctx, "DELETE", path, nil)
+	req, err := c.newRequest(ctx, "DELETE", accountPath(accountHash, "orders", strconv.FormatInt(orderID, 10)), nil)
 	if err != nil {
 		return err
 	}
@@ -265,8 +259,7 @@ func (c *Client) CancelOrder(ctx context.Context, accountHash string, orderID in
 
 // PreviewOrder previews commissions and fees for an order without placing it.
 func (c *Client) PreviewOrder(ctx context.Context, accountHash string, order *Order) (*PreviewOrder, error) {
-	path := fmt.Sprintf("/accounts/%s/previewOrder", url.PathEscape(accountHash))
-	req, err := c.newRequest(ctx, "POST", path, order)
+	req, err := c.newRequest(ctx, "POST", accountPath(accountHash, "previewOrder"), order)
 	if err != nil {
 		return nil, err
 	}
@@ -302,12 +295,8 @@ func (c *Client) getOrders(ctx context.Context, path string, params *OrderListPa
 	q := req.URL.Query()
 	q.Set("fromEnteredTime", params.FromEnteredTime)
 	q.Set("toEnteredTime", params.ToEnteredTime)
-	if params.MaxResults != 0 {
-		q.Set("maxResults", strconv.Itoa(params.MaxResults))
-	}
-	if params.Status != "" {
-		q.Set("status", params.Status)
-	}
+	setOptionalInt(q, "maxResults", params.MaxResults)
+	setOptionalString(q, "status", params.Status)
 	req.URL.RawQuery = q.Encode()
 
 	var result []Order

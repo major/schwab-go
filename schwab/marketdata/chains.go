@@ -2,8 +2,7 @@ package marketdata
 
 import (
 	"context"
-	"errors"
-	"net/url"
+	"fmt"
 	"strconv"
 )
 
@@ -138,7 +137,7 @@ type Underlying struct {
 // GetOptionChain retrieves an option chain for a symbol.
 func (c *Client) GetOptionChain(ctx context.Context, params *OptionChainParams) (*OptionChain, error) {
 	if params == nil || params.Symbol == "" {
-		return nil, errors.New("symbol is required")
+		return nil, fmt.Errorf("symbol is required")
 	}
 
 	req, err := c.newRequest(ctx, "/chains")
@@ -147,64 +146,30 @@ func (c *Client) GetOptionChain(ctx context.Context, params *OptionChainParams) 
 	}
 
 	q := req.URL.Query()
-	setOptionChainQuery(q, params)
-	req.URL.RawQuery = q.Encode()
-
-	var result OptionChain
-	if doErr := c.do(req, &result); doErr != nil {
-		return nil, doErr
-	}
-	return &result, nil
-}
-
-func setOptionChainQuery(q url.Values, params *OptionChainParams) {
 	q.Set("symbol", params.Symbol)
-	if params.ContractType != "" {
-		q.Set("contractType", params.ContractType)
-	}
-	if params.StrikeCount != 0 {
-		q.Set("strikeCount", strconv.Itoa(params.StrikeCount))
-	}
+	setOptionalString(q, "contractType", params.ContractType)
+	setOptionalInt(q, "strikeCount", params.StrikeCount)
 	if params.IncludeUnderlyingQuote {
 		q.Set("includeUnderlyingQuote", strconv.FormatBool(params.IncludeUnderlyingQuote))
 	}
-	if params.Strategy != "" {
-		q.Set("strategy", params.Strategy)
+	setOptionalString(q, "strategy", params.Strategy)
+	setOptionalFloat64(q, "interval", params.Interval)
+	setOptionalFloat64(q, "strike", params.Strike)
+	setOptionalString(q, "range", params.Range)
+	setOptionalString(q, "fromDate", params.FromDate)
+	setOptionalString(q, "toDate", params.ToDate)
+	setOptionalFloat64(q, "volatility", params.Volatility)
+	setOptionalFloat64(q, "underlyingPrice", params.UnderlyingPrice)
+	setOptionalFloat64(q, "interestRate", params.InterestRate)
+	setOptionalInt(q, "daysToExpiration", params.DaysToExpiration)
+	setOptionalString(q, "expMonth", params.ExpMonth)
+	setOptionalString(q, "optionType", params.OptionType)
+	setOptionalString(q, "entitlement", params.Entitlement)
+	req.URL.RawQuery = q.Encode()
+
+	var result OptionChain
+	if err := c.do(req, &result); err != nil {
+		return nil, err
 	}
-	if params.Interval != 0 {
-		q.Set("interval", strconv.FormatFloat(params.Interval, 'f', -1, 64))
-	}
-	if params.Strike != 0 {
-		q.Set("strike", strconv.FormatFloat(params.Strike, 'f', -1, 64))
-	}
-	if params.Range != "" {
-		q.Set("range", params.Range)
-	}
-	if params.FromDate != "" {
-		q.Set("fromDate", params.FromDate)
-	}
-	if params.ToDate != "" {
-		q.Set("toDate", params.ToDate)
-	}
-	if params.Volatility != 0 {
-		q.Set("volatility", strconv.FormatFloat(params.Volatility, 'f', -1, 64))
-	}
-	if params.UnderlyingPrice != 0 {
-		q.Set("underlyingPrice", strconv.FormatFloat(params.UnderlyingPrice, 'f', -1, 64))
-	}
-	if params.InterestRate != 0 {
-		q.Set("interestRate", strconv.FormatFloat(params.InterestRate, 'f', -1, 64))
-	}
-	if params.DaysToExpiration != 0 {
-		q.Set("daysToExpiration", strconv.Itoa(params.DaysToExpiration))
-	}
-	if params.ExpMonth != "" {
-		q.Set("expMonth", params.ExpMonth)
-	}
-	if params.OptionType != "" {
-		q.Set("optionType", params.OptionType)
-	}
-	if params.Entitlement != "" {
-		q.Set("entitlement", params.Entitlement)
-	}
+	return &result, nil
 }
