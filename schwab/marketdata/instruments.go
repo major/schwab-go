@@ -2,6 +2,7 @@ package marketdata
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	schwab "github.com/major/schwab-go/schwab"
@@ -160,9 +161,12 @@ func (c *Client) GetInstrumentByCUSIP(ctx context.Context, cusipID string) (*Ins
 		return nil, err
 	}
 
-	var result Instrument
+	var result InstrumentResponse
 	if doErr := c.do(req, &result); doErr != nil {
 		return nil, doErr
 	}
-	return &result, nil
+	if len(result.Instruments) == 0 {
+		return nil, fmt.Errorf("no instrument found for CUSIP %q", cusipID)
+	}
+	return &result.Instruments[0], nil
 }
