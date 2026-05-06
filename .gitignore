@@ -34,4 +34,8 @@ go.work.sum
 # opencode
 .sisyphus/
 *.har
+/image.png
+INITIAL_PLAN.md
+PRODUCTION_CHECKS.md
 REFACTOR.md
+.git-bak/

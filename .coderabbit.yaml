@@ -53,8 +53,11 @@ reviews:
     - path: "schwab/**/*.go"
       instructions: |
         Library API review:
+        - Functional options should stay explicit: WithToken, WithHTTPClient, WithBaseURL, and ApplyOptions
         - Public methods should preserve context propagation and return values plus errors without process-level side effects
         - Request paths, query names, JSON tags, and response structs must match Schwab API documentation
+        - Preserve *schwab.APIError for HTTP errors so callers can inspect status, message, and response details
+        - Use errors.AsType[*schwab.APIError](err) for typed error extraction in Go 1.26 code
         - Keep account hashes, tokens, and credentials out of logs, errors, tests, and docs
         - Exported identifiers need useful Go comments
         - Don't nitpick style because gofmt and golangci-lint handle formatting and lint
@@ -63,16 +66,29 @@ reviews:
       instructions: |
         Market Data API review:
         - Verify quote, option chain, price history, movers, market hours, and instruments methods match documented endpoints
+        - Default base URL should remain https://api.schwabapi.com/marketdata/v1 unless tests override it
+        - API errors decode detail/title fields and should preserve the typed API error contract
         - Required query parameters should be validated before sending requests
         - Response structs should expose typed fields for common payloads while preserving raw asset-specific quote payloads where needed
+        - QuoteEntry.Quote and QuoteEntry.Reference are json.RawMessage because quote payloads vary by asset type
 
     - path: "schwab/trader/**/*.go"
       instructions: |
         Trader API review:
         - Verify account, order, transaction, and user preference paths use escaped account hashes and numeric IDs accurately
+        - Account-scoped paths use encrypted account hashes, not plain account numbers, and path segments must be escaped with url.PathEscape
+        - Default base URL should remain https://api.schwabapi.com/trader/v1 unless tests override it
+        - API errors decode message/error fields and may receive empty response bodies
         - Order placement, replacement, cancellation, and preview payloads should not silently mutate caller data
         - Required list parameters should be validated before sending requests
         - Never expose credentials, tokens, or account hashes in error messages beyond the caller-provided request context
+
+    - path: "schwab/options.go"
+      instructions: |
+        Functional options review:
+        - Keep client configuration explicit through WithToken, WithHTTPClient, WithBaseURL, and ApplyOptions
+        - Do not add hidden environment variable reads, config-file reads, or token refresh behavior
+        - Callers pass bearer tokens explicitly with WithToken
 
     - path: "schwab/errors.go"
       instructions: |
