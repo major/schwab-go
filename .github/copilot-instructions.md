@@ -32,7 +32,7 @@ Focus on bugs, security, data loss, broken API contracts, and project convention
 
 ## Build and lint expectations
 
-- CI runs `go test -v -race -coverprofile=coverage.out ./...`, `go build ./...`, govulncheck, CodeQL, and golangci-lint v2.
+- CI runs `make test`, which uses gotestsum to emit `junit.xml` while preserving `-race` and `-coverprofile=coverage.out`; CI also runs `go build ./...`, govulncheck, CodeQL, and golangci-lint v2.
 - GoReleaser is source-only because this repository is a library with no `main` package.
 - Nolint directives require a specific linter name and an explanation.
 - US English spelling is enforced.

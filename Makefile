@@ -4,7 +4,7 @@ build:
 	go build ./...
 
 test:
-	go test -v -race -coverprofile=coverage.out ./...
+	go run gotest.tools/gotestsum@v1.13.0 --junitfile junit.xml -- -v -race -coverprofile=coverage.out ./...
 
 lint:
 	golangci-lint run ./...
@@ -14,7 +14,7 @@ vuln:
 
 clean:
 	go clean
-	rm -f coverage.out
+	rm -f coverage.out junit.xml
 	rm -rf dist/
 
 release:

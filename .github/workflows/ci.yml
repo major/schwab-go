@@ -35,12 +35,19 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out ./...
+        run: make test
       - name: Upload coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           files: coverage.out
+          token: ${{ env.CODECOV_TOKEN }}
+      - name: Upload test results
+        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        with:
+          files: junit.xml
+          report_type: test_results
           token: ${{ env.CODECOV_TOKEN }}
       - name: Verify build
         run: go build ./...
