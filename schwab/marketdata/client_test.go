@@ -18,7 +18,7 @@ const relativeBaseURLError = "invalid base URL \"relative/path\": absolute URL w
 func TestNewClient_Defaults(t *testing.T) {
 	client := NewClient()
 	require.NotNil(t, client)
-	require.Equal(t, defaultBaseURL, client.baseURL.String())
+	require.Equal(t, defaultBaseURL+apiPathPrefix, client.baseURL.String())
 	require.NotNil(t, client.httpClient)
 	require.Empty(t, client.token)
 	require.Equal(t, schwab.DefaultResponseBodyLimit, client.responseBodyLimit)
@@ -31,17 +31,45 @@ func TestNewClient_WithToken(t *testing.T) {
 }
 
 func TestNewClient_WithBaseURL(t *testing.T) {
-	customURL := "https://custom.example.com/api/v2"
-	client := NewClient(schwab.WithBaseURL(customURL))
-	require.NotNil(t, client)
-	require.Equal(t, customURL, client.baseURL.String())
-	require.NoError(t, client.optionError)
+	for _, tt := range []struct {
+		name    string
+		rawURL  string
+		wantURL string
+	}{
+		{
+			name:    "root",
+			rawURL:  "https://custom.example.com",
+			wantURL: "https://custom.example.com/marketdata/v1",
+		},
+		{
+			name:    "root with proxy path",
+			rawURL:  "https://custom.example.com/proxy",
+			wantURL: "https://custom.example.com/proxy/marketdata/v1",
+		},
+		{
+			name:    "existing market data prefix",
+			rawURL:  "https://custom.example.com/marketdata/v1",
+			wantURL: "https://custom.example.com/marketdata/v1",
+		},
+		{
+			name:    "existing market data prefix with trailing slash",
+			rawURL:  "https://custom.example.com/proxy/marketdata/v1/",
+			wantURL: "https://custom.example.com/proxy/marketdata/v1/",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewClient(schwab.WithBaseURL(tt.rawURL))
+			require.NotNil(t, client)
+			require.Equal(t, tt.wantURL, client.baseURL.String())
+			require.NoError(t, client.optionError)
+		})
+	}
 }
 
 func TestNewClient_WithInvalidBaseURL(t *testing.T) {
 	client := NewClient(schwab.WithBaseURL("relative/path"))
 	require.NotNil(t, client)
-	require.Equal(t, defaultBaseURL, client.baseURL.String())
+	require.Equal(t, defaultBaseURL+apiPathPrefix, client.baseURL.String())
 	require.Error(t, client.optionError)
 	require.ErrorContains(t, client.optionError, relativeBaseURLError)
 }

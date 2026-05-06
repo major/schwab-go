@@ -19,7 +19,7 @@ func writeJSON(t *testing.T, w http.ResponseWriter, value any) {
 
 func newTestClient(t *testing.T, handler http.HandlerFunc) *Client {
 	t.Helper()
-	ts := httptest.NewServer(handler)
+	ts := httptest.NewServer(http.StripPrefix(apiPathPrefix, handler))
 	t.Cleanup(ts.Close)
 	return NewClient(
 		schwab.WithToken("test-token"),

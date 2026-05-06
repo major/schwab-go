@@ -41,6 +41,7 @@ func WithHTTPClient(c *http.Client) Option {
 }
 
 // WithBaseURL overrides the default base URL.
+// Sub-clients may append their own API path prefix to this URL.
 // Invalid or relative URLs are recorded as option errors so request creation fails before any HTTP call.
 func WithBaseURL(rawURL string) Option {
 	return func(cfg *ClientConfig) {
