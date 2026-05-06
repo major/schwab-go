@@ -50,3 +50,4 @@
 - Reusable assertion helpers should call `t.Helper()`; existing fixtures are inline Go helpers, not `testdata/` files.
 - CI also runs CodeQL, OpenSSF Scorecard, `govulncheck`, `go build ./...`, and coverage upload when `CODECOV_TOKEN` is present.
 - Preserve high-signal guidance in `.github/copilot-instructions.md`, `.github/instructions/*.md`, `.coderabbit.yaml`, `Makefile`, and `.goreleaser.yml` when changing related areas.
+- Keep `README.md` up to date when adding, removing, or renaming public API methods, changing package structure, updating badges, or modifying build/install requirements.
