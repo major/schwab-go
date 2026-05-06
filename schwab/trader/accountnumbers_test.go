@@ -15,9 +15,9 @@ import (
 
 func TestGetAccountNumbers(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/accounts/accountNumbers", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/accountNumbers", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -56,8 +56,8 @@ func TestGetAccountNumbers(t *testing.T) {
 
 func TestGetAccountNumbers_Empty(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/accounts/accountNumbers", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/accountNumbers", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -73,7 +73,7 @@ func TestGetAccountNumbers_Empty(t *testing.T) {
 	result, err := client.GetAccountNumbers(context.Background())
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	require.Len(t, result, 0)
+	require.Empty(t, result)
 }
 
 func TestGetAccountNumbers_Error(t *testing.T) {

@@ -15,13 +15,13 @@ import (
 
 func TestGetPriceHistory(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/pricehistory", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/pricehistory", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		// Verify symbol query param
 		symbol := r.URL.Query().Get("symbol")
-		require.Equal(t, "AAPL", symbol)
+		assert.Equal(t, "AAPL", symbol)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -59,46 +59,46 @@ func TestGetPriceHistory(t *testing.T) {
 
 	// Verify candle OHLCV fields
 	candle := result.Candles[0]
-	assert.Equal(t, 150.0, candle.Open)
-	assert.Equal(t, 155.0, candle.High)
-	assert.Equal(t, 149.0, candle.Low)
-	assert.Equal(t, 153.0, candle.Close)
+	assert.InDelta(t, 150.0, candle.Open, 0.000001)
+	assert.InDelta(t, 155.0, candle.High, 0.000001)
+	assert.InDelta(t, 149.0, candle.Low, 0.000001)
+	assert.InDelta(t, 153.0, candle.Close, 0.000001)
 	assert.Equal(t, int64(1000000), candle.Volume)
 	assert.Equal(t, int64(1705276800000), candle.Datetime)
 }
 
 func TestGetPriceHistory_WithParams(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/pricehistory", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/pricehistory", r.URL.Path)
 
 		// Verify all query params are present
 		symbol := r.URL.Query().Get("symbol")
-		require.Equal(t, "AAPL", symbol)
+		assert.Equal(t, "AAPL", symbol)
 
 		periodType := r.URL.Query().Get("periodType")
-		require.Equal(t, "day", periodType)
+		assert.Equal(t, "day", periodType)
 
 		period := r.URL.Query().Get("period")
-		require.Equal(t, "10", period)
+		assert.Equal(t, "10", period)
 
 		frequencyType := r.URL.Query().Get("frequencyType")
-		require.Equal(t, "minute", frequencyType)
+		assert.Equal(t, "minute", frequencyType)
 
 		frequency := r.URL.Query().Get("frequency")
-		require.Equal(t, "5", frequency)
+		assert.Equal(t, "5", frequency)
 
 		startDate := r.URL.Query().Get("startDate")
-		require.Equal(t, "1705276800000", startDate)
+		assert.Equal(t, "1705276800000", startDate)
 
 		endDate := r.URL.Query().Get("endDate")
-		require.Equal(t, "1705363200000", endDate)
+		assert.Equal(t, "1705363200000", endDate)
 
 		needExtendedHoursData := r.URL.Query().Get("needExtendedHoursData")
-		require.Equal(t, "true", needExtendedHoursData)
+		assert.Equal(t, "true", needExtendedHoursData)
 
 		needPreviousClose := r.URL.Query().Get("needPreviousClose")
-		require.Equal(t, "false", needPreviousClose)
+		assert.Equal(t, "false", needPreviousClose)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -137,22 +137,22 @@ func TestGetPriceHistory_WithParams(t *testing.T) {
 
 func TestGetPriceHistory_NilParams(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/pricehistory", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/pricehistory", r.URL.Path)
 
 		// Verify only symbol is present
 		symbol := r.URL.Query().Get("symbol")
-		require.Equal(t, "AAPL", symbol)
+		assert.Equal(t, "AAPL", symbol)
 
 		// Verify optional params are absent
-		require.Empty(t, r.URL.Query().Get("periodType"))
-		require.Empty(t, r.URL.Query().Get("period"))
-		require.Empty(t, r.URL.Query().Get("frequencyType"))
-		require.Empty(t, r.URL.Query().Get("frequency"))
-		require.Empty(t, r.URL.Query().Get("startDate"))
-		require.Empty(t, r.URL.Query().Get("endDate"))
-		require.Empty(t, r.URL.Query().Get("needExtendedHoursData"))
-		require.Empty(t, r.URL.Query().Get("needPreviousClose"))
+		assert.Empty(t, r.URL.Query().Get("periodType"))
+		assert.Empty(t, r.URL.Query().Get("period"))
+		assert.Empty(t, r.URL.Query().Get("frequencyType"))
+		assert.Empty(t, r.URL.Query().Get("frequency"))
+		assert.Empty(t, r.URL.Query().Get("startDate"))
+		assert.Empty(t, r.URL.Query().Get("endDate"))
+		assert.Empty(t, r.URL.Query().Get("needExtendedHoursData"))
+		assert.Empty(t, r.URL.Query().Get("needPreviousClose"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

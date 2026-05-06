@@ -45,14 +45,14 @@ func TestGetTransactions(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/accounts/HASH_ABC123/transactions", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/transactions", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		// Verify required query params
-		require.Equal(t, "2024-01-01", r.URL.Query().Get("startDate"))
-		require.Equal(t, "2024-01-31", r.URL.Query().Get("endDate"))
-		require.Equal(t, "TRADE", r.URL.Query().Get("types"))
+		assert.Equal(t, "2024-01-01", r.URL.Query().Get("startDate"))
+		assert.Equal(t, "2024-01-31", r.URL.Query().Get("endDate"))
+		assert.Equal(t, "TRADE", r.URL.Query().Get("types"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -83,16 +83,16 @@ func TestGetTransactions(t *testing.T) {
 	assert.Equal(t, "2024-01-15", txn.TradeDate)
 	assert.Equal(t, int64(5001), txn.PositionId)
 	assert.Equal(t, int64(9001), txn.OrderId)
-	assert.Equal(t, -1500.00, txn.NetAmount)
+	assert.InDelta(t, -1500.00, txn.NetAmount, 0.000001)
 	assert.Equal(t, "Buy 10 AAPL", txn.Description)
 	assert.Equal(t, "123456789", txn.AccountNumber)
 
 	// Verify TransferItem and Instrument unmarshal
 	require.Len(t, txn.TransferItems, 1)
 	item := txn.TransferItems[0]
-	assert.Equal(t, 10.0, item.Amount)
-	assert.Equal(t, 1500.00, item.Cost)
-	assert.Equal(t, 150.00, item.Price)
+	assert.InDelta(t, 10.0, item.Amount, 0.000001)
+	assert.InDelta(t, 1500.00, item.Cost, 0.000001)
+	assert.InDelta(t, 150.00, item.Price, 0.000001)
 	assert.Equal(t, schwab.AssetTypeEquity, item.Instrument.AssetType)
 	assert.Equal(t, "037833100", item.Instrument.Cusip)
 	assert.Equal(t, "AAPL", item.Instrument.Symbol)
@@ -102,15 +102,15 @@ func TestGetTransactions(t *testing.T) {
 
 func TestGetTransactions_WithOptionalParams(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 
 		// Verify required params
-		require.Equal(t, "2024-01-01", r.URL.Query().Get("startDate"))
-		require.Equal(t, "2024-01-31", r.URL.Query().Get("endDate"))
+		assert.Equal(t, "2024-01-01", r.URL.Query().Get("startDate"))
+		assert.Equal(t, "2024-01-31", r.URL.Query().Get("endDate"))
 
 		// Verify optional params
-		require.Equal(t, "TRADE,DIVIDEND_OR_INTEREST", r.URL.Query().Get("types"))
-		require.Equal(t, "AAPL", r.URL.Query().Get("symbol"))
+		assert.Equal(t, "TRADE,DIVIDEND_OR_INTEREST", r.URL.Query().Get("types"))
+		assert.Equal(t, "AAPL", r.URL.Query().Get("symbol"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -148,9 +148,9 @@ func TestGetTransaction(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/accounts/HASH_ABC123/transactions/2002", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/transactions/2002", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -173,7 +173,7 @@ func TestGetTransaction(t *testing.T) {
 	assert.Equal(t, "2024-02-10T14:00:00Z", txn.Time)
 	assert.Equal(t, TransactionTypeDividendOrInterest, txn.Type)
 	assert.Equal(t, "VALID", txn.Status)
-	assert.Equal(t, 25.50, txn.NetAmount)
+	assert.InDelta(t, 25.50, txn.NetAmount, 0.000001)
 	assert.Equal(t, "DIVIDEND PAYMENT", txn.Description)
 }
 

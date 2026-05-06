@@ -15,13 +15,13 @@ import (
 
 func TestGetMarketHours(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/markets", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/markets", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		// Verify markets query param
 		markets := r.URL.Query().Get("markets")
-		require.Equal(t, "equity,option", markets)
+		assert.Equal(t, "equity,option", markets)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -81,12 +81,12 @@ func TestGetMarketHours(t *testing.T) {
 
 func TestGetMarketHours_WithDate(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/markets", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/markets", r.URL.Path)
 
 		// Verify date query param is present
 		date := r.URL.Query().Get("date")
-		require.Equal(t, "2024-01-15", date)
+		assert.Equal(t, "2024-01-15", date)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -105,12 +105,12 @@ func TestGetMarketHours_WithDate(t *testing.T) {
 
 func TestGetMarketHours_NoDate(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/markets", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/markets", r.URL.Path)
 
 		// Verify date query param is absent
 		date := r.URL.Query().Get("date")
-		require.Empty(t, date)
+		assert.Empty(t, date)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -139,9 +139,9 @@ func TestGetMarketHoursRequiresMarkets(t *testing.T) {
 
 func TestGetMarketHoursSingle(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/markets/equity", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/markets/equity", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -191,12 +191,12 @@ func TestGetMarketHoursSingle(t *testing.T) {
 
 func TestGetMarketHoursSingle_WithDate(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/markets/equity", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/markets/equity", r.URL.Path)
 
 		// Verify date query param is present
 		date := r.URL.Query().Get("date")
-		require.Equal(t, "2024-01-15", date)
+		assert.Equal(t, "2024-01-15", date)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

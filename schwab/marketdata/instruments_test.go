@@ -15,15 +15,15 @@ import (
 
 func TestSearchInstruments(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/instruments", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/instruments", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		// Verify query params
 		symbol := r.URL.Query().Get("symbol")
-		require.Equal(t, "AAPL", symbol)
+		assert.Equal(t, "AAPL", symbol)
 		projection := r.URL.Query().Get("projection")
-		require.Equal(t, "symbol-search", projection)
+		assert.Equal(t, "symbol-search", projection)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -63,12 +63,12 @@ func TestSearchInstruments(t *testing.T) {
 
 func TestSearchInstruments_Fundamental(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/instruments", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/instruments", r.URL.Path)
 
 		// Verify projection param
 		projection := r.URL.Query().Get("projection")
-		require.Equal(t, "fundamental", projection)
+		assert.Equal(t, "fundamental", projection)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -117,23 +117,23 @@ func TestSearchInstruments_Fundamental(t *testing.T) {
 	// Verify fundamental data
 	fund := inst.Fundamental
 	assert.Equal(t, "AAPL", fund.Symbol)
-	assert.Equal(t, 199.62, fund.High52)
-	assert.Equal(t, 124.17, fund.Low52)
-	assert.Equal(t, 0.24, fund.DividendAmount)
-	assert.Equal(t, 0.45, fund.DividendYield)
-	assert.Equal(t, 28.5, fund.PeRatio)
-	assert.Equal(t, 1.2, fund.Beta)
-	assert.Equal(t, 2800000000000.0, fund.MarketCap)
-	assert.Equal(t, 6.05, fund.EpsTTM)
-	assert.Equal(t, 0.85, fund.ReturnOnEquity)
-	assert.Equal(t, 1.08, fund.CurrentRatio)
+	assert.InDelta(t, 199.62, fund.High52, 0.000001)
+	assert.InDelta(t, 124.17, fund.Low52, 0.000001)
+	assert.InDelta(t, 0.24, fund.DividendAmount, 0.000001)
+	assert.InDelta(t, 0.45, fund.DividendYield, 0.000001)
+	assert.InDelta(t, 28.5, fund.PeRatio, 0.000001)
+	assert.InDelta(t, 1.2, fund.Beta, 0.000001)
+	assert.InDelta(t, 2800000000000.0, fund.MarketCap, 0.000001)
+	assert.InDelta(t, 6.05, fund.EpsTTM, 0.000001)
+	assert.InDelta(t, 0.85, fund.ReturnOnEquity, 0.000001)
+	assert.InDelta(t, 1.08, fund.CurrentRatio, 0.000001)
 }
 
 func TestGetInstrumentByCUSIP(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/instruments/037833100", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/instruments/037833100", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

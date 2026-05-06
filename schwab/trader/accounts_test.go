@@ -61,9 +61,9 @@ func TestGetAccounts(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/accounts", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -92,20 +92,20 @@ func TestGetAccounts(t *testing.T) {
 	// Verify position
 	require.Len(t, acct.Positions, 1)
 	pos := acct.Positions[0]
-	assert.Equal(t, 0.0, pos.ShortQuantity)
-	assert.Equal(t, 150.00, pos.AveragePrice)
-	assert.Equal(t, 300.00, pos.CurrentDayProfitLoss)
-	assert.Equal(t, 2.0, pos.CurrentDayProfitLossPercentage)
-	assert.Equal(t, 10.0, pos.LongQuantity)
-	assert.Equal(t, 10.0, pos.SettledLongQuantity)
-	assert.Equal(t, 0.0, pos.SettledShortQuantity)
-	assert.Equal(t, 1530.00, pos.MarketValue)
-	assert.Equal(t, 459.00, pos.MaintenanceRequirement)
-	assert.Equal(t, 150.00, pos.AverageLongPrice)
-	assert.Equal(t, 150.00, pos.TaxLotAverageLongPrice)
-	assert.Equal(t, 30.00, pos.LongOpenProfitLoss)
-	assert.Equal(t, 10.0, pos.PreviousSessionLongQuantity)
-	assert.Equal(t, 0.0, pos.CurrentDayCost)
+	assert.InDelta(t, 0.0, pos.ShortQuantity, 0.000001)
+	assert.InDelta(t, 150.00, pos.AveragePrice, 0.000001)
+	assert.InDelta(t, 300.00, pos.CurrentDayProfitLoss, 0.000001)
+	assert.InDelta(t, 2.0, pos.CurrentDayProfitLossPercentage, 0.000001)
+	assert.InDelta(t, 10.0, pos.LongQuantity, 0.000001)
+	assert.InDelta(t, 10.0, pos.SettledLongQuantity, 0.000001)
+	assert.InDelta(t, 0.0, pos.SettledShortQuantity, 0.000001)
+	assert.InDelta(t, 1530.00, pos.MarketValue, 0.000001)
+	assert.InDelta(t, 459.00, pos.MaintenanceRequirement, 0.000001)
+	assert.InDelta(t, 150.00, pos.AverageLongPrice, 0.000001)
+	assert.InDelta(t, 150.00, pos.TaxLotAverageLongPrice, 0.000001)
+	assert.InDelta(t, 30.00, pos.LongOpenProfitLoss, 0.000001)
+	assert.InDelta(t, 10.0, pos.PreviousSessionLongQuantity, 0.000001)
+	assert.InDelta(t, 0.0, pos.CurrentDayCost, 0.000001)
 
 	// Verify instrument
 	inst := pos.Instrument
@@ -114,25 +114,25 @@ func TestGetAccounts(t *testing.T) {
 	assert.Equal(t, "AAPL", inst.Symbol)
 	assert.Equal(t, "Apple Inc", inst.Description)
 	assert.Equal(t, int64(1234567), inst.InstrumentId)
-	assert.Equal(t, 1.5, inst.NetChange)
+	assert.InDelta(t, 1.5, inst.NetChange, 0.000001)
 
 	// Verify balances
 	bal := acct.CurrentBalances
-	assert.Equal(t, 5000.00, bal.CashBalance)
-	assert.Equal(t, 6530.00, bal.Equity)
-	assert.Equal(t, 6530.00, bal.LiquidationValue)
-	assert.Equal(t, 5000.00, bal.BuyingPower)
-	assert.Equal(t, 6530.00, bal.AccountValue)
+	assert.InDelta(t, 5000.00, bal.CashBalance, 0.000001)
+	assert.InDelta(t, 6530.00, bal.Equity, 0.000001)
+	assert.InDelta(t, 6530.00, bal.LiquidationValue, 0.000001)
+	assert.InDelta(t, 5000.00, bal.BuyingPower, 0.000001)
+	assert.InDelta(t, 6530.00, bal.AccountValue, 0.000001)
 }
 
 func TestGetAccounts_WithFields(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/accounts", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts", r.URL.Path)
 
 		// Verify fields query param is present
 		fields := r.URL.Query().Get("fields")
-		require.Equal(t, "positions", fields)
+		assert.Equal(t, "positions", fields)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -151,12 +151,12 @@ func TestGetAccounts_WithFields(t *testing.T) {
 
 func TestGetAccounts_NoFields(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/accounts", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts", r.URL.Path)
 
 		// Verify fields query param is absent
 		fields := r.URL.Query().Get("fields")
-		require.Empty(t, fields)
+		assert.Empty(t, fields)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -190,11 +190,11 @@ func TestGetAccount(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		// Verify path contains the hash value
-		require.Equal(t, "/accounts/HASH_ABC123", r.URL.Path)
+		assert.Equal(t, "/accounts/HASH_ABC123", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -217,10 +217,10 @@ func TestGetAccount(t *testing.T) {
 	assert.Equal(t, "987654321", acct.AccountNumber)
 	assert.Equal(t, 3, acct.RoundTrips)
 	assert.True(t, acct.IsDayTrader)
-	assert.Equal(t, 10000.00, acct.CurrentBalances.CashBalance)
-	assert.Equal(t, 25000.00, acct.CurrentBalances.Equity)
-	assert.Equal(t, 20000.00, acct.CurrentBalances.BuyingPower)
-	assert.Equal(t, 25000.00, acct.CurrentBalances.AccountValue)
+	assert.InDelta(t, 10000.00, acct.CurrentBalances.CashBalance, 0.000001)
+	assert.InDelta(t, 25000.00, acct.CurrentBalances.Equity, 0.000001)
+	assert.InDelta(t, 20000.00, acct.CurrentBalances.BuyingPower, 0.000001)
+	assert.InDelta(t, 25000.00, acct.CurrentBalances.AccountValue, 0.000001)
 }
 
 func TestGetAccount_Error(t *testing.T) {

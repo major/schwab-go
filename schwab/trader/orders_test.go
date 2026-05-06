@@ -18,13 +18,13 @@ func TestGetOrders(t *testing.T) {
 	fixture := []Order{testOrderFixture()}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/accounts/HASH_ABC123/orders", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
-		require.Equal(t, "2024-01-01", r.URL.Query().Get("fromEnteredTime"))
-		require.Equal(t, "2024-01-31", r.URL.Query().Get("toEnteredTime"))
-		require.Equal(t, "25", r.URL.Query().Get("maxResults"))
-		require.Equal(t, "FILLED", r.URL.Query().Get("status"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/orders", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, "2024-01-01", r.URL.Query().Get("fromEnteredTime"))
+		assert.Equal(t, "2024-01-31", r.URL.Query().Get("toEnteredTime"))
+		assert.Equal(t, "25", r.URL.Query().Get("maxResults"))
+		assert.Equal(t, "FILLED", r.URL.Query().Get("status"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -67,19 +67,20 @@ func TestCreateOrder(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/accounts/HASH_ABC123/orders", r.URL.Path)
-		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/orders", r.URL.Path)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		var got Order
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&got))
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&got))
 		assert.Equal(t, "NORMAL", got.Session)
 		assert.Equal(t, "DAY", got.Duration)
 		assert.Equal(t, "MARKET", got.OrderType)
-		require.Len(t, got.OrderLegCollection, 1)
-		assert.Equal(t, "BUY", got.OrderLegCollection[0].Instruction)
-		assert.Equal(t, 3.0, got.OrderLegCollection[0].Quantity)
-		assert.Equal(t, "MSFT", got.OrderLegCollection[0].Instrument.Symbol)
+		if assert.Len(t, got.OrderLegCollection, 1) {
+			assert.Equal(t, "BUY", got.OrderLegCollection[0].Instruction)
+			assert.InDelta(t, 3.0, got.OrderLegCollection[0].Quantity, 0.000001)
+			assert.Equal(t, "MSFT", got.OrderLegCollection[0].Instrument.Symbol)
+		}
 
 		w.WriteHeader(http.StatusCreated)
 	}))
@@ -98,8 +99,8 @@ func TestGetOrder(t *testing.T) {
 	fixture := testOrderFixture()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -127,14 +128,14 @@ func TestReplaceOrder(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPut, r.Method)
-		require.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
-		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, http.MethodPut, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
 		var got Order
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&got))
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&got))
 		assert.Equal(t, "LIMIT", got.OrderType)
-		assert.Equal(t, 199.50, got.Price)
+		assert.InDelta(t, 199.50, got.Price, 0.000001)
 
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -151,9 +152,9 @@ func TestReplaceOrder(t *testing.T) {
 
 func TestCancelOrder(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodDelete, r.Method)
-		require.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
-		require.Empty(t, r.Header.Get("Content-Type"))
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
+		assert.Empty(t, r.Header.Get("Content-Type"))
 
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -226,11 +227,11 @@ func TestPreviewOrder(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/accounts/HASH_ABC123/previewOrder", r.URL.Path)
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/previewOrder", r.URL.Path)
 
 		var got Order
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&got))
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&got))
 		assert.Equal(t, "MARKET", got.OrderType)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -260,17 +261,17 @@ func TestPreviewOrder(t *testing.T) {
 	require.NotNil(t, result.CommissionAndFee.Fee)
 	require.Len(t, result.CommissionAndFee.Fee.FeeLegs, 1)
 	assert.Equal(t, "SEC_FEE", result.CommissionAndFee.Fee.FeeLegs[0].FeeValues[0].Type)
-	assert.Equal(t, 0.02, result.CommissionAndFee.Fee.FeeLegs[0].FeeValues[0].Value)
+	assert.InDelta(t, 0.02, result.CommissionAndFee.Fee.FeeLegs[0].FeeValues[0].Value, 0.000001)
 }
 
 func TestGetAllOrders(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/orders", r.URL.Path)
-		require.Equal(t, "2024-01-01", r.URL.Query().Get("fromEnteredTime"))
-		require.Equal(t, "2024-01-31", r.URL.Query().Get("toEnteredTime"))
-		require.Empty(t, r.URL.Query().Get("maxResults"))
-		require.Empty(t, r.URL.Query().Get("status"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/orders", r.URL.Path)
+		assert.Equal(t, "2024-01-01", r.URL.Query().Get("fromEnteredTime"))
+		assert.Equal(t, "2024-01-31", r.URL.Query().Get("toEnteredTime"))
+		assert.Empty(t, r.URL.Query().Get("maxResults"))
+		assert.Empty(t, r.URL.Query().Get("status"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -427,13 +428,13 @@ func assertOrderFixture(t *testing.T, order *Order) {
 	assert.Equal(t, "DAY", order.Duration)
 	assert.Equal(t, "LIMIT", order.OrderType)
 	assert.Equal(t, "NONE", order.ComplexOrderStrategyType)
-	assert.Equal(t, 10.0, order.Quantity)
-	assert.Equal(t, 10.0, order.FilledQuantity)
-	assert.Equal(t, 0.0, order.RemainingQuantity)
+	assert.InDelta(t, 10.0, order.Quantity, 0.000001)
+	assert.InDelta(t, 10.0, order.FilledQuantity, 0.000001)
+	assert.InDelta(t, 0.0, order.RemainingQuantity, 0.000001)
 	assert.Equal(t, "AUTO", order.RequestedDestination)
 	assert.Equal(t, "NYSE", order.DestinationLinkName)
-	assert.Equal(t, 150.25, order.Price)
-	assert.Equal(t, 145.00, order.StopPrice)
+	assert.InDelta(t, 150.25, order.Price, 0.000001)
+	assert.InDelta(t, 145.00, order.StopPrice, 0.000001)
 	assert.Equal(t, "LAST", order.StopPriceLinkBasis)
 	assert.Equal(t, "VALUE", order.StopPriceLinkType)
 	assert.Equal(t, "STANDARD", order.StopType)
@@ -453,7 +454,7 @@ func assertOrderFixture(t *testing.T, order *Order) {
 	assert.Equal(t, int64(1), leg.LegID)
 	assert.Equal(t, "BUY", leg.Instruction)
 	assert.Equal(t, "OPENING", leg.PositionEffect)
-	assert.Equal(t, 10.0, leg.Quantity)
+	assert.InDelta(t, 10.0, leg.Quantity, 0.000001)
 	assert.Equal(t, schwab.AssetTypeEquity, leg.Instrument.AssetType)
 	assert.Equal(t, "037833100", leg.Instrument.CUSIP)
 	assert.Equal(t, "AAPL", leg.Instrument.Symbol)
@@ -465,14 +466,14 @@ func assertOrderFixture(t *testing.T, order *Order) {
 	activity := order.OrderActivityCollection[0]
 	assert.Equal(t, "EXECUTION", activity.ActivityType)
 	assert.Equal(t, "FILL", activity.ExecutionType)
-	assert.Equal(t, 10.0, activity.Quantity)
-	assert.Equal(t, 0.0, activity.OrderRemainingQuantity)
+	assert.InDelta(t, 10.0, activity.Quantity, 0.000001)
+	assert.InDelta(t, 0.0, activity.OrderRemainingQuantity, 0.000001)
 	require.Len(t, activity.ExecutionLegs, 1)
 	execution := activity.ExecutionLegs[0]
 	assert.Equal(t, int64(1), execution.LegID)
-	assert.Equal(t, 150.25, execution.Price)
-	assert.Equal(t, 10.0, execution.Quantity)
-	assert.Equal(t, 0.0, execution.MismarkedQuantity)
+	assert.InDelta(t, 150.25, execution.Price, 0.000001)
+	assert.InDelta(t, 10.0, execution.Quantity, 0.000001)
+	assert.InDelta(t, 0.0, execution.MismarkedQuantity, 0.000001)
 	assert.Equal(t, int64(1234567), execution.InstrumentID)
 	assert.Equal(t, "2024-01-15T10:31:00Z", execution.Time)
 }

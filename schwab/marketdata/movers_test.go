@@ -15,9 +15,9 @@ import (
 
 func TestGetMovers(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/movers/$DJI", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/movers/$DJI", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -66,28 +66,28 @@ func TestGetMovers(t *testing.T) {
 	// First screener
 	assert.Equal(t, "AAPL", result.Screeners[0].Symbol)
 	assert.Equal(t, "Apple Inc.", result.Screeners[0].Description)
-	assert.Equal(t, 150.25, result.Screeners[0].Last)
-	assert.Equal(t, 2.50, result.Screeners[0].Change)
+	assert.InDelta(t, 150.25, result.Screeners[0].Last, 0.000001)
+	assert.InDelta(t, 2.50, result.Screeners[0].Change, 0.000001)
 	assert.Equal(t, "up", result.Screeners[0].Direction)
-	assert.Equal(t, 1.69, result.Screeners[0].NetPercentChange)
-	assert.Equal(t, 0.05, result.Screeners[0].MarketShare)
+	assert.InDelta(t, 1.69, result.Screeners[0].NetPercentChange, 0.000001)
+	assert.InDelta(t, 0.05, result.Screeners[0].MarketShare, 0.000001)
 	assert.Equal(t, int64(50000000), result.Screeners[0].TotalVolume)
 	assert.Equal(t, int64(1000000), result.Screeners[0].Trades)
 
 	// Second screener
 	assert.Equal(t, "MSFT", result.Screeners[1].Symbol)
 	assert.Equal(t, "Microsoft Corporation", result.Screeners[1].Description)
-	assert.Equal(t, 380.50, result.Screeners[1].Last)
+	assert.InDelta(t, 380.50, result.Screeners[1].Last, 0.000001)
 }
 
 func TestGetMovers_WithSort(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/movers/$COMPX", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/movers/$COMPX", r.URL.Path)
 
 		// Verify sort query param is present
 		sort := r.URL.Query().Get("sort")
-		require.Equal(t, "VOLUME", sort)
+		assert.Equal(t, "VOLUME", sort)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -108,12 +108,12 @@ func TestGetMovers_WithSort(t *testing.T) {
 
 func TestGetMovers_WithFrequency(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/movers/$SPX", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/movers/$SPX", r.URL.Path)
 
 		// Verify frequency query param is present
 		frequency := r.URL.Query().Get("frequency")
-		require.Equal(t, "60", frequency)
+		assert.Equal(t, "60", frequency)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -134,14 +134,14 @@ func TestGetMovers_WithFrequency(t *testing.T) {
 
 func TestGetMovers_NoOptionalParams(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/movers/$DJI", r.URL.Path)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/movers/$DJI", r.URL.Path)
 
 		// Verify optional params are absent
 		sort := r.URL.Query().Get("sort")
-		require.Empty(t, sort)
+		assert.Empty(t, sort)
 		frequency := r.URL.Query().Get("frequency")
-		require.Empty(t, frequency)
+		assert.Empty(t, frequency)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)

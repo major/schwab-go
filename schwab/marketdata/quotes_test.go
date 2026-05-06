@@ -16,12 +16,12 @@ import (
 
 func TestGetQuotes(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/quotes", r.URL.Path)
-		require.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
-		require.Equal(t, "AAPL,MSFT", r.URL.Query().Get("symbols"))
-		require.Equal(t, "quote", r.URL.Query().Get("fields"))
-		require.Equal(t, "true", r.URL.Query().Get("indicative"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/quotes", r.URL.Path)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, "AAPL,MSFT", r.URL.Query().Get("symbols"))
+		assert.Equal(t, "quote", r.URL.Query().Get("fields"))
+		assert.Equal(t, "true", r.URL.Query().Get("indicative"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -49,13 +49,13 @@ func TestGetQuotes(t *testing.T) {
 
 	equity, err := entry.EquityQuote()
 	require.NoError(t, err)
-	assert.Equal(t, 170.12, equity.AskPrice)
-	assert.Equal(t, 169.98, equity.BidPrice)
-	assert.Equal(t, 170.01, equity.LastPrice)
+	assert.InDelta(t, 170.12, equity.AskPrice, 0.000001)
+	assert.InDelta(t, 169.98, equity.BidPrice, 0.000001)
+	assert.InDelta(t, 170.01, equity.LastPrice, 0.000001)
 	assert.Equal(t, int64(12345678), equity.TotalVolume)
-	assert.Equal(t, 199.62, equity.Week52High)
-	assert.Equal(t, 124.17, equity.Week52Low)
-	assert.Equal(t, 28.5, equity.PeRatio)
+	assert.InDelta(t, 199.62, equity.Week52High, 0.000001)
+	assert.InDelta(t, 124.17, equity.Week52Low, 0.000001)
+	assert.InDelta(t, 28.5, equity.PeRatio, 0.000001)
 	assert.Equal(t, "NASDAQ", equity.Exchange)
 	assert.Equal(t, int64(1712345678901), equity.TradeTime)
 	assert.Equal(t, int64(1712345678999), equity.QuoteTime)
@@ -63,20 +63,20 @@ func TestGetQuotes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "037833100", reference.CUSIP)
 	require.NotNil(t, entry.Regular)
-	assert.Equal(t, 170.01, entry.Regular.LastPrice)
+	assert.InDelta(t, 170.01, entry.Regular.LastPrice, 0.000001)
 	require.NotNil(t, entry.Extended)
-	assert.Equal(t, 170.05, entry.Extended.LastPrice)
+	assert.InDelta(t, 170.05, entry.Extended.LastPrice, 0.000001)
 	require.NotNil(t, entry.Fundamental)
-	assert.Equal(t, 28.5, entry.Fundamental.PERatio)
+	assert.InDelta(t, 28.5, entry.Fundamental.PERatio, 0.000001)
 }
 
 func TestGetQuotesOption(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/quotes", r.URL.Path)
-		require.Equal(t, "AAPL_052424C170", r.URL.Query().Get("symbols"))
-		require.Empty(t, r.URL.Query().Get("fields"))
-		require.Empty(t, r.URL.Query().Get("indicative"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/quotes", r.URL.Path)
+		assert.Equal(t, "AAPL_052424C170", r.URL.Query().Get("symbols"))
+		assert.Empty(t, r.URL.Query().Get("fields"))
+		assert.Empty(t, r.URL.Query().Get("indicative"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -99,24 +99,24 @@ func TestGetQuotesOption(t *testing.T) {
 	require.NotNil(t, entry)
 	option, err := entry.OptionQuote()
 	require.NoError(t, err)
-	assert.Equal(t, 0.52, option.Delta)
-	assert.Equal(t, 0.03, option.Gamma)
-	assert.Equal(t, -0.11, option.Theta)
-	assert.Equal(t, 0.22, option.Vega)
-	assert.Equal(t, 0.02, option.Rho)
+	assert.InDelta(t, 0.52, option.Delta, 0.000001)
+	assert.InDelta(t, 0.03, option.Gamma, 0.000001)
+	assert.InDelta(t, -0.11, option.Theta, 0.000001)
+	assert.InDelta(t, 0.22, option.Vega, 0.000001)
+	assert.InDelta(t, 0.02, option.Rho, 0.000001)
 	assert.Equal(t, int64(1234), option.OpenInterest)
-	assert.Equal(t, 170.0, option.StrikePrice)
-	assert.Equal(t, 171.25, option.UnderlyingPrice)
+	assert.InDelta(t, 170.0, option.StrikePrice, 0.000001)
+	assert.InDelta(t, 171.25, option.UnderlyingPrice, 0.000001)
 
 	reference, err := entry.OptionReference()
 	require.NoError(t, err)
-	assert.Equal(t, 170.0, reference.StrikePrice)
+	assert.InDelta(t, 170.0, reference.StrikePrice, 0.000001)
 	assert.Equal(t, "AAPL", reference.Underlying)
 }
 
 func TestGetQuotesMixed(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "AAPL,$SPX,VFIAX,EUR/USD,/ES", r.URL.Query().Get("symbols"))
+		assert.Equal(t, "AAPL,$SPX,VFIAX,EUR/USD,/ES", r.URL.Query().Get("symbols"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -142,25 +142,25 @@ func TestGetQuotesMixed(t *testing.T) {
 
 	indexQuote, err := (*quotes)["$SPX"].IndexQuote()
 	require.NoError(t, err)
-	assert.Equal(t, 5123.45, indexQuote.LastPrice)
+	assert.InDelta(t, 5123.45, indexQuote.LastPrice, 0.000001)
 
 	fundQuote, err := (*quotes)["VFIAX"].MutualFundQuote()
 	require.NoError(t, err)
-	assert.Equal(t, 470.23, fundQuote.ClosePrice)
+	assert.InDelta(t, 470.23, fundQuote.ClosePrice, 0.000001)
 
 	forexQuote, err := (*quotes)["EUR/USD"].ForexQuote()
 	require.NoError(t, err)
-	assert.Equal(t, 1.08, forexQuote.LastPrice)
+	assert.InDelta(t, 1.08, forexQuote.LastPrice, 0.000001)
 
 	futureQuote, err := (*quotes)["/ES"].FutureQuote()
 	require.NoError(t, err)
-	assert.Equal(t, 5125.25, futureQuote.SettlementPrice)
+	assert.InDelta(t, 5125.25, futureQuote.SettlementPrice, 0.000001)
 	assert.Equal(t, int64(987654), futureQuote.OpenInterest)
 
 	futureReference, err := (*quotes)["/ES"].FutureReference()
 	require.NoError(t, err)
 	assert.Equal(t, int64(20240621), futureReference.FutureExpirationDate)
-	assert.Equal(t, 5125.25, futureReference.FutureSettlementPrice)
+	assert.InDelta(t, 5125.25, futureReference.FutureSettlementPrice, 0.000001)
 }
 
 func TestGetQuotesPartialFailure(t *testing.T) {
@@ -194,9 +194,9 @@ func TestGetQuotesPartialFailure(t *testing.T) {
 
 func TestGetQuote(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "/$SPX/quotes", r.URL.Path)
-		require.Equal(t, "quote,reference", r.URL.Query().Get("fields"))
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/$SPX/quotes", r.URL.Path)
+		assert.Equal(t, "quote,reference", r.URL.Query().Get("fields"))
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
@@ -222,7 +222,7 @@ func TestGetQuote(t *testing.T) {
 
 	indexQuote, err := entry.IndexQuote()
 	require.NoError(t, err)
-	assert.Equal(t, 5123.45, indexQuote.LastPrice)
+	assert.InDelta(t, 5123.45, indexQuote.LastPrice, 0.000001)
 	assert.Equal(t, "CBOE", indexQuote.Exchange)
 }
 

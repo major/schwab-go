@@ -23,9 +23,12 @@ type Client struct {
 
 // NewClient creates a new Trader API client with the given options.
 func NewClient(opts ...schwab.Option) *Client {
-	base, _ := url.Parse(defaultBaseURL)
 	cfg := schwab.ClientConfig{
-		BaseURL:    base,
+		BaseURL: &url.URL{
+			Scheme: "https",
+			Host:   "api.schwabapi.com",
+			Path:   "/trader/v1",
+		},
 		HTTPClient: http.DefaultClient,
 	}
 	schwab.ApplyOptions(&cfg, opts)
@@ -75,9 +78,9 @@ func (c *Client) do(req *http.Request, out any) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, readErr := io.ReadAll(resp.Body)
 		apiErr := &schwab.APIError{StatusCode: resp.StatusCode}
-		if len(bodyBytes) > 0 {
+		if readErr == nil && len(bodyBytes) > 0 {
 			// Try to decode structured error response (if any)
 			var errResp struct {
 				Message string `json:"message"`
@@ -97,7 +100,9 @@ func (c *Client) do(req *http.Request, out any) error {
 	}
 
 	if out == nil {
-		_, _ = io.Copy(io.Discard, resp.Body)
+		if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+			return err
+		}
 		return nil
 	}
 

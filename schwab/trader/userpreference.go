@@ -24,11 +24,11 @@ type PreferenceAccount struct {
 
 // StreamerInfo contains streaming connection configuration.
 type StreamerInfo struct {
-	StreamerSocketUrl        string `json:"streamerSocketUrl"`
-	SchwabClientCustomerId   string `json:"schwabClientCustomerId"`
-	SchwabClientCorrelId     string `json:"schwabClientCorrelId"`
-	SchwabClientChannel      string `json:"schwabClientChannel"`
-	SchwabClientFunctionId   string `json:"schwabClientFunctionId"`
+	StreamerSocketUrl      string `json:"streamerSocketUrl"`
+	SchwabClientCustomerId string `json:"schwabClientCustomerId"`
+	SchwabClientCorrelId   string `json:"schwabClientCorrelId"`
+	SchwabClientChannel    string `json:"schwabClientChannel"`
+	SchwabClientFunctionId string `json:"schwabClientFunctionId"`
 }
 
 // Offer represents an available service offer.

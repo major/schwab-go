@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 )
 
 // MoverSort defines the sort order for movers.
@@ -50,7 +51,7 @@ func (c *Client) GetMovers(ctx context.Context, symbolID string, sort MoverSort,
 		q.Set("sort", string(sort))
 	}
 	if frequency != 0 {
-		q.Set("frequency", fmt.Sprintf("%d", frequency))
+		q.Set("frequency", strconv.Itoa(frequency))
 	}
 	req.URL.RawQuery = q.Encode()
 

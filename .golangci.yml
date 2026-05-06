@@ -9,10 +9,15 @@ linters:
     - gosec
     - misspell
     - modernize
+    - nilnil
     - nolintlint
+    - prealloc
     - revive
+    - testifylint
     - unconvert
     - unparam
+    - usestdlibvars
+    - wastedassign
 
   settings:
     gocritic:
@@ -26,6 +31,9 @@ linters:
       asserts: true
       comparison: true
 
+    errcheck:
+      check-blank: true
+
     misspell:
       locale: US
 
@@ -38,6 +46,9 @@ linters:
         - name: indent-error-flow
         - name: unexported-return
           disabled: true
+
+    testifylint:
+      enable-all: true
 
   exclusions:
     generated: strict
