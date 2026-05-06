@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,7 @@ import (
 )
 
 func TestGetOptionChain(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/chains", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -35,14 +34,7 @@ func TestGetOptionChain(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, optionChainFixture())
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	params := &OptionChainParams{
 		Symbol:                 "SPY",
@@ -104,7 +96,7 @@ func TestGetOptionChain(t *testing.T) {
 }
 
 func TestGetOptionChainMinimal(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/chains", r.URL.Path)
 
@@ -135,13 +127,7 @@ func TestGetOptionChainMinimal(t *testing.T) {
 			"callExpDateMap": map[string]any{},
 			"putExpDateMap":  map[string]any{},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetOptionChain(context.Background(), &OptionChainParams{Symbol: "AAPL"})
 	require.NoError(t, err)
@@ -160,7 +146,7 @@ func TestGetOptionChainRequiresSymbol(t *testing.T) {
 }
 
 func TestGetOptionChainAnalytical(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/chains", r.URL.Path)
 
@@ -188,13 +174,7 @@ func TestGetOptionChainAnalytical(t *testing.T) {
 			"callExpDateMap":   map[string]any{},
 			"putExpDateMap":    map[string]any{},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	params := &OptionChainParams{
 		Symbol:           "MSFT",
@@ -219,7 +199,7 @@ func TestGetOptionChainAnalytical(t *testing.T) {
 }
 
 func TestGetOptionChainEmpty(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/chains", r.URL.Path)
 		assert.Equal(t, "TSLA", r.URL.Query().Get("symbol"))
@@ -232,13 +212,7 @@ func TestGetOptionChainEmpty(t *testing.T) {
 			"callExpDateMap": map[string]any{},
 			"putExpDateMap":  map[string]any{},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetOptionChain(context.Background(), &OptionChainParams{Symbol: "TSLA"})
 	require.NoError(t, err)
@@ -250,7 +224,7 @@ func TestGetOptionChainEmpty(t *testing.T) {
 }
 
 func TestGetOptionChainError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/chains", r.URL.Path)
 
@@ -259,13 +233,7 @@ func TestGetOptionChainError(t *testing.T) {
 		writeJSON(t, w, map[string]any{
 			"detail": "invalid option chain request",
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetOptionChain(context.Background(), &OptionChainParams{Symbol: "INVALID"})
 	require.Error(t, err)

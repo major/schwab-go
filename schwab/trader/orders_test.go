@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +16,7 @@ import (
 func TestGetOrders(t *testing.T) {
 	fixture := []Order{testOrderFixture()}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/accounts/HASH_ABC123/orders", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -29,14 +28,7 @@ func TestGetOrders(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, fixture)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetOrders(context.Background(), "HASH_ABC123", &OrderListParams{
 		MaxResults:      25,
@@ -66,7 +58,7 @@ func TestCreateOrder(t *testing.T) {
 		},
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/accounts/HASH_ABC123/orders", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -83,13 +75,7 @@ func TestCreateOrder(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	err := client.CreateOrder(context.Background(), "HASH_ABC123", order)
 	require.NoError(t, err)
@@ -98,20 +84,14 @@ func TestCreateOrder(t *testing.T) {
 func TestGetOrder(t *testing.T) {
 	fixture := testOrderFixture()
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, fixture)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetOrder(context.Background(), "HASH_ABC123", 9001)
 	require.NoError(t, err)
@@ -127,7 +107,7 @@ func TestReplaceOrder(t *testing.T) {
 		Price:     199.50,
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPut, r.Method)
 		assert.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -138,32 +118,20 @@ func TestReplaceOrder(t *testing.T) {
 		assert.InDelta(t, 199.50, got.Price, 0.000001)
 
 		w.WriteHeader(http.StatusOK)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	err := client.ReplaceOrder(context.Background(), "HASH_ABC123", 9001, order)
 	require.NoError(t, err)
 }
 
 func TestCancelOrder(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		assert.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
 		assert.Empty(t, r.Header.Get("Content-Type"))
 
 		w.WriteHeader(http.StatusOK)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	err := client.CancelOrder(context.Background(), "HASH_ABC123", 9001)
 	require.NoError(t, err)
@@ -226,7 +194,7 @@ func TestPreviewOrder(t *testing.T) {
 		},
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/accounts/HASH_ABC123/previewOrder", r.URL.Path)
 
@@ -237,13 +205,7 @@ func TestPreviewOrder(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, fixture)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.PreviewOrder(context.Background(), "HASH_ABC123", order)
 	require.NoError(t, err)
@@ -265,7 +227,7 @@ func TestPreviewOrder(t *testing.T) {
 }
 
 func TestGetAllOrders(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/orders", r.URL.Path)
 		assert.Equal(t, "2024-01-01", r.URL.Query().Get("fromEnteredTime"))
@@ -276,13 +238,7 @@ func TestGetAllOrders(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, []Order{testOrderFixture()})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetAllOrders(context.Background(), &OrderListParams{
 		FromEnteredTime: "2024-01-01",
@@ -337,15 +293,9 @@ func TestRecursiveOrder(t *testing.T) {
 }
 
 func TestGetOrdersError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetOrders(context.Background(), "HASH_ABC123", &OrderListParams{
 		FromEnteredTime: "2024-01-01",

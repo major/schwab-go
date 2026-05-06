@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,7 @@ import (
 )
 
 func TestSearchInstruments(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/instruments", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -38,14 +37,7 @@ func TestSearchInstruments(t *testing.T) {
 				},
 			},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.SearchInstruments(context.Background(), "AAPL", ProjectionSymbolSearch)
 	require.NoError(t, err)
@@ -62,7 +54,7 @@ func TestSearchInstruments(t *testing.T) {
 }
 
 func TestSearchInstruments_Fundamental(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/instruments", r.URL.Path)
 
@@ -96,13 +88,7 @@ func TestSearchInstruments_Fundamental(t *testing.T) {
 				},
 			},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.SearchInstruments(context.Background(), "AAPL", ProjectionFundamental)
 	require.NoError(t, err)
@@ -130,7 +116,7 @@ func TestSearchInstruments_Fundamental(t *testing.T) {
 }
 
 func TestGetInstrumentByCUSIP(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/instruments/037833100", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -145,14 +131,7 @@ func TestGetInstrumentByCUSIP(t *testing.T) {
 			AssetType:   "EQUITY",
 			Type:        "SWEEP_VEHICLE",
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetInstrumentByCUSIP(context.Background(), "037833100")
 	require.NoError(t, err)
@@ -168,15 +147,9 @@ func TestGetInstrumentByCUSIP(t *testing.T) {
 }
 
 func TestSearchInstruments_Error(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.SearchInstruments(context.Background(), "INVALID", ProjectionSymbolSearch)
 	require.Error(t, err)
@@ -187,15 +160,9 @@ func TestSearchInstruments_Error(t *testing.T) {
 }
 
 func TestGetInstrumentByCUSIP_Error(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetInstrumentByCUSIP(context.Background(), "INVALID")
 	require.Error(t, err)
