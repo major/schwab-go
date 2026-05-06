@@ -37,6 +37,7 @@ func TestGetQuotes(t *testing.T) {
 	entry := (*quotes)["AAPL"]
 	require.NotNil(t, entry)
 	assert.Equal(t, schwab.AssetTypeEquity, entry.AssetMainType)
+	assert.Equal(t, QuoteTypeNBBO, entry.QuoteType)
 	assert.Equal(t, "AAPL", entry.Symbol)
 
 	equity, err := entry.EquityQuote()
@@ -91,13 +92,23 @@ func TestGetQuotesOption(t *testing.T) {
 	assert.InDelta(t, 0.22, option.Vega, 0.000001)
 	assert.InDelta(t, 0.02, option.Rho, 0.000001)
 	assert.Equal(t, int64(1234), option.OpenInterest)
+	assert.InDelta(t, 4.26, option.IndAskPrice, 0.000001)
+	assert.InDelta(t, 4.14, option.IndBidPrice, 0.000001)
+	assert.Equal(t, int64(1712345678998), option.IndQuoteTime)
+	assert.InDelta(t, 1.25, option.MoneyIntrinsicValue, 0.000001)
 	assert.InDelta(t, 170.0, option.StrikePrice, 0.000001)
 	assert.InDelta(t, 171.25, option.UnderlyingPrice, 0.000001)
 
 	reference, err := entry.OptionReference()
 	require.NoError(t, err)
+	assert.Equal(t, OptionContractTypeCall, reference.ContractType)
+	assert.Equal(t, OptionExerciseTypeAmerican, reference.ExerciseType)
+	assert.Equal(t, OptionExpirationTypeStandard, reference.ExpirationType)
+	assert.Equal(t, OptionSettlementTypePM, reference.SettlementType)
 	assert.InDelta(t, 170.0, reference.StrikePrice, 0.000001)
 	assert.Equal(t, "AAPL", reference.Underlying)
+	assert.True(t, reference.PennyPilot)
+	assert.Equal(t, int64(1716508800000), reference.LastTradingDay)
 }
 
 func TestGetQuotesMixed(t *testing.T) {
@@ -134,6 +145,12 @@ func TestGetQuotesMixed(t *testing.T) {
 	require.NoError(t, err)
 	assert.InDelta(t, 1.08, forexQuote.LastPrice, 0.000001)
 
+	forexReference, err := (*quotes)["EUR/USD"].ForexReference()
+	require.NoError(t, err)
+	assert.True(t, forexReference.Tradable)
+	assert.Equal(t, "EUR/USD", forexReference.Product)
+	assert.Equal(t, "24x5", forexReference.TradingHours)
+
 	futureQuote, err := (*quotes)["/ES"].FutureQuote()
 	require.NoError(t, err)
 	assert.InDelta(t, 5125.25, futureQuote.SettlementPrice, 0.000001)
@@ -143,6 +160,41 @@ func TestGetQuotesMixed(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(20240621), futureReference.FutureExpirationDate)
 	assert.InDelta(t, 5125.25, futureReference.FutureSettlementPrice, 0.000001)
+}
+
+func TestGetQuotesFutureOption(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/quotes", r.URL.Path)
+		assert.Equal(t, "./EW1H24C5000", r.URL.Query().Get("symbols"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, map[string]QuoteEntry{
+			"./EW1H24C5000": futureOptionQuoteEntry("./EW1H24C5000"),
+		})
+	})
+
+	quotes, quoteErr, err := client.GetQuotes(context.Background(), []string{"./EW1H24C5000"}, "", false)
+	require.NoError(t, err)
+	require.Nil(t, quoteErr)
+
+	entry := (*quotes)["./EW1H24C5000"]
+	require.NotNil(t, entry)
+
+	quote, err := entry.FutureOptionQuote()
+	require.NoError(t, err)
+	assert.InDelta(t, 12.25, quote.SettlemetPrice, 0.000001)
+	assert.InDelta(t, 12.3, quote.SettlementPrice, 0.000001)
+	assert.Equal(t, int64(1500), quote.OpenInterest)
+
+	reference, err := entry.FutureOptionReference()
+	require.NoError(t, err)
+	assert.Equal(t, OptionContractTypeCall, reference.ContractType)
+	assert.Equal(t, int64(20240315), reference.ExpirationDate)
+	assert.Equal(t, "American", reference.ExpirationStyle)
+	assert.InDelta(t, 50, reference.Multiplier, 0.000001)
+	assert.Equal(t, "/ES", reference.Underlying)
 }
 
 func TestGetQuotesPartialFailure(t *testing.T) {
@@ -229,7 +281,7 @@ func equityQuoteEntry(symbol string) QuoteEntry {
 	return QuoteEntry{
 		AssetMainType: schwab.AssetTypeEquity,
 		AssetSubType:  "COE",
-		QuoteType:     "NBBO",
+		QuoteType:     QuoteTypeNBBO,
 		Realtime:      true,
 		SSID:          123456,
 		Symbol:        symbol,
@@ -300,21 +352,23 @@ func optionQuoteEntry(symbol string) QuoteEntry {
 	entry.AssetMainType = schwab.AssetTypeOption
 	entry.AssetSubType = "O"
 	entry.Reference = mustRaw(OptionReference{
-		ContractType:     "CALL",
+		ContractType:     OptionContractTypeCall,
 		CUSIP:            "037833100",
 		DaysToExpiration: 30,
 		Description:      "AAPL 05/24/2024 $170 Call",
 		Exchange:         "OPR",
 		ExchangeName:     "Options Price Reporting Authority",
-		ExerciseType:     "A",
+		ExerciseType:     OptionExerciseTypeAmerican,
 		ExpirationDay:    24,
 		ExpirationMonth:  5,
-		ExpirationType:   "S",
+		ExpirationType:   OptionExpirationTypeStandard,
 		ExpirationYear:   2024,
 		Multiplier:       100,
-		SettlementType:   "P",
+		SettlementType:   OptionSettlementTypePM,
 		StrikePrice:      170,
 		Underlying:       "AAPL",
+		PennyPilot:       true,
+		LastTradingDay:   1716508800000,
 	})
 	entry.Quote = mustRaw(map[string]any{
 		"askPrice":               4.25,
@@ -333,6 +387,10 @@ func optionQuoteEntry(symbol string) QuoteEntry {
 		"vega":                   0.22,
 		"rho":                    0.02,
 		"openInterest":           1234,
+		"indAskPrice":            4.26,
+		"indBidPrice":            4.14,
+		"indQuoteTime":           1712345678998,
+		"moneyIntrinsicValue":    1.25,
 		"strikePrice":            170.0,
 		"expirationDate":         "2024-05-24",
 		"intrinsicValue":         1.25,
@@ -405,6 +463,15 @@ func forexQuoteEntry(symbol string) QuoteEntry {
 	return QuoteEntry{
 		AssetMainType: schwab.AssetTypeForex,
 		Symbol:        symbol,
+		Reference: mustRaw(ForexReference{
+			Description:  "Euro/US Dollar",
+			Exchange:     "FOREX",
+			ExchangeName: "Foreign Exchange",
+			Tradable:     true,
+			MarketMaker:  "FX",
+			Product:      "EUR/USD",
+			TradingHours: "24x5",
+		}),
 		Quote: mustRaw(map[string]any{
 			"askPrice":         1.0801,
 			"bidPrice":         1.0799,
@@ -460,6 +527,38 @@ func futureQuoteEntry(symbol string) QuoteEntry {
 			"tradeTime":        1712345678901,
 			"settlementPrice":  5125.25,
 			"openInterest":     987654,
+		}),
+	}
+}
+
+func futureOptionQuoteEntry(symbol string) QuoteEntry {
+	return QuoteEntry{
+		AssetMainType: schwab.AssetTypeFutureOption,
+		Symbol:        symbol,
+		Reference: mustRaw(FutureOptionReference{
+			Description:     "E-mini S&P 500 Weekly Call",
+			ContractType:    OptionContractTypeCall,
+			Exchange:        "CME",
+			ExchangeName:    "Chicago Mercantile Exchange",
+			ExpirationDate:  20240315,
+			ExpirationStyle: "American",
+			Multiplier:      50,
+			StrikePrice:     5000,
+			Underlying:      "/ES",
+		}),
+		Quote: mustRaw(map[string]any{
+			"askPrice":        12.5,
+			"bidPrice":        12.0,
+			"lastPrice":       12.25,
+			"highPrice":       13.0,
+			"lowPrice":        11.5,
+			"mark":            12.25,
+			"netChange":       0.5,
+			"openInterest":    1500,
+			"settlemetPrice":  12.25,
+			"settlementPrice": 12.3,
+			"totalVolume":     25,
+			"tradeTime":       1712345678901,
 		}),
 	}
 }

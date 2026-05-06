@@ -17,7 +17,7 @@ type QuoteResponse map[string]*QuoteEntry
 type QuoteEntry struct {
 	AssetMainType schwab.AssetType `json:"assetMainType"`
 	AssetSubType  string           `json:"assetSubType"`
-	QuoteType     string           `json:"quoteType"`
+	QuoteType     QuoteType        `json:"quoteType"`
 	Realtime      bool             `json:"realtime"`
 	SSID          int64            `json:"ssid"`
 	Symbol        string           `json:"symbol"`
@@ -44,22 +44,24 @@ type EquityReference struct {
 
 // OptionReference contains option reference data for quote responses.
 type OptionReference struct {
-	ContractType     string  `json:"contractType"`
-	CUSIP            string  `json:"cusip"`
-	DaysToExpiration int64   `json:"daysToExpiration"`
-	Deliverables     string  `json:"deliverables"`
-	Description      string  `json:"description"`
-	Exchange         string  `json:"exchange"`
-	ExchangeName     string  `json:"exchangeName"`
-	ExerciseType     string  `json:"exerciseType"`
-	ExpirationDay    int64   `json:"expirationDay"`
-	ExpirationMonth  int64   `json:"expirationMonth"`
-	ExpirationType   string  `json:"expirationType"`
-	ExpirationYear   int64   `json:"expirationYear"`
-	Multiplier       float64 `json:"multiplier"`
-	SettlementType   string  `json:"settlementType"`
-	StrikePrice      float64 `json:"strikePrice"`
-	Underlying       string  `json:"underlying"`
+	ContractType     OptionContractType   `json:"contractType"`
+	CUSIP            string               `json:"cusip"`
+	DaysToExpiration int64                `json:"daysToExpiration"`
+	Deliverables     string               `json:"deliverables"`
+	Description      string               `json:"description"`
+	Exchange         string               `json:"exchange"`
+	ExchangeName     string               `json:"exchangeName"`
+	ExerciseType     OptionExerciseType   `json:"exerciseType"`
+	ExpirationDay    int64                `json:"expirationDay"`
+	ExpirationMonth  int64                `json:"expirationMonth"`
+	ExpirationType   OptionExpirationType `json:"expirationType"`
+	ExpirationYear   int64                `json:"expirationYear"`
+	Multiplier       float64              `json:"multiplier"`
+	SettlementType   OptionSettlementType `json:"settlementType"`
+	StrikePrice      float64              `json:"strikePrice"`
+	Underlying       string               `json:"underlying"`
+	PennyPilot       bool                 `json:"isPennyPilot"`
+	LastTradingDay   int64                `json:"lastTradingDay"`
 }
 
 // IndexReference contains index reference data for quote responses.
@@ -82,7 +84,10 @@ type ForexReference struct {
 	Description  string `json:"description"`
 	Exchange     string `json:"exchange"`
 	ExchangeName string `json:"exchangeName"`
+	Tradable     bool   `json:"isTradable"`
 	MarketMaker  string `json:"marketMaker"`
+	Product      string `json:"product"`
+	TradingHours string `json:"tradingHours"`
 }
 
 // FutureReference contains future reference data for quote responses.
@@ -102,19 +107,24 @@ type FutureReference struct {
 
 // FutureOptionReference contains future option reference data for quote responses.
 type FutureOptionReference struct {
-	Description            string  `json:"description"`
-	Exchange               string  `json:"exchange"`
-	ExchangeName           string  `json:"exchangeName"`
-	FutureActiveSymbol     string  `json:"futureActiveSymbol"`
-	FutureExpirationDate   int64   `json:"futureExpirationDate"`
-	FutureIsActive         bool    `json:"futureIsActive"`
-	FutureMultiplier       float64 `json:"futureMultiplier"`
-	FutureOptionRootSymbol string  `json:"futureOptionRootSymbol"`
-	FuturePriceFormat      string  `json:"futurePriceFormat"`
-	FutureSettlementPrice  float64 `json:"futureSettlementPrice"`
-	FutureTradingHours     string  `json:"futureTradingHours"`
-	Product                string  `json:"product"`
-	StrikePrice            float64 `json:"strikePrice"`
+	Description            string             `json:"description"`
+	ContractType           OptionContractType `json:"contractType"`
+	Exchange               string             `json:"exchange"`
+	ExchangeName           string             `json:"exchangeName"`
+	ExpirationDate         int64              `json:"expirationDate"`
+	ExpirationStyle        string             `json:"expirationStyle"`
+	FutureActiveSymbol     string             `json:"futureActiveSymbol"`
+	FutureExpirationDate   int64              `json:"futureExpirationDate"`
+	FutureIsActive         bool               `json:"futureIsActive"`
+	FutureMultiplier       float64            `json:"futureMultiplier"`
+	FutureOptionRootSymbol string             `json:"futureOptionRootSymbol"`
+	FuturePriceFormat      string             `json:"futurePriceFormat"`
+	FutureSettlementPrice  float64            `json:"futureSettlementPrice"`
+	FutureTradingHours     string             `json:"futureTradingHours"`
+	Multiplier             float64            `json:"multiplier"`
+	Product                string             `json:"product"`
+	StrikePrice            float64            `json:"strikePrice"`
+	Underlying             string             `json:"underlying"`
 }
 
 // RegularMarket contains regular trading session data for quote responses.
@@ -327,6 +337,10 @@ type OptionQuote struct {
 	Vega                   float64 `json:"vega"`
 	Rho                    float64 `json:"rho"`
 	OpenInterest           int64   `json:"openInterest"`
+	IndAskPrice            float64 `json:"indAskPrice"`
+	IndBidPrice            float64 `json:"indBidPrice"`
+	IndQuoteTime           int64   `json:"indQuoteTime"`
+	MoneyIntrinsicValue    float64 `json:"moneyIntrinsicValue"`
 	StrikePrice            float64 `json:"strikePrice"`
 	ExpirationDate         string  `json:"expirationDate"`
 	IntrinsicValue         float64 `json:"intrinsicValue"`
@@ -460,6 +474,7 @@ type FutureOptionQuote struct {
 	QuoteTime        int64   `json:"quoteTime"`
 	SecurityStatus   string  `json:"securityStatus"`
 	SettlementPrice  float64 `json:"settlementPrice"`
+	SettlemetPrice   float64 `json:"settlemetPrice"`
 	Tick             float64 `json:"tick"`
 	TickAmount       float64 `json:"tickAmount"`
 	TotalVolume      int64   `json:"totalVolume"`

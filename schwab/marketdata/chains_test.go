@@ -2,6 +2,7 @@ package marketdata
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -38,16 +39,16 @@ func TestGetOptionChain(t *testing.T) {
 
 	params := &OptionChainParams{
 		Symbol:                 "SPY",
-		ContractType:           "ALL",
+		ContractType:           OptionChainContractTypeAll,
 		StrikeCount:            2,
 		IncludeUnderlyingQuote: true,
-		Strategy:               "SINGLE",
-		Range:                  "NTM",
+		Strategy:               OptionChainStrategySingle,
+		Range:                  OptionChainRangeNearTheMoney,
 		FromDate:               "2024-01-01",
 		ToDate:                 "2024-02-01",
-		ExpMonth:               "JAN",
-		OptionType:             "ALL",
-		Entitlement:            "PN",
+		ExpMonth:               ExpirationMonthJanuary,
+		OptionType:             OptionChainTypeAll,
+		Entitlement:            OptionEntitlementPayingNonProfessional,
 	}
 
 	result, err := client.GetOptionChain(context.Background(), params)
@@ -56,7 +57,7 @@ func TestGetOptionChain(t *testing.T) {
 
 	assert.Equal(t, "SPY", result.Symbol)
 	assert.Equal(t, "SUCCESS", result.Status)
-	assert.Equal(t, "SINGLE", result.Strategy)
+	assert.Equal(t, OptionChainStrategySingle, result.Strategy)
 	assert.InDelta(t, 0.0, result.Interval, 0.000001)
 	assert.True(t, result.IsDelayed)
 	assert.False(t, result.IsIndex)
@@ -73,12 +74,13 @@ func TestGetOptionChain(t *testing.T) {
 	assert.Equal(t, int64(54321000), result.Underlying.TotalVolume)
 
 	callContract := result.CallExpDateMap["2024-01-19:5"]["470.0"][0]
-	assert.Equal(t, "CALL", callContract.PutCall)
+	assert.Equal(t, OptionChainContractTypeCall, callContract.PutCall)
 	assert.Equal(t, "SPY_011924C470", callContract.Symbol)
 	assert.InDelta(t, 3.40, callContract.BidPrice, 0.000001)
 	assert.InDelta(t, 3.45, callContract.AskPrice, 0.000001)
 	assert.InDelta(t, 3.43, callContract.MarkPrice, 0.000001)
 	assert.Equal(t, int64(12345), callContract.TotalVolume)
+	assert.Equal(t, "20240119", callContract.TradeDate)
 	assert.InDelta(t, 0.52, callContract.Delta, 0.000001)
 	assert.InDelta(t, 0.08, callContract.Gamma, 0.000001)
 	assert.InDelta(t, -0.12, callContract.Theta, 0.000001)
@@ -89,10 +91,17 @@ func TestGetOptionChain(t *testing.T) {
 	assert.True(t, callContract.PennyPilot)
 
 	putContract := result.PutExpDateMap["2024-01-19:5"]["470.0"][0]
-	assert.Equal(t, "PUT", putContract.PutCall)
+	assert.Equal(t, OptionChainContractTypePut, putContract.PutCall)
 	assert.Equal(t, "SPY_011924P470", putContract.Symbol)
 	assert.InDelta(t, -0.48, putContract.Delta, 0.000001)
 	assert.InDelta(t, 1.95, putContract.IntrinsicValue, 0.000001)
+}
+
+func TestOptionContractTradeDateStringUnmarshal(t *testing.T) {
+	var contract OptionContract
+	err := json.Unmarshal([]byte(`{"tradeDate":"2024-01-19"}`), &contract)
+	require.NoError(t, err)
+	assert.Equal(t, "2024-01-19", contract.TradeDate)
 }
 
 func TestGetOptionChainMinimal(t *testing.T) {
@@ -178,7 +187,7 @@ func TestGetOptionChainAnalytical(t *testing.T) {
 
 	params := &OptionChainParams{
 		Symbol:           "MSFT",
-		Strategy:         "ANALYTICAL",
+		Strategy:         OptionChainStrategyAnalytical,
 		Interval:         5.5,
 		Strike:           420.25,
 		Volatility:       0.24,
@@ -190,7 +199,7 @@ func TestGetOptionChainAnalytical(t *testing.T) {
 	result, err := client.GetOptionChain(context.Background(), params)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assert.Equal(t, "ANALYTICAL", result.Strategy)
+	assert.Equal(t, OptionChainStrategyAnalytical, result.Strategy)
 	assert.InDelta(t, 5.5, result.Interval, 0.000001)
 	assert.InDelta(t, 0.24, result.Volatility, 0.000001)
 	assert.InDelta(t, 421.75, result.UnderlyingPrice, 0.000001)
@@ -318,6 +327,7 @@ func optionContractFixture(putCall, symbol string, delta, intrinsicValue float64
 		"openPrice":              3.10,
 		"closePrice":             3.25,
 		"totalVolume":            int64(12345),
+		"tradeDate":              int64(20240119),
 		"tradeTimeInLong":        int64(1705276800000),
 		"quoteTimeInLong":        int64(1705276805000),
 		"netChange":              0.17,
