@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,7 @@ import (
 )
 
 func TestGetUserPreference(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/userPreference", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -51,14 +50,7 @@ func TestGetUserPreference(t *testing.T) {
 				},
 			},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetUserPreference(context.Background())
 	require.NoError(t, err)
@@ -92,15 +84,9 @@ func TestGetUserPreference(t *testing.T) {
 }
 
 func TestGetUserPreference_Error(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetUserPreference(context.Background())
 	require.Error(t, err)

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,7 @@ import (
 )
 
 func TestGetMovers(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/movers/$DJI", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -47,14 +46,7 @@ func TestGetMovers(t *testing.T) {
 				},
 			},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetMovers(context.Background(), "$DJI", "", 0)
 	require.NoError(t, err)
@@ -81,7 +73,7 @@ func TestGetMovers(t *testing.T) {
 }
 
 func TestGetMovers_WithSort(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/movers/$COMPX", r.URL.Path)
 
@@ -94,20 +86,14 @@ func TestGetMovers_WithSort(t *testing.T) {
 		writeJSON(t, w, MoverResponse{
 			Screeners: []Screener{},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetMovers(context.Background(), "$COMPX", MoverSortVolume, 0)
 	require.NoError(t, err)
 }
 
 func TestGetMovers_WithFrequency(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/movers/$SPX", r.URL.Path)
 
@@ -120,20 +106,14 @@ func TestGetMovers_WithFrequency(t *testing.T) {
 		writeJSON(t, w, MoverResponse{
 			Screeners: []Screener{},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetMovers(context.Background(), "$SPX", "", 60)
 	require.NoError(t, err)
 }
 
 func TestGetMovers_NoOptionalParams(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/movers/$DJI", r.URL.Path)
 
@@ -148,28 +128,16 @@ func TestGetMovers_NoOptionalParams(t *testing.T) {
 		writeJSON(t, w, MoverResponse{
 			Screeners: []Screener{},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetMovers(context.Background(), "$DJI", "", 0)
 	require.NoError(t, err)
 }
 
 func TestGetMovers_Error(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetMovers(context.Background(), "$DJI", "", 0)
 	require.Error(t, err)

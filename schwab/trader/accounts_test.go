@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,7 +59,7 @@ func TestGetAccounts(t *testing.T) {
 		},
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/accounts", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -68,14 +67,7 @@ func TestGetAccounts(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, fixture)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetAccounts(context.Background(), "")
 	require.NoError(t, err)
@@ -126,7 +118,7 @@ func TestGetAccounts(t *testing.T) {
 }
 
 func TestGetAccounts_WithFields(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/accounts", r.URL.Path)
 
@@ -137,20 +129,14 @@ func TestGetAccounts_WithFields(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, []Account{})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetAccounts(context.Background(), "positions")
 	require.NoError(t, err)
 }
 
 func TestGetAccounts_NoFields(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/accounts", r.URL.Path)
 
@@ -161,13 +147,7 @@ func TestGetAccounts_NoFields(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, []Account{})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetAccounts(context.Background(), "")
 	require.NoError(t, err)
@@ -189,7 +169,7 @@ func TestGetAccount(t *testing.T) {
 		},
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
@@ -199,14 +179,7 @@ func TestGetAccount(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, fixture)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetAccount(context.Background(), "HASH_ABC123", "")
 	require.NoError(t, err)
@@ -224,15 +197,9 @@ func TestGetAccount(t *testing.T) {
 }
 
 func TestGetAccount_Error(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetAccount(context.Background(), "HASH_ABC123", "")
 	require.Error(t, err)

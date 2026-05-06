@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,7 +43,7 @@ func TestGetTransactions(t *testing.T) {
 		},
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/accounts/HASH_ABC123/transactions", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -57,14 +56,7 @@ func TestGetTransactions(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, fixture)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{
 		StartDate: "2024-01-01",
@@ -101,7 +93,7 @@ func TestGetTransactions(t *testing.T) {
 }
 
 func TestGetTransactions_WithOptionalParams(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 
 		// Verify required params
@@ -115,13 +107,7 @@ func TestGetTransactions_WithOptionalParams(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, []Transaction{})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{
 		StartDate: "2024-01-01",
@@ -147,7 +133,7 @@ func TestGetTransaction(t *testing.T) {
 		AccountNumber: "123456789",
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/accounts/HASH_ABC123/transactions/2002", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -155,14 +141,7 @@ func TestGetTransaction(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, []Transaction{fixture})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetTransaction(context.Background(), "HASH_ABC123", 2002)
 	require.NoError(t, err)
@@ -184,37 +163,27 @@ func TestGetTransactionsRequiresParams(t *testing.T) {
 	require.EqualError(t, err, "transaction list params are required")
 
 	_, err = client.GetTransactions(
-		context.Background(),
-		"HASH_ABC123",
-		&TransactionListParams{EndDate: "2024-01-31", Types: "TRADE"},
+		context.Background(), "HASH_ABC123", &TransactionListParams{EndDate: "2024-01-31", Types: "TRADE"},
 	)
 	require.EqualError(t, err, "startDate is required")
 
 	_, err = client.GetTransactions(
-		context.Background(),
-		"HASH_ABC123",
+		context.Background(), "HASH_ABC123",
 		&TransactionListParams{StartDate: "2024-01-01", Types: "TRADE"},
 	)
 	require.EqualError(t, err, "endDate is required")
 
 	_, err = client.GetTransactions(
-		context.Background(),
-		"HASH_ABC123",
+		context.Background(), "HASH_ABC123",
 		&TransactionListParams{StartDate: "2024-01-01", EndDate: "2024-01-31"},
 	)
 	require.EqualError(t, err, "types is required")
 }
 
 func TestGetTransactions_Error(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{
 		StartDate: "2024-01-01",

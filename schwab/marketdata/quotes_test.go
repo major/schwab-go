@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +14,7 @@ import (
 )
 
 func TestGetQuotes(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/quotes", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -28,14 +27,7 @@ func TestGetQuotes(t *testing.T) {
 		writeJSON(t, w, map[string]QuoteEntry{
 			"AAPL": equityQuoteEntry("AAPL"),
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	quotes, quoteErr, err := client.GetQuotes(context.Background(), []string{"AAPL", "MSFT"}, "quote", true)
 	require.NoError(t, err)
@@ -71,7 +63,7 @@ func TestGetQuotes(t *testing.T) {
 }
 
 func TestGetQuotesOption(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/quotes", r.URL.Path)
 		assert.Equal(t, "AAPL_052424C170", r.URL.Query().Get("symbols"))
@@ -83,13 +75,7 @@ func TestGetQuotesOption(t *testing.T) {
 		writeJSON(t, w, map[string]QuoteEntry{
 			"AAPL_052424C170": optionQuoteEntry("AAPL_052424C170"),
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	quotes, quoteErr, err := client.GetQuotes(context.Background(), []string{"AAPL_052424C170"}, "", false)
 	require.NoError(t, err)
@@ -115,7 +101,7 @@ func TestGetQuotesOption(t *testing.T) {
 }
 
 func TestGetQuotesMixed(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "AAPL,$SPX,VFIAX,EUR/USD,/ES", r.URL.Query().Get("symbols"))
 
 		w.Header().Set("Content-Type", "application/json")
@@ -127,19 +113,10 @@ func TestGetQuotesMixed(t *testing.T) {
 			"EUR/USD": forexQuoteEntry("EUR/USD"),
 			"/ES":     futureQuoteEntry("/ES"),
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	quotes, quoteErr, err := client.GetQuotes(
-		context.Background(),
-		[]string{"AAPL", "$SPX", "VFIAX", "EUR/USD", "/ES"},
-		"",
-		false,
+		context.Background(), []string{"AAPL", "$SPX", "VFIAX", "EUR/USD", "/ES"}, "", false,
 	)
 	require.NoError(t, err)
 	require.Nil(t, quoteErr)
@@ -169,7 +146,7 @@ func TestGetQuotesMixed(t *testing.T) {
 }
 
 func TestGetQuotesPartialFailure(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, map[string]any{
@@ -180,13 +157,7 @@ func TestGetQuotesPartialFailure(t *testing.T) {
 				InvalidSymbols: []string{"NOTREAL"},
 			},
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	quotes, quoteErr, err := client.GetQuotes(context.Background(), []string{"AAPL", "NOTREAL"}, "quote", false)
 	require.NoError(t, err)
@@ -198,7 +169,7 @@ func TestGetQuotesPartialFailure(t *testing.T) {
 }
 
 func TestGetQuote(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/$SPX/quotes", r.URL.Path)
 		assert.Equal(t, "quote,reference", r.URL.Query().Get("fields"))
@@ -208,13 +179,7 @@ func TestGetQuote(t *testing.T) {
 		writeJSON(t, w, map[string]QuoteEntry{
 			"$SPX": indexQuoteEntry("$SPX"),
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	quotes, err := client.GetQuote(context.Background(), "$SPX", "quote,reference")
 	require.NoError(t, err)
@@ -232,19 +197,13 @@ func TestGetQuote(t *testing.T) {
 }
 
 func TestGetQuotesError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(t, w, map[string]string{
 			"detail": "invalid fields parameter",
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	quotes, quoteErr, err := client.GetQuotes(context.Background(), []string{"AAPL"}, "invalid", false)
 	require.Error(t, err)

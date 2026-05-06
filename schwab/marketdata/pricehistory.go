@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"strconv"
 )
 
 // PeriodType defines the period type for price history.
@@ -70,39 +69,15 @@ func (c *Client) GetPriceHistory(ctx context.Context, symbol string, params *Pri
 	q := req.URL.Query()
 	q.Set("symbol", symbol)
 
-	if params == nil {
-		req.URL.RawQuery = q.Encode()
-
-		var result CandleList
-		if doErr := c.do(req, &result); doErr != nil {
-			return nil, doErr
-		}
-		return &result, nil
-	}
-
-	if params.PeriodType != "" {
-		q.Set("periodType", string(params.PeriodType))
-	}
-	if params.Period != 0 {
-		q.Set("period", strconv.Itoa(params.Period))
-	}
-	if params.FrequencyType != "" {
-		q.Set("frequencyType", string(params.FrequencyType))
-	}
-	if params.Frequency != 0 {
-		q.Set("frequency", strconv.Itoa(params.Frequency))
-	}
-	if params.StartDate != 0 {
-		q.Set("startDate", strconv.FormatInt(params.StartDate, 10))
-	}
-	if params.EndDate != 0 {
-		q.Set("endDate", strconv.FormatInt(params.EndDate, 10))
-	}
-	if params.NeedExtendedHoursData != nil {
-		q.Set("needExtendedHoursData", strconv.FormatBool(*params.NeedExtendedHoursData))
-	}
-	if params.NeedPreviousClose != nil {
-		q.Set("needPreviousClose", strconv.FormatBool(*params.NeedPreviousClose))
+	if params != nil {
+		setOptionalString(q, "periodType", string(params.PeriodType))
+		setOptionalInt(q, "period", params.Period)
+		setOptionalString(q, "frequencyType", string(params.FrequencyType))
+		setOptionalInt(q, "frequency", params.Frequency)
+		setOptionalInt64(q, "startDate", params.StartDate)
+		setOptionalInt64(q, "endDate", params.EndDate)
+		setOptionalBool(q, "needExtendedHoursData", params.NeedExtendedHoursData)
+		setOptionalBool(q, "needPreviousClose", params.NeedPreviousClose)
 	}
 
 	req.URL.RawQuery = q.Encode()

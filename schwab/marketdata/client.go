@@ -3,12 +3,11 @@ package marketdata
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 
 	schwab "github.com/major/schwab-go/schwab"
+	"github.com/major/schwab-go/schwab/internal/httpclient"
 )
 
 const defaultBaseURL = "https://api.schwabapi.com/marketdata/v1"
@@ -22,15 +21,11 @@ type Client struct {
 
 // NewClient creates a new Market Data API client with the given options.
 func NewClient(opts ...schwab.Option) *Client {
-	cfg := schwab.ClientConfig{
-		BaseURL: &url.URL{
-			Scheme: "https",
-			Host:   "api.schwabapi.com",
-			Path:   "/marketdata/v1",
-		},
-		HTTPClient: http.DefaultClient,
+	defaultBase, err := url.Parse(defaultBaseURL)
+	if err != nil {
+		defaultBase = &url.URL{Scheme: "https", Host: "api.schwabapi.com", Path: "/marketdata/v1"}
 	}
-	schwab.ApplyOptions(&cfg, opts)
+	cfg := httpclient.NewConfig(defaultBase, http.DefaultClient, opts)
 	return &Client{
 		baseURL:    cfg.BaseURL,
 		httpClient: cfg.HTTPClient,
@@ -38,65 +33,35 @@ func NewClient(opts ...schwab.Option) *Client {
 	}
 }
 
+func (c *Client) config() httpclient.Config {
+	return httpclient.Config{BaseURL: c.baseURL, HTTPClient: c.httpClient, Token: c.token}
+}
+
 // newRequest builds a GET request with the given path.
 func (c *Client) newRequest(ctx context.Context, path string) (*http.Request, error) {
-	u := c.baseURL.JoinPath(path)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
-	}
-	return req, nil
+	return httpclient.NewRequest(ctx, c.config(), http.MethodGet, path, http.NoBody)
 }
 
 // do executes the request and decodes the response into out.
 // If out is nil, the response body is drained and discarded.
-// On HTTP errors (status >= 400), returns *schwab.APIError.
+// On non-2xx HTTP status, returns *schwab.APIError.
 func (c *Client) do(req *http.Request, out any) error {
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		return decodeAPIError(resp)
-	}
-
-	if out == nil {
-		if _, copyErr := io.Copy(io.Discard, resp.Body); copyErr != nil {
-			return fmt.Errorf("discard response body: %w", copyErr)
-		}
-		return nil
-	}
-
-	if decodeErr := json.NewDecoder(resp.Body).Decode(out); decodeErr != nil {
-		return fmt.Errorf("decode response body: %w", decodeErr)
-	}
-	return nil
+	return httpclient.Do(c.config(), req, out, c.extractError)
 }
 
-func decodeAPIError(resp *http.Response) *schwab.APIError {
-	bodyBytes, readErr := io.ReadAll(resp.Body)
-	apiErr := &schwab.APIError{StatusCode: resp.StatusCode}
-	if readErr == nil && len(bodyBytes) > 0 {
-		// Try to decode the structured Market Data error response before falling back to HTTP text.
-		var errResp struct {
-			Detail string `json:"detail"`
-			Title  string `json:"title"`
-		}
-		if jsonErr := json.Unmarshal(bodyBytes, &errResp); jsonErr == nil && errResp.Detail != "" {
-			apiErr.Message = errResp.Detail
-		} else if jsonErr == nil && errResp.Title != "" {
-			apiErr.Message = errResp.Title
-		}
-		apiErr.Body = string(bodyBytes)
+func (c *Client) extractError(body []byte) string {
+	var errResp struct {
+		Detail string `json:"detail"`
+		Title  string `json:"title"`
 	}
-	if apiErr.Message == "" {
-		apiErr.Message = http.StatusText(resp.StatusCode)
+	if err := json.Unmarshal(body, &errResp); err != nil {
+		return ""
 	}
-	return apiErr
+	if errResp.Detail != "" {
+		return errResp.Detail
+	}
+	if errResp.Title != "" {
+		return errResp.Title
+	}
+	return ""
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,16 +42,13 @@ func TestNewClient_WithHTTPClient(t *testing.T) {
 }
 
 func TestDo_Success(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/test", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		writeJSON(t, w, map[string]string{"key": "value"})
-	}))
-	defer ts.Close()
-
-	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
+	})
 	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 
@@ -63,14 +59,11 @@ func TestDo_Success(t *testing.T) {
 }
 
 func TestDo_ErrorWithJSONBody(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		writeJSON(t, w, map[string]string{"detail": "bad request"})
-	}))
-	defer ts.Close()
-
-	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
+	})
 	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 
@@ -84,12 +77,9 @@ func TestDo_ErrorWithJSONBody(t *testing.T) {
 }
 
 func TestDo_ErrorWithEmptyBody(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer ts.Close()
-
-	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
+	})
 	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 
@@ -103,17 +93,32 @@ func TestDo_ErrorWithEmptyBody(t *testing.T) {
 }
 
 func TestDo_NilOutput(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer ts.Close()
-
-	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
+	})
 	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 
 	err = client.do(req, nil)
 	require.NoError(t, err)
+}
+
+func TestDo_RedirectReturnsError(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMovedPermanently)
+		writeJSON(t, w, map[string]string{"detail": "moved"})
+	})
+	req, err := client.newRequest(context.Background(), "/test")
+	require.NoError(t, err)
+
+	err = client.do(req, nil)
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	require.Equal(t, http.StatusMovedPermanently, apiErr.StatusCode)
+	require.Equal(t, "moved", apiErr.Message)
 }
 
 func TestNewRequest_AuthHeader(t *testing.T) {
@@ -124,15 +129,12 @@ func TestNewRequest_AuthHeader(t *testing.T) {
 }
 
 func TestDo_MalformedJSONBody(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte("{invalid json"))
 		assert.NoError(t, err)
-	}))
-	defer ts.Close()
-
-	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
+	})
 	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 

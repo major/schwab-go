@@ -3,8 +3,6 @@ package trader
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/url"
 	"strconv"
 
 	schwab "github.com/major/schwab-go/schwab"
@@ -118,9 +116,7 @@ type TransactionOptionDeliverable struct {
 // GetTransactions retrieves a list of transactions for the given account.
 // params must not be nil; StartDate and EndDate are required by the API.
 func (c *Client) GetTransactions(
-	ctx context.Context,
-	accountHash string,
-	params *TransactionListParams,
+	ctx context.Context, accountHash string, params *TransactionListParams,
 ) ([]Transaction, error) {
 	if params == nil {
 		return nil, errors.New("transaction list params are required")
@@ -135,8 +131,7 @@ func (c *Client) GetTransactions(
 		return nil, errors.New("types is required")
 	}
 
-	path := fmt.Sprintf("/accounts/%s/transactions", url.PathEscape(accountHash))
-	req, err := c.newRequest(ctx, "GET", path, nil)
+	req, err := c.newRequest(ctx, "GET", accountPath(accountHash, "transactions"), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -145,9 +140,7 @@ func (c *Client) GetTransactions(
 	q.Set("startDate", params.StartDate)
 	q.Set("endDate", params.EndDate)
 	q.Set("types", params.Types)
-	if params.Symbol != "" {
-		q.Set("symbol", params.Symbol)
-	}
+	setOptionalString(q, "symbol", params.Symbol)
 	req.URL.RawQuery = q.Encode()
 
 	var result []Transaction
@@ -159,12 +152,8 @@ func (c *Client) GetTransactions(
 
 // GetTransaction retrieves transactions matching one transaction ID for the given account.
 func (c *Client) GetTransaction(ctx context.Context, accountHash string, transactionID int64) ([]Transaction, error) {
-	path := fmt.Sprintf(
-		"/accounts/%s/transactions/%s",
-		url.PathEscape(accountHash),
-		strconv.FormatInt(transactionID, 10),
-	)
-	req, err := c.newRequest(ctx, "GET", path, nil)
+	txnPath := accountPath(accountHash, "transactions", strconv.FormatInt(transactionID, 10))
+	req, err := c.newRequest(ctx, "GET", txnPath, nil)
 	if err != nil {
 		return nil, err
 	}

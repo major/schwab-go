@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,7 +13,7 @@ import (
 )
 
 func TestGetPriceHistory(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/pricehistory", r.URL.Path)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
@@ -39,14 +38,7 @@ func TestGetPriceHistory(t *testing.T) {
 			"symbol": "AAPL",
 			"empty":  false,
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithToken("test-token"),
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetPriceHistory(context.Background(), "AAPL", nil)
 	require.NoError(t, err)
@@ -68,7 +60,7 @@ func TestGetPriceHistory(t *testing.T) {
 }
 
 func TestGetPriceHistory_WithParams(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/pricehistory", r.URL.Path)
 
@@ -107,13 +99,7 @@ func TestGetPriceHistory_WithParams(t *testing.T) {
 			"symbol":  "AAPL",
 			"empty":   true,
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	trueVal := true
 	falseVal := false
@@ -136,7 +122,7 @@ func TestGetPriceHistory_WithParams(t *testing.T) {
 }
 
 func TestGetPriceHistory_NilParams(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/pricehistory", r.URL.Path)
 
@@ -161,13 +147,7 @@ func TestGetPriceHistory_NilParams(t *testing.T) {
 			"symbol":  "AAPL",
 			"empty":   true,
 		})
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	result, err := client.GetPriceHistory(context.Background(), "AAPL", nil)
 	require.NoError(t, err)
@@ -175,15 +155,9 @@ func TestGetPriceHistory_NilParams(t *testing.T) {
 }
 
 func TestGetPriceHistory_Error(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-	}))
-	defer ts.Close()
-
-	client := NewClient(
-		schwab.WithHTTPClient(ts.Client()),
-		schwab.WithBaseURL(ts.URL),
-	)
+	})
 
 	_, err := client.GetPriceHistory(context.Background(), "AAPL", nil)
 	require.Error(t, err)
