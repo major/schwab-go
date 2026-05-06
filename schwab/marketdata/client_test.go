@@ -21,6 +21,7 @@ func TestNewClient_Defaults(t *testing.T) {
 	require.Equal(t, defaultBaseURL, client.baseURL.String())
 	require.NotNil(t, client.httpClient)
 	require.Empty(t, client.token)
+	require.Equal(t, schwab.DefaultResponseBodyLimit, client.responseBodyLimit)
 }
 
 func TestNewClient_WithToken(t *testing.T) {
@@ -50,6 +51,13 @@ func TestNewClient_WithHTTPClient(t *testing.T) {
 	client := NewClient(schwab.WithHTTPClient(customHTTPClient))
 	require.NotNil(t, client)
 	require.Equal(t, customHTTPClient, client.httpClient)
+}
+
+func TestNewClient_WithResponseBodyLimit(t *testing.T) {
+	client := NewClient(schwab.WithResponseBodyLimit(1234))
+	require.NotNil(t, client)
+	require.Equal(t, int64(1234), client.responseBodyLimit)
+	require.Equal(t, int64(1234), client.config().ResponseBodyLimit)
 }
 
 func TestDo_Success(t *testing.T) {

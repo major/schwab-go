@@ -11,11 +11,15 @@ import (
 // It is exported so sub-packages (marketdata, trader) can construct it with
 // defaults and call ApplyOptions to apply user-provided options.
 type ClientConfig struct {
-	Token       string
-	HTTPClient  *http.Client
-	BaseURL     *url.URL
-	OptionError error
+	Token             string
+	HTTPClient        *http.Client
+	BaseURL           *url.URL
+	OptionError       error
+	ResponseBodyLimit int64
 }
+
+// DefaultResponseBodyLimit is the maximum response body size read by default.
+const DefaultResponseBodyLimit int64 = 10 << 20
 
 // Option is a functional option for configuring a Schwab API client.
 type Option func(*ClientConfig)
@@ -53,6 +57,16 @@ func WithBaseURL(rawURL string) Option {
 			return
 		}
 		cfg.BaseURL = u
+	}
+}
+
+// WithResponseBodyLimit sets the maximum response body size read by the client.
+// Non-positive values are ignored.
+func WithResponseBodyLimit(limit int64) Option {
+	return func(cfg *ClientConfig) {
+		if limit > 0 {
+			cfg.ResponseBodyLimit = limit
+		}
 	}
 }
 

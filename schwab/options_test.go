@@ -3,6 +3,7 @@ package schwab
 import (
 	"net/http"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -76,12 +77,31 @@ func TestWithBaseURL_JoinsInvalidOptions(t *testing.T) {
 	require.ErrorContains(t, cfg.OptionError, relativeBaseURLError)
 }
 
+func TestWithResponseBodyLimit(t *testing.T) {
+	cfg := &ClientConfig{}
+	opt := WithResponseBodyLimit(1234)
+	opt(cfg)
+	require.Equal(t, int64(1234), cfg.ResponseBodyLimit)
+}
+
+func TestWithResponseBodyLimit_NonPositive(t *testing.T) {
+	for _, limit := range []int64{0, -1} {
+		t.Run(strconv.FormatInt(limit, 10), func(t *testing.T) {
+			cfg := &ClientConfig{ResponseBodyLimit: 42}
+			opt := WithResponseBodyLimit(limit)
+			opt(cfg)
+			require.Equal(t, int64(42), cfg.ResponseBodyLimit)
+		})
+	}
+}
+
 func TestApplyOptions(t *testing.T) {
 	customClient := &http.Client{Timeout: 0}
 	opts := []Option{
 		WithToken("my-token"),
 		WithHTTPClient(customClient),
 		WithBaseURL("https://api.schwab.com"),
+		WithResponseBodyLimit(2048),
 	}
 	cfg := &ClientConfig{}
 	ApplyOptions(cfg, opts)
@@ -91,4 +111,5 @@ func TestApplyOptions(t *testing.T) {
 	require.NotNil(t, cfg.BaseURL)
 	require.Equal(t, "https://api.schwab.com", cfg.BaseURL.String())
 	require.NoError(t, cfg.OptionError)
+	require.Equal(t, int64(2048), cfg.ResponseBodyLimit)
 }

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -24,10 +25,11 @@ const (
 
 // Config holds shared HTTP client settings for Schwab API packages.
 type Config struct {
-	BaseURL     *url.URL
-	HTTPClient  *http.Client
-	Token       string
-	OptionError error
+	BaseURL           *url.URL
+	HTTPClient        *http.Client
+	Token             string
+	OptionError       error
+	ResponseBodyLimit int64
 }
 
 // NewConfig applies shared Schwab client options to default HTTP settings.
@@ -40,9 +42,19 @@ func NewConfig(defaultBase *url.URL, defaultClient *http.Client, opts []schwab.O
 	if defaultClient == nil {
 		defaultClient = &http.Client{}
 	}
-	cfg := schwab.ClientConfig{BaseURL: defaultBase, HTTPClient: defaultClient}
+	cfg := schwab.ClientConfig{
+		BaseURL:           defaultBase,
+		HTTPClient:        defaultClient,
+		ResponseBodyLimit: schwab.DefaultResponseBodyLimit,
+	}
 	schwab.ApplyOptions(&cfg, opts)
-	return Config{BaseURL: cfg.BaseURL, HTTPClient: cfg.HTTPClient, Token: cfg.Token, OptionError: cfg.OptionError}
+	return Config{
+		BaseURL:           cfg.BaseURL,
+		HTTPClient:        cfg.HTTPClient,
+		Token:             cfg.Token,
+		OptionError:       cfg.OptionError,
+		ResponseBodyLimit: cfg.ResponseBodyLimit,
+	}
 }
 
 // NewRequest builds an HTTP request with optional JSON request body.
@@ -84,35 +96,53 @@ func Do(cfg Config, req *http.Request, out any, extractError func([]byte) string
 		return err
 	}
 	defer resp.Body.Close()
+	limitedBody := http.MaxBytesReader(nil, resp.Body, responseBodyLimit(cfg))
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= 300 {
-		bodyBytes, readErr := readAPIErrorBody(resp.Body)
-		apiErr := &schwab.APIError{StatusCode: resp.StatusCode}
-		if readErr == nil && len(bodyBytes) > 0 {
-			apiErr.Body = string(bodyBytes)
-			apiErr.Message = extractError(bodyBytes)
-		}
-		if apiErr.Message == "" {
-			apiErr.Message = http.StatusText(resp.StatusCode)
-		}
-		return apiErr
+		return apiErrorFromResponse(resp.StatusCode, limitedBody, extractError)
 	}
 
 	if out == nil {
-		if _, copyErr := io.Copy(io.Discard, resp.Body); copyErr != nil {
-			return copyErr
+		if _, copyErr := io.Copy(io.Discard, limitedBody); copyErr != nil {
+			return responseBodyReadError("drain response body", copyErr)
 		}
 		return nil
 	}
 
-	bodyReader := bufio.NewReader(resp.Body)
+	bodyReader := bufio.NewReader(limitedBody)
 	if contentTypeErr := validateJSONContentType(resp.Header.Get("Content-Type"), bodyReader); contentTypeErr != nil {
 		return contentTypeErr
 	}
-	if decodeErr := json.NewDecoder(bodyReader).Decode(out); decodeErr != nil {
+	decoder := json.NewDecoder(bodyReader)
+	if decodeErr := decoder.Decode(out); decodeErr != nil {
+		if limitErr := responseBodyLimitError("decode response body", decodeErr); limitErr != nil {
+			return limitErr
+		}
 		return fmt.Errorf("decode response body: %w", decodeErr)
 	}
+	if _, copyErr := io.Copy(io.Discard, io.MultiReader(decoder.Buffered(), bodyReader)); copyErr != nil {
+		return responseBodyReadError("drain response body", copyErr)
+	}
 	return nil
+}
+
+func apiErrorFromResponse(statusCode int, body io.Reader, extractError func([]byte) string) *schwab.APIError {
+	bodyBytes, readErr := readAPIErrorBody(body)
+	apiErr := &schwab.APIError{StatusCode: statusCode}
+	if readErr != nil {
+		apiErr.Message = responseBodyReadMessage("read error response body", readErr)
+		return apiErr
+	}
+	if len(bodyBytes) > 0 {
+		apiErr.Body = string(bodyBytes)
+	}
+	if len(bodyBytes) > 0 && extractError != nil {
+		apiErr.Message = extractError(bodyBytes)
+	}
+	if apiErr.Message == "" {
+		apiErr.Message = http.StatusText(statusCode)
+	}
+	return apiErr
 }
 
 func readAPIErrorBody(body io.Reader) ([]byte, error) {
@@ -138,4 +168,35 @@ func validateJSONContentType(contentType string, bodyReader *bufio.Reader) error
 		return nil
 	}
 	return fmt.Errorf("unexpected Content-Type %q (expected %s)", contentType, jsonContentType)
+}
+
+func responseBodyLimit(cfg Config) int64 {
+	if cfg.ResponseBodyLimit > 0 {
+		return cfg.ResponseBodyLimit
+	}
+	return schwab.DefaultResponseBodyLimit
+}
+
+func responseBodyLimitError(operation string, err error) error {
+	var maxBytesErr *http.MaxBytesError
+	if !errors.As(err, &maxBytesErr) {
+		return nil
+	}
+	return fmt.Errorf(
+		"%s: response body too large: configured limit is %d bytes: %w",
+		operation,
+		maxBytesErr.Limit,
+		err,
+	)
+}
+
+func responseBodyReadError(operation string, err error) error {
+	if limitErr := responseBodyLimitError(operation, err); limitErr != nil {
+		return limitErr
+	}
+	return fmt.Errorf("%s: %w", operation, err)
+}
+
+func responseBodyReadMessage(operation string, err error) string {
+	return responseBodyReadError(operation, err).Error()
 }
