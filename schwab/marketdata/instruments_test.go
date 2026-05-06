@@ -3,6 +3,7 @@ package marketdata
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -11,6 +12,18 @@ import (
 
 	schwab "github.com/major/schwab-go/schwab"
 )
+
+const recordedInstrumentByCUSIPResponse = `{
+  "instruments": [
+    {
+      "cusip": "037833100",
+      "symbol": "AAPL",
+      "description": "Apple Inc",
+      "exchange": "NASDAQ",
+      "assetType": "EQUITY"
+    }
+  ]
+}`
 
 func TestSearchInstruments(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -145,6 +158,26 @@ func TestGetInstrumentByCUSIP(t *testing.T) {
 	assert.Equal(t, "AAPL", result.Symbol)
 	assert.Equal(t, "Apple Inc", result.Description)
 	assert.Equal(t, "NASDAQ", result.Exchange)
+	assert.Equal(t, schwab.AssetType("EQUITY"), result.AssetType)
+}
+
+func TestGetInstrumentByCUSIP_RecordedWrappedResponse(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/instruments/037833100", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, err := fmt.Fprint(w, recordedInstrumentByCUSIPResponse)
+		assert.NoError(t, err)
+	})
+
+	result, err := client.GetInstrumentByCUSIP(context.Background(), "037833100")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	assert.Equal(t, "037833100", result.Cusip)
+	assert.Equal(t, "AAPL", result.Symbol)
 	assert.Equal(t, schwab.AssetType("EQUITY"), result.AssetType)
 }
 

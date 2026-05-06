@@ -7,10 +7,14 @@ import (
 	"net/http"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/getkin/kin-openapi/openapi3gen"
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/getkin/kin-openapi/routers/gorillamux"
 	"github.com/stretchr/testify/require"
@@ -18,6 +22,7 @@ import (
 
 // Validator validates test HTTP traffic against one checked-in OpenAPI document.
 type Validator struct {
+	doc     *openapi3.T
 	router  routers.Router
 	options *openapi3filter.Options
 }
@@ -42,6 +47,7 @@ func NewValidator(t testing.TB, specName string) *Validator {
 	require.NoError(t, err)
 
 	return &Validator{
+		doc:    doc,
 		router: router,
 		options: &openapi3filter.Options{
 			AuthenticationFunc:    openapi3filter.NoopAuthenticationFunc,
@@ -76,6 +82,24 @@ func (v *Validator) ValidateJSONResponse(t testing.TB, r *http.Request, operatio
 	require.NoError(t, openapi3filter.ValidateResponse(context.Background(), input))
 }
 
+// ValidateGoSchemaProperties validates that a Go value exposes the same JSON
+// property names and basic wire shapes as a component schema.
+func (v *Validator) ValidateGoSchemaProperties(t testing.TB, componentName string, value any) {
+	t.Helper()
+
+	specRef := v.doc.Components.Schemas[componentName]
+	require.NotNil(t, specRef, "OpenAPI component %q must exist", componentName)
+	require.NotNil(t, specRef.Value, "OpenAPI component %q must be resolved", componentName)
+
+	generatedRef, err := openapi3gen.NewSchemaRefForValue(value, openapi3.Schemas{})
+	require.NoError(t, err)
+	require.NotNil(t, generatedRef.Value, "generated schema for %T must be resolved", value)
+
+	want := summarizeSchemaProperties(specRef.Value.Properties)
+	got := summarizeSchemaProperties(generatedRef.Value.Properties)
+	require.Equal(t, want, got, "%T JSON schema properties must match OpenAPI component %q", value, componentName)
+}
+
 func (v *Validator) requestValidationInput(
 	t testing.TB,
 	r *http.Request,
@@ -102,4 +126,67 @@ func repoPath(t testing.TB, elem ...string) string {
 	require.True(t, ok)
 	parts := append([]string{filepath.Dir(file), "..", "..", ".."}, elem...)
 	return filepath.Clean(filepath.Join(parts...))
+}
+
+type propertySummary struct {
+	Types    []string `json:"types,omitempty"`
+	Format   string   `json:"format,omitempty"`
+	Ref      string   `json:"ref,omitempty"`
+	Nullable bool     `json:"nullable,omitempty"`
+	Items    *propertySummary
+}
+
+func summarizeSchemaProperties(properties openapi3.Schemas) map[string]propertySummary {
+	summary := make(map[string]propertySummary, len(properties))
+	for name, property := range properties {
+		summary[name] = summarizeSchemaRef(property)
+	}
+	return summary
+}
+
+func summarizeSchemaRef(ref *openapi3.SchemaRef) propertySummary {
+	if ref == nil {
+		return propertySummary{}
+	}
+
+	summary := propertySummary{}
+	if ref.Value == nil {
+		summary.Ref = componentName(ref.Ref)
+		return summary
+	}
+
+	summary.Types = schemaTypes(ref.Value.Type)
+	if !schemaHasType(summary.Types, "string") {
+		summary.Format = ref.Value.Format
+	}
+	summary.Nullable = ref.Value.Nullable
+	if ref.Value.Items != nil {
+		items := summarizeSchemaRef(ref.Value.Items)
+		summary.Items = &items
+	}
+	return summary
+}
+
+func schemaTypes(types *openapi3.Types) []string {
+	if types == nil {
+		return nil
+	}
+
+	values := append([]string(nil), types.Slice()...)
+	sort.Strings(values)
+	return values
+}
+
+func schemaHasType(types []string, target string) bool {
+	return slices.Contains(types, target)
+}
+
+func componentName(ref string) string {
+	if ref == "" {
+		return ""
+	}
+	if index := strings.LastIndex(ref, "/"); index >= 0 {
+		return ref[index+1:]
+	}
+	return ref
 }
