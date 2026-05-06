@@ -2,7 +2,6 @@ package trader
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -57,7 +56,7 @@ func TestGetTransactions(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(fixture)
+		writeJSON(t, w, fixture)
 	}))
 	defer ts.Close()
 
@@ -115,7 +114,7 @@ func TestGetTransactions_WithOptionalParams(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]Transaction{})
+		writeJSON(t, w, []Transaction{})
 	}))
 	defer ts.Close()
 
@@ -155,7 +154,7 @@ func TestGetTransaction(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]Transaction{fixture})
+		writeJSON(t, w, []Transaction{fixture})
 	}))
 	defer ts.Close()
 

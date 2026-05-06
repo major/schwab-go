@@ -2,7 +2,6 @@ package trader
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +21,7 @@ func TestGetUserPreference(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]map[string]interface{}{
+		writeJSON(t, w, []map[string]interface{}{
 			{
 				"accounts": []map[string]interface{}{
 					{
@@ -47,7 +46,7 @@ func TestGetUserPreference(t *testing.T) {
 				"offers": []map[string]interface{}{
 					{
 						"level2Permissions": true,
-						"mktDataPermission":  "NP",
+						"mktDataPermission": "NP",
 					},
 				},
 			},

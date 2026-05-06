@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -475,7 +474,7 @@ type QuoteError struct {
 
 // GetQuotes retrieves quotes for multiple symbols.
 func (c *Client) GetQuotes(ctx context.Context, symbols []string, fields string, indicative bool) (*QuoteResponse, *QuoteError, error) {
-	req, err := c.newRequest(ctx, http.MethodGet, "/quotes", nil)
+	req, err := c.newRequest(ctx, "/quotes")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -521,9 +520,9 @@ func (c *Client) GetQuotes(ctx context.Context, symbols []string, fields string,
 }
 
 // GetQuote retrieves a quote for a single symbol identifier.
-func (c *Client) GetQuote(ctx context.Context, symbolID string, fields string) (*QuoteResponse, error) {
+func (c *Client) GetQuote(ctx context.Context, symbolID, fields string) (*QuoteResponse, error) {
 	path := fmt.Sprintf("/%s/quotes", url.PathEscape(symbolID))
-	req, err := c.newRequest(ctx, http.MethodGet, path, nil)
+	req, err := c.newRequest(ctx, path)
 	if err != nil {
 		return nil, err
 	}

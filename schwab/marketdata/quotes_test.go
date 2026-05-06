@@ -25,7 +25,7 @@ func TestGetQuotes(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]QuoteEntry{
+		writeJSON(t, w, map[string]QuoteEntry{
 			"AAPL": equityQuoteEntry("AAPL"),
 		})
 	}))
@@ -80,7 +80,7 @@ func TestGetQuotesOption(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]QuoteEntry{
+		writeJSON(t, w, map[string]QuoteEntry{
 			"AAPL_052424C170": optionQuoteEntry("AAPL_052424C170"),
 		})
 	}))
@@ -120,7 +120,7 @@ func TestGetQuotesMixed(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]QuoteEntry{
+		writeJSON(t, w, map[string]QuoteEntry{
 			"AAPL":    equityQuoteEntry("AAPL"),
 			"$SPX":    indexQuoteEntry("$SPX"),
 			"VFIAX":   mutualFundQuoteEntry("VFIAX"),
@@ -167,7 +167,7 @@ func TestGetQuotesPartialFailure(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(t, w, map[string]any{
 			"AAPL": equityQuoteEntry("AAPL"),
 			"errors": QuoteError{
 				InvalidCusips:  []string{"123456789"},
@@ -200,7 +200,7 @@ func TestGetQuote(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]QuoteEntry{
+		writeJSON(t, w, map[string]QuoteEntry{
 			"$SPX": indexQuoteEntry("$SPX"),
 		})
 	}))
@@ -230,7 +230,7 @@ func TestGetQuotesError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
+		writeJSON(t, w, map[string]string{
 			"detail": "invalid fields parameter",
 		})
 	}))

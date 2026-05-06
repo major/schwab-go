@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -28,7 +27,7 @@ func TestSearchInstruments(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(InstrumentResponse{
+		writeJSON(t, w, InstrumentResponse{
 			Instruments: []Instrument{
 				{
 					Cusip:       "037833100",
@@ -73,7 +72,7 @@ func TestSearchInstruments_Fundamental(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(InstrumentResponse{
+		writeJSON(t, w, InstrumentResponse{
 			Instruments: []Instrument{
 				{
 					Cusip:       "037833100",
@@ -82,17 +81,17 @@ func TestSearchInstruments_Fundamental(t *testing.T) {
 					Exchange:    "NASDAQ",
 					AssetType:   "EQUITY",
 					Fundamental: &FundamentalData{
-						Symbol:            "AAPL",
-						High52:            199.62,
-						Low52:             124.17,
-						DividendAmount:    0.24,
-						DividendYield:     0.45,
-						PeRatio:           28.5,
-						Beta:              1.2,
-						MarketCap:         2800000000000,
-						EpsTTM:            6.05,
-						ReturnOnEquity:    0.85,
-						CurrentRatio:      1.08,
+						Symbol:         "AAPL",
+						High52:         199.62,
+						Low52:          124.17,
+						DividendAmount: 0.24,
+						DividendYield:  0.45,
+						PeRatio:        28.5,
+						Beta:           1.2,
+						MarketCap:      2800000000000,
+						EpsTTM:         6.05,
+						ReturnOnEquity: 0.85,
+						CurrentRatio:   1.08,
 					},
 				},
 			},
@@ -138,7 +137,7 @@ func TestGetInstrumentByCUSIP(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(Instrument{
+		writeJSON(t, w, Instrument{
 			Cusip:       "037833100",
 			Symbol:      "AAPL",
 			Description: "Apple Inc",

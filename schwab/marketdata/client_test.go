@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -47,12 +46,12 @@ func TestDo_Success(t *testing.T) {
 		require.Equal(t, "/test", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"key": "value"})
+		writeJSON(t, w, map[string]string{"key": "value"})
 	}))
 	defer ts.Close()
 
 	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
-	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 
 	var result map[string]string
@@ -65,12 +64,12 @@ func TestDo_ErrorWithJSONBody(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"detail": "bad request"})
+		writeJSON(t, w, map[string]string{"detail": "bad request"})
 	}))
 	defer ts.Close()
 
 	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
-	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 
 	err = client.do(req, nil)
@@ -89,7 +88,7 @@ func TestDo_ErrorWithEmptyBody(t *testing.T) {
 	defer ts.Close()
 
 	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
-	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 
 	err = client.do(req, nil)
@@ -108,7 +107,7 @@ func TestDo_NilOutput(t *testing.T) {
 	defer ts.Close()
 
 	client := NewClient(schwab.WithHTTPClient(ts.Client()), schwab.WithBaseURL(ts.URL))
-	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 
 	err = client.do(req, nil)
@@ -117,7 +116,7 @@ func TestDo_NilOutput(t *testing.T) {
 
 func TestNewRequest_AuthHeader(t *testing.T) {
 	client := NewClient(schwab.WithToken("test-token"))
-	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	req, err := client.newRequest(context.Background(), "/test")
 	require.NoError(t, err)
 	require.Equal(t, "Bearer test-token", req.Header.Get("Authorization"))
 }

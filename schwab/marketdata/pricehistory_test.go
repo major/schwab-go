@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -26,7 +25,7 @@ func TestGetPriceHistory(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(t, w, map[string]interface{}{
 			"candles": []map[string]interface{}{
 				{
 					"open":     150.0,
@@ -103,7 +102,7 @@ func TestGetPriceHistory_WithParams(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(t, w, map[string]interface{}{
 			"candles": []map[string]interface{}{},
 			"symbol":  "AAPL",
 			"empty":   true,
@@ -157,7 +156,7 @@ func TestGetPriceHistory_NilParams(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		writeJSON(t, w, map[string]interface{}{
 			"candles": []map[string]interface{}{},
 			"symbol":  "AAPL",
 			"empty":   true,

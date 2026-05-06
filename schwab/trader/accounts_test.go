@@ -2,7 +2,6 @@ package trader
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -68,7 +67,7 @@ func TestGetAccounts(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(fixture)
+		writeJSON(t, w, fixture)
 	}))
 	defer ts.Close()
 
@@ -137,7 +136,7 @@ func TestGetAccounts_WithFields(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]Account{})
+		writeJSON(t, w, []Account{})
 	}))
 	defer ts.Close()
 
@@ -161,7 +160,7 @@ func TestGetAccounts_NoFields(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]Account{})
+		writeJSON(t, w, []Account{})
 	}))
 	defer ts.Close()
 
@@ -199,7 +198,7 @@ func TestGetAccount(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(fixture)
+		writeJSON(t, w, fixture)
 	}))
 	defer ts.Close()
 

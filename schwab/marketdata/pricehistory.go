@@ -31,8 +31,8 @@ type PriceHistoryParams struct {
 	Period                int
 	FrequencyType         FrequencyType
 	Frequency             int
-	StartDate             int64  // milliseconds since epoch
-	EndDate               int64  // milliseconds since epoch
+	StartDate             int64 // milliseconds since epoch
+	EndDate               int64 // milliseconds since epoch
 	NeedExtendedHoursData *bool
 	NeedPreviousClose     *bool
 }
@@ -62,7 +62,7 @@ type Candle struct {
 // symbol: the stock symbol (e.g., "AAPL")
 // params: optional parameters; if nil, only symbol is sent
 func (c *Client) GetPriceHistory(ctx context.Context, symbol string, params *PriceHistoryParams) (*CandleList, error) {
-	req, err := c.newRequest(ctx, "GET", "/pricehistory", nil)
+	req, err := c.newRequest(ctx, "/pricehistory")
 	if err != nil {
 		return nil, err
 	}

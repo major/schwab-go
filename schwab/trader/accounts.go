@@ -56,28 +56,28 @@ type Position struct {
 // UnderlyingSymbol fields are populated. For fixed income instruments,
 // MaturityDate, Factor, and VariableRate are populated.
 type AccountInstrument struct {
-	AssetType          schwab.AssetType          `json:"assetType"`
-	Cusip              string                    `json:"cusip"`
-	Symbol             string                    `json:"symbol"`
-	Description        string                    `json:"description"`
-	InstrumentId       int64                     `json:"instrumentId"`
-	NetChange          float64                   `json:"netChange"`
-	Type               string                    `json:"type,omitempty"`
-	PutCall            string                    `json:"putCall,omitempty"`
-	OptionMultiplier   int32                     `json:"optionMultiplier,omitempty"`
+	AssetType          schwab.AssetType           `json:"assetType"`
+	Cusip              string                     `json:"cusip"`
+	Symbol             string                     `json:"symbol"`
+	Description        string                     `json:"description"`
+	InstrumentId       int64                      `json:"instrumentId"`
+	NetChange          float64                    `json:"netChange"`
+	Type               string                     `json:"type,omitempty"`
+	PutCall            string                     `json:"putCall,omitempty"`
+	OptionMultiplier   int32                      `json:"optionMultiplier,omitempty"`
 	OptionDeliverables []AccountOptionDeliverable `json:"optionDeliverables,omitempty"`
-	UnderlyingSymbol   string                    `json:"underlyingSymbol,omitempty"`
-	MaturityDate       string                    `json:"maturityDate,omitempty"`
-	Factor             float64                   `json:"factor,omitempty"`
-	VariableRate       float64                   `json:"variableRate,omitempty"`
+	UnderlyingSymbol   string                     `json:"underlyingSymbol,omitempty"`
+	MaturityDate       string                     `json:"maturityDate,omitempty"`
+	Factor             float64                    `json:"factor,omitempty"`
+	VariableRate       float64                    `json:"variableRate,omitempty"`
 }
 
 // AccountOptionDeliverable represents a deliverable for an account option instrument.
 type AccountOptionDeliverable struct {
-	Symbol          string           `json:"symbol"`
-	DeliverableUnits float64         `json:"deliverableUnits"`
-	APICurrencyType string           `json:"apiCurrencyType"`
-	AssetType       schwab.AssetType `json:"assetType"`
+	Symbol           string           `json:"symbol"`
+	DeliverableUnits float64          `json:"deliverableUnits"`
+	APICurrencyType  string           `json:"apiCurrencyType"`
+	AssetType        schwab.AssetType `json:"assetType"`
 }
 
 // Balance contains financial balance information for an account.
@@ -143,7 +143,7 @@ func (c *Client) GetAccounts(ctx context.Context, fields string) ([]Account, err
 // accountHash is the encrypted hash value from GetAccountNumbers, not the plain account number.
 // fields: optional comma-separated list of additional fields to include (e.g., "positions");
 // if empty, no fields param is sent.
-func (c *Client) GetAccount(ctx context.Context, accountHash string, fields string) (*Account, error) {
+func (c *Client) GetAccount(ctx context.Context, accountHash, fields string) (*Account, error) {
 	path := fmt.Sprintf("/accounts/%s", url.PathEscape(accountHash))
 	req, err := c.newRequest(ctx, "GET", path, nil)
 	if err != nil {

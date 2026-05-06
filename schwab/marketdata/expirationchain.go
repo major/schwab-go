@@ -23,7 +23,7 @@ type Expiration struct {
 // GetExpirationChain retrieves the option expiration chain for a given symbol.
 // symbol: the underlying symbol (e.g., "AAPL")
 func (c *Client) GetExpirationChain(ctx context.Context, symbol string) (*ExpirationChain, error) {
-	req, err := c.newRequest(ctx, "GET", "/expirationchain", nil)
+	req, err := c.newRequest(ctx, "/expirationchain")
 	if err != nil {
 		return nil, err
 	}

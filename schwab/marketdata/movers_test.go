@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +21,7 @@ func TestGetMovers(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(MoverResponse{
+		writeJSON(t, w, MoverResponse{
 			Screeners: []Screener{
 				{
 					Symbol:           "AAPL",
@@ -92,7 +91,7 @@ func TestGetMovers_WithSort(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(MoverResponse{
+		writeJSON(t, w, MoverResponse{
 			Screeners: []Screener{},
 		})
 	}))
@@ -118,7 +117,7 @@ func TestGetMovers_WithFrequency(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(MoverResponse{
+		writeJSON(t, w, MoverResponse{
 			Screeners: []Screener{},
 		})
 	}))
@@ -146,7 +145,7 @@ func TestGetMovers_NoOptionalParams(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(MoverResponse{
+		writeJSON(t, w, MoverResponse{
 			Screeners: []Screener{},
 		})
 	}))

@@ -2,7 +2,6 @@ package trader
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +21,7 @@ func TestGetAccountNumbers(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]AccountNumberHash{
+		writeJSON(t, w, []AccountNumberHash{
 			{
 				AccountNumber: "123456789",
 				HashValue:     "HASH_ABC123",
@@ -62,7 +61,7 @@ func TestGetAccountNumbers_Empty(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]AccountNumberHash{})
+		writeJSON(t, w, []AccountNumberHash{})
 	}))
 	defer ts.Close()
 

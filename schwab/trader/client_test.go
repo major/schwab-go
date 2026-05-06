@@ -2,7 +2,6 @@ package trader
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -47,7 +46,7 @@ func TestDo_Success(t *testing.T) {
 		require.Equal(t, "/test", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"key": "value"})
+		writeJSON(t, w, map[string]string{"key": "value"})
 	}))
 	defer ts.Close()
 

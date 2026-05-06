@@ -10,9 +10,9 @@ import (
 type MoverSort string
 
 const (
-	MoverSortVolume           MoverSort = "VOLUME"
-	MoverSortTrades           MoverSort = "TRADES"
-	MoverSortPercentChangeUp  MoverSort = "PERCENT_CHANGE_UP"
+	MoverSortVolume            MoverSort = "VOLUME"
+	MoverSortTrades            MoverSort = "TRADES"
+	MoverSortPercentChangeUp   MoverSort = "PERCENT_CHANGE_UP"
 	MoverSortPercentChangeDown MoverSort = "PERCENT_CHANGE_DOWN"
 )
 
@@ -40,7 +40,7 @@ type Screener struct {
 // frequency: optional frequency; if zero, no frequency param is sent
 func (c *Client) GetMovers(ctx context.Context, symbolID string, sort MoverSort, frequency int) (*MoverResponse, error) {
 	path := fmt.Sprintf("/movers/%s", url.PathEscape(symbolID))
-	req, err := c.newRequest(ctx, "GET", path, nil)
+	req, err := c.newRequest(ctx, path)
 	if err != nil {
 		return nil, err
 	}

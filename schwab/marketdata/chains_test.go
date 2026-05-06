@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -35,7 +34,7 @@ func TestGetOptionChain(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(optionChainFixture())
+		writeJSON(t, w, optionChainFixture())
 	}))
 	defer ts.Close()
 
@@ -130,7 +129,7 @@ func TestGetOptionChainMinimal(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(t, w, map[string]any{
 			"symbol":         "AAPL",
 			"status":         "SUCCESS",
 			"callExpDateMap": map[string]any{},
@@ -177,7 +176,7 @@ func TestGetOptionChainAnalytical(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(t, w, map[string]any{
 			"symbol":           "MSFT",
 			"status":           "SUCCESS",
 			"strategy":         "ANALYTICAL",
@@ -227,7 +226,7 @@ func TestGetOptionChainEmpty(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(t, w, map[string]any{
 			"symbol":         "TSLA",
 			"status":         "SUCCESS",
 			"callExpDateMap": map[string]any{},
@@ -257,7 +256,7 @@ func TestGetOptionChainError(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(t, w, map[string]any{
 			"detail": "invalid option chain request",
 		})
 	}))
@@ -333,7 +332,7 @@ func optionChainFixture() map[string]any {
 	}
 }
 
-func optionContractFixture(putCall string, symbol string, delta float64, intrinsicValue float64) map[string]any {
+func optionContractFixture(putCall, symbol string, delta, intrinsicValue float64) map[string]any {
 	return map[string]any{
 		"putCall":                putCall,
 		"symbol":                 symbol,

@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +21,7 @@ func TestGetExpirationChain(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(t, w, map[string]any{
 			"expirationList": []map[string]any{
 				{
 					"expiration":       "2024-01-19",
@@ -88,7 +87,7 @@ func TestGetExpirationChain_SymbolParam(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{
+		writeJSON(t, w, map[string]any{
 			"expirationList": []map[string]any{},
 		})
 	}))

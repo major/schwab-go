@@ -2,7 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -26,7 +25,7 @@ func TestGetMarketHours(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]map[string]MarketHours{
+		writeJSON(t, w, map[string]map[string]MarketHours{
 			"equity": {
 				"EQ": {
 					Date:        "2024-01-15",
@@ -91,7 +90,7 @@ func TestGetMarketHours_WithDate(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(MarketHoursMap{})
+		writeJSON(t, w, MarketHoursMap{})
 	}))
 	defer ts.Close()
 
@@ -115,7 +114,7 @@ func TestGetMarketHours_NoDate(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(MarketHoursMap{})
+		writeJSON(t, w, MarketHoursMap{})
 	}))
 	defer ts.Close()
 
@@ -146,7 +145,7 @@ func TestGetMarketHoursSingle(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]map[string]MarketHours{
+		writeJSON(t, w, map[string]map[string]MarketHours{
 			"equity": {
 				"EQ": {
 					Date:        "2024-01-15",
@@ -201,7 +200,7 @@ func TestGetMarketHoursSingle_WithDate(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(MarketHoursMap{})
+		writeJSON(t, w, MarketHoursMap{})
 	}))
 	defer ts.Close()
 

@@ -140,7 +140,7 @@ func (c *Client) GetOptionChain(ctx context.Context, params *OptionChainParams) 
 		return nil, fmt.Errorf("symbol is required")
 	}
 
-	req, err := c.newRequest(ctx, "GET", "/chains", nil)
+	req, err := c.newRequest(ctx, "/chains")
 	if err != nil {
 		return nil, err
 	}

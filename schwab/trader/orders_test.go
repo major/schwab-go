@@ -28,7 +28,7 @@ func TestGetOrders(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(fixture)
+		writeJSON(t, w, fixture)
 	}))
 	defer ts.Close()
 
@@ -46,7 +46,7 @@ func TestGetOrders(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, result, 1)
-	assertOrderFixture(t, result[0])
+	assertOrderFixture(t, &result[0])
 }
 
 func TestCreateOrder(t *testing.T) {
@@ -103,7 +103,7 @@ func TestGetOrder(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(fixture)
+		writeJSON(t, w, fixture)
 	}))
 	defer ts.Close()
 
@@ -115,7 +115,7 @@ func TestGetOrder(t *testing.T) {
 	result, err := client.GetOrder(context.Background(), "HASH_ABC123", 9001)
 	require.NoError(t, err)
 	require.NotNil(t, result)
-	assertOrderFixture(t, *result)
+	assertOrderFixture(t, result)
 }
 
 func TestReplaceOrder(t *testing.T) {
@@ -235,7 +235,7 @@ func TestPreviewOrder(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(fixture)
+		writeJSON(t, w, fixture)
 	}))
 	defer ts.Close()
 
@@ -274,7 +274,7 @@ func TestGetAllOrders(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]Order{testOrderFixture()})
+		writeJSON(t, w, []Order{testOrderFixture()})
 	}))
 	defer ts.Close()
 
@@ -420,7 +420,7 @@ func testOrderFixture() Order {
 	}
 }
 
-func assertOrderFixture(t *testing.T, order Order) {
+func assertOrderFixture(t *testing.T, order *Order) {
 	t.Helper()
 
 	assert.Equal(t, "NORMAL", order.Session)

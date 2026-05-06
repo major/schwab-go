@@ -37,7 +37,7 @@ func (c *Client) GetMarketHours(ctx context.Context, markets []string, date stri
 		return nil, fmt.Errorf("markets is required")
 	}
 
-	req, err := c.newRequest(ctx, "GET", "/markets", nil)
+	req, err := c.newRequest(ctx, "/markets")
 	if err != nil {
 		return nil, err
 	}
@@ -59,9 +59,9 @@ func (c *Client) GetMarketHours(ctx context.Context, markets []string, date stri
 // GetMarketHoursSingle retrieves market hours for a single market on a given date.
 // marketID: the market identifier (e.g., "equity")
 // date: optional date string (YYYY-MM-DD format); if empty, current date is used
-func (c *Client) GetMarketHoursSingle(ctx context.Context, marketID string, date string) (MarketHoursMap, error) {
+func (c *Client) GetMarketHoursSingle(ctx context.Context, marketID, date string) (MarketHoursMap, error) {
 	path := fmt.Sprintf("/markets/%s", url.PathEscape(marketID))
-	req, err := c.newRequest(ctx, "GET", path, nil)
+	req, err := c.newRequest(ctx, path)
 	if err != nil {
 		return nil, err
 	}
