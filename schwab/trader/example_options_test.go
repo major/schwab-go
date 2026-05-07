@@ -3,7 +3,6 @@ package trader_test
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	schwab "github.com/major/schwab-go/schwab"
 	"github.com/major/schwab-go/schwab/trader"
@@ -32,7 +31,7 @@ func ExampleOrderRequest_singleLegOption() {
 
 	payload, err := json.MarshalIndent(order, "", "  ")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	fmt.Println(string(payload))
 
@@ -97,7 +96,7 @@ func ExampleOrderRequest_verticalOptionSpread() {
 
 	payload, err := json.MarshalIndent(order, "", "  ")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	fmt.Println(string(payload))
 
