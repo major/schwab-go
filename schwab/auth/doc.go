@@ -16,6 +16,7 @@
 //	}
 //
 //	store := auth.NewFileTokenStore("/path/to/tokens.json")
+//	// For tests or short-lived applications, use auth.NewMemoryTokenStore().
 //	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 //	defer cancel()
 //

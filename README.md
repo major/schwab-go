@@ -150,6 +150,7 @@ cfg := auth.Config{
 }
 
 store := auth.NewFileTokenStore("/path/to/tokens.json")
+// For tests or short-lived applications, use auth.NewMemoryTokenStore().
 ctx := context.Background()
 
 // urlHandler receives the authorize URL. Open it in a browser or print it for SSH/headless use.
@@ -162,7 +163,7 @@ if err != nil {
 client := marketdata.NewClient(schwab.WithTokenProvider(provider))
 ```
 
-For headless or SSH environments, pass a `urlHandler` that prints the URL instead of opening a browser. `Provider.Token` refreshes expired access tokens automatically and writes refreshed tokens back to the store. Use `Provider.Refresh` for explicit refresh commands, and `Provider.Status` or `auth.InspectToken` for read-only status output that must not refresh or save tokens.
+For headless or SSH environments, pass a `urlHandler` that prints the URL instead of opening a browser. `Provider.Token` refreshes expired access tokens automatically and writes refreshed tokens back to the store. Use `Provider.Refresh` for explicit refresh commands, and `Provider.Status` or `auth.InspectToken` for read-only status output that must not refresh or save tokens. `auth.NewMemoryTokenStore` is available for tests, examples, and short-lived applications that do not need token durability across process restarts.
 
 CLI applications that need `auth login`, `auth status`, `auth refresh`, a global auth gate, JSON output envelopes, or post-login default-account setup should keep that command policy in the application adapter layer. See [Auth CLI adapter pattern](docs/auth-cli-adapter.md) for Cobra-oriented guidance.
 
