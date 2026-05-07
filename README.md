@@ -206,7 +206,7 @@ Typed market hours methods use `MarketID` constants such as `marketdata.MarketID
 |--------|-------------|
 | `GetAccountNumbers` | Encrypted account hashes (call first) |
 | `GetAccounts` / `GetAccount` | Account details with optional positions |
-| `GetAccountsRaw` / `GetAccountRaw` | Raw account JSON for compatibility adapters that need exact API fields |
+| `GetAccountsRaw` / `GetAccountRaw` | Raw account JSON for adapters that need exact Schwab field presence, including omitted-vs-zero fidelity |
 | `GetOrders` / `GetAllOrders` / `GetOrder` | Retrieve orders |
 | `CreateOrder` / `ReplaceOrder` / `CancelOrder` | Order lifecycle |
 | `CreateOrderWithResponse` / `ReplaceOrderWithResponse` | Create/replace orders and return parsed order ID from Location header |

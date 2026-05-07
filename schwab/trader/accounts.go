@@ -15,16 +15,20 @@ type Account struct {
 
 // SecuritiesAccount represents a brokerage account (CASH or MARGIN).
 type SecuritiesAccount struct {
-	Type                    string     `json:"type"` // "CASH" or "MARGIN"
-	AccountNumber           string     `json:"accountNumber"`
-	RoundTrips              int        `json:"roundTrips"`
-	IsDayTrader             bool       `json:"isDayTrader"`
-	IsClosingOnlyRestricted bool       `json:"isClosingOnlyRestricted"`
-	PfcbFlag                bool       `json:"pfcbFlag"`
-	Positions               []Position `json:"positions"`
-	InitialBalances         Balance    `json:"initialBalances"`
-	CurrentBalances         Balance    `json:"currentBalances"`
-	ProjectedBalances       Balance    `json:"projectedBalances"`
+	Type                    string `json:"type"` // "CASH" or "MARGIN"
+	AccountNumber           string `json:"accountNumber"`
+	RoundTrips              int    `json:"roundTrips"`
+	IsDayTrader             bool   `json:"isDayTrader"`
+	IsClosingOnlyRestricted bool   `json:"isClosingOnlyRestricted"`
+	// IsForeign reports Schwab's isForeign account flag. Absence in the JSON
+	// response decodes as false; use GetAccountRaw or GetAccountsRaw when
+	// field presence matters.
+	IsForeign         bool       `json:"isForeign"`
+	PfcbFlag          bool       `json:"pfcbFlag"`
+	Positions         []Position `json:"positions"`
+	InitialBalances   Balance    `json:"initialBalances"`
+	CurrentBalances   Balance    `json:"currentBalances"`
+	ProjectedBalances Balance    `json:"projectedBalances"`
 }
 
 // Position represents a held position in an account.

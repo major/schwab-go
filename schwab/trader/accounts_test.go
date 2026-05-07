@@ -22,6 +22,7 @@ func TestGetAccounts(t *testing.T) {
 				RoundTrips:              0,
 				IsDayTrader:             false,
 				IsClosingOnlyRestricted: false,
+				IsForeign:               true,
 				PfcbFlag:                false,
 				Positions: []Position{
 					{
@@ -80,6 +81,7 @@ func TestGetAccounts(t *testing.T) {
 	assert.Equal(t, 0, acct.RoundTrips)
 	assert.False(t, acct.IsDayTrader)
 	assert.False(t, acct.IsClosingOnlyRestricted)
+	assert.True(t, acct.IsForeign)
 	assert.False(t, acct.PfcbFlag)
 
 	// Verify position
@@ -180,6 +182,57 @@ func TestGetAccountsRaw_NoFields(t *testing.T) {
 	assert.JSONEq(t, `[]`, string(result))
 }
 
+func TestGetAccountsRaw_PreservesOmittedAndZeroFields(t *testing.T) {
+	payload := json.RawMessage(`[
+		{
+			"securitiesAccount": {
+				"accountNumber": "123456789",
+				"roundTrips": 0,
+				"isDayTrader": false,
+				"currentBalances": {
+					"cashBalance": 0
+				}
+			}
+		},
+		{
+			"securitiesAccount": {
+				"accountNumber": "987654321",
+				"currentBalances": {}
+			}
+		}
+	]`)
+
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write(payload)
+		assert.NoError(t, err)
+	})
+
+	result, err := client.GetAccountsRaw(context.Background(), "")
+	require.NoError(t, err)
+
+	var got []map[string]map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(result, &got))
+	require.Len(t, got, 2)
+	assert.Contains(t, got[0]["securitiesAccount"], "roundTrips")
+	assert.Contains(t, got[0]["securitiesAccount"], "isDayTrader")
+	assert.Contains(t, got[0]["securitiesAccount"], "currentBalances")
+	assert.NotContains(t, got[1]["securitiesAccount"], "roundTrips")
+	assert.NotContains(t, got[1]["securitiesAccount"], "isDayTrader")
+
+	var explicitBalances map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(got[0]["securitiesAccount"]["currentBalances"], &explicitBalances))
+	assert.Contains(t, explicitBalances, "cashBalance")
+
+	var omittedBalances map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(got[1]["securitiesAccount"]["currentBalances"], &omittedBalances))
+	assert.NotContains(t, omittedBalances, "cashBalance")
+}
+
 func TestGetAccountsRaw_Error(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -231,6 +284,7 @@ func TestGetAccount(t *testing.T) {
 			AccountNumber: "987654321",
 			RoundTrips:    3,
 			IsDayTrader:   true,
+			IsForeign:     true,
 			CurrentBalances: Balance{
 				CashBalance:  10000.00,
 				Equity:       25000.00,
@@ -261,6 +315,7 @@ func TestGetAccount(t *testing.T) {
 	assert.Equal(t, "987654321", acct.AccountNumber)
 	assert.Equal(t, 3, acct.RoundTrips)
 	assert.True(t, acct.IsDayTrader)
+	assert.True(t, acct.IsForeign)
 	assert.InDelta(t, 10000.00, acct.CurrentBalances.CashBalance, 0.000001)
 	assert.InDelta(t, 25000.00, acct.CurrentBalances.Equity, 0.000001)
 	assert.InDelta(t, 20000.00, acct.CurrentBalances.BuyingPower, 0.000001)
