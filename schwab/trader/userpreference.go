@@ -38,6 +38,15 @@ type StreamerInfo struct {
 
 // String returns a redacted representation of StreamerInfo for safe logging.
 func (s StreamerInfo) String() string {
+	return s.redactedString()
+}
+
+// GoString returns a redacted representation for %#v debug formatting.
+func (s StreamerInfo) GoString() string {
+	return s.redactedString()
+}
+
+func (s StreamerInfo) redactedString() string {
 	return "{StreamerSocketURL:" + s.StreamerSocketURL +
 		" StreamerURL:" + s.StreamerURL +
 		" Token:<redacted> TokenExpirationTime:" + s.TokenExpirationTime +

@@ -145,10 +145,31 @@ func TestOptionContractLivePriceAliasesUnmarshal(t *testing.T) {
 }
 
 func TestOptionContractLivePriceAliasInvalidUnmarshal(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		payload    string
+		wantErrMsg string
+	}{
+		{name: "bid parse", payload: `{"bid":"not-a-number"}`, wantErrMsg: "decode bid"},
+		{name: "ask parse", payload: `{"ask":"not-a-number"}`, wantErrMsg: "decode ask"},
+		{name: "last parse", payload: `{"last":"not-a-number"}`, wantErrMsg: "decode last"},
+		{name: "mark parse", payload: `{"mark":"not-a-number"}`, wantErrMsg: "decode mark"},
+		{name: "bid non-string", payload: `{"bid":{}}`, wantErrMsg: "decode bid"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var contract OptionContract
+			err := json.Unmarshal([]byte(tt.payload), &contract)
+			require.Error(t, err)
+			assert.ErrorContains(t, err, tt.wantErrMsg)
+		})
+	}
+}
+
+func TestOptionContractLivePriceAliasBlankStringUnmarshal(t *testing.T) {
 	var contract OptionContract
-	err := json.Unmarshal([]byte(`{"bid":"not-a-number"}`), &contract)
-	require.Error(t, err)
-	assert.ErrorContains(t, err, "decode bid")
+	err := json.Unmarshal([]byte(`{"bid":"   "}`), &contract)
+	require.NoError(t, err)
+	assert.Zero(t, contract.BidPrice)
 }
 
 func TestOptionContractLivePriceAliasNullDoesNotClobberLongName(t *testing.T) {

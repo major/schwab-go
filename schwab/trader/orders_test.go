@@ -182,6 +182,26 @@ func TestReplaceOrderWithResponseFallsBackToOriginalOrderID(t *testing.T) {
 	assert.Empty(t, response.Location)
 }
 
+func TestOrderResponseFromLocation(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		location    string
+		wantOrderID int64
+	}{
+		{name: "empty", location: "", wantOrderID: 0},
+		{name: "bare order id", location: "12345", wantOrderID: 12345},
+		{name: "path with trailing slash", location: "/trader/v1/accounts/HASH/orders/67890/", wantOrderID: 67890},
+		{name: "unparseable", location: "/trader/v1/accounts/HASH/orders/not-an-id", wantOrderID: 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			response := orderResponseFromLocation(tt.location)
+			require.NotNil(t, response)
+			assert.Equal(t, tt.wantOrderID, response.OrderID)
+			assert.Equal(t, tt.location, response.Location)
+		})
+	}
+}
+
 func TestCancelOrder(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
@@ -457,6 +477,19 @@ func TestPreviewOrder_Error(t *testing.T) {
 	})
 
 	_, err := client.PreviewOrder(context.Background(), "HASH_ABC123", &PreviewOrderRequest{})
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+}
+
+func TestPreviewOrderRequestBody_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+
+	_, err := client.PreviewOrderRequestBody(context.Background(), "HASH_ABC123", &OrderRequest{})
 	require.Error(t, err)
 
 	apiErr, ok := errors.AsType[*schwab.APIError](err)

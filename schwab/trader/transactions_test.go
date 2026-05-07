@@ -281,6 +281,30 @@ func TestGetTransactionByIDRejectsNullResponse(t *testing.T) {
 	require.EqualError(t, err, "transaction response did not include a transaction")
 }
 
+func TestGetTransactionByIDRejectsEmptyArrayResponse(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/transactions/2002", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, []Transaction{})
+	})
+
+	_, err := client.GetTransactionByID(context.Background(), "HASH_ABC123", 2002)
+	require.EqualError(t, err, "transaction response did not include a transaction")
+}
+
+func TestDecodeSingleTransactionRejectsInvalidArray(t *testing.T) {
+	_, err := decodeSingleTransaction(json.RawMessage(`[{not-valid}]`))
+	require.Error(t, err)
+}
+
+func TestDecodeSingleTransactionRejectsInvalidObject(t *testing.T) {
+	_, err := decodeSingleTransaction(json.RawMessage(`{not-valid}`))
+	require.Error(t, err)
+}
+
 func TestGetTransaction_Error(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

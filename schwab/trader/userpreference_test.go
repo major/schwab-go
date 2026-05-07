@@ -109,6 +109,11 @@ func TestStreamerInfoStringRedactsSecrets(t *testing.T) {
 	assert.NotContains(t, formatted, streamer.Token)
 	assert.NotContains(t, formatted, streamer.ACL)
 	assert.Equal(t, 2, strings.Count(formatted, "<redacted>"))
+
+	debugFormatted := fmt.Sprintf("%#v", streamer)
+	assert.NotContains(t, debugFormatted, streamer.Token)
+	assert.NotContains(t, debugFormatted, streamer.ACL)
+	assert.Equal(t, 2, strings.Count(debugFormatted, "<redacted>"))
 }
 
 func TestGetUserPreference_Error(t *testing.T) {
