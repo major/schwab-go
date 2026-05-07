@@ -30,7 +30,7 @@ func NewFileTokenStore(path string) *FileTokenStore {
 	return &FileTokenStore{path: path}
 }
 
-// Save writes tf to disk using a temporary file and rename.
+// Save writes tf to disk using a temporary file and replace operation.
 func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -82,7 +82,7 @@ func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 		return fmt.Errorf("close temporary token file: %w", err)
 	}
 
-	err = os.Rename(tmpPath, s.path)
+	err = replaceTokenFile(tmpPath, s.path, os.Rename)
 	if err != nil {
 		return fmt.Errorf("replace token file: %w", err)
 	}
@@ -90,6 +90,36 @@ func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 	err = syncParentDir(s.path)
 	if err != nil {
 		return fmt.Errorf("sync token file directory: %w", err)
+	}
+
+	return nil
+}
+
+func replaceTokenFile(tmpPath, targetPath string, rename func(string, string) error) error {
+	renameErr := rename(tmpPath, targetPath)
+	if renameErr == nil {
+		return nil
+	}
+
+	// os.Rename replaces existing files on Unix, but not on all supported
+	// platforms. Keep the same-directory rename as the durable fast path, and use
+	// a remove-then-rename fallback only when replacing an existing token file.
+	_, err := os.Stat(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return renameErr
+		}
+		return errors.Join(renameErr, fmt.Errorf("stat token file: %w", err))
+	}
+
+	err = os.Remove(targetPath)
+	if err != nil {
+		return errors.Join(renameErr, fmt.Errorf("remove token file before fallback rename: %w", err))
+	}
+
+	err = rename(tmpPath, targetPath)
+	if err != nil {
+		return errors.Join(renameErr, fmt.Errorf("fallback rename token file: %w", err))
 	}
 
 	return nil

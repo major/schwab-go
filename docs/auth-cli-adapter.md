@@ -2,6 +2,8 @@
 
 This package owns Schwab OAuth2 primitives: authorization URLs, loopback callbacks, code exchange, token refresh, token persistence, and `schwab.WithTokenProvider` integration. CLI applications own command shape, config policy, output envelopes, exit codes, browser behavior, and post-login setup.
 
+This document is an adapter recipe, not a finished `schwab-agent` migration. Keep the concrete Cobra commands, JSON envelopes, exit-code constants, environment variable names, and default-account persistence in `schwab-agent` or another CLI so this library stays reusable and free of hidden config or stdout/stderr behavior.
+
 ## Command layout
 
 Model auth commands as a thin adapter over `schwab/auth`:
