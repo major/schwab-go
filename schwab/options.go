@@ -1,17 +1,25 @@
 package schwab
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 )
 
+// TokenProvider supplies bearer tokens dynamically. Implementations
+// must be safe for concurrent use.
+type TokenProvider interface {
+	Token(ctx context.Context) (string, error)
+}
+
 // ClientConfig holds configuration for a Schwab API client.
 // It is exported so sub-packages (marketdata, trader) can construct it with
 // defaults and call ApplyOptions to apply user-provided options.
 type ClientConfig struct {
 	Token             string
+	TokenProvider     TokenProvider
 	HTTPClient        *http.Client
 	BaseURL           *url.URL
 	OptionError       error
@@ -29,6 +37,13 @@ type Option func(*ClientConfig)
 func WithToken(token string) Option {
 	return func(cfg *ClientConfig) {
 		cfg.Token = token
+	}
+}
+
+// WithTokenProvider sets the bearer token provider for API authentication.
+func WithTokenProvider(tp TokenProvider) Option {
+	return func(cfg *ClientConfig) {
+		cfg.TokenProvider = tp
 	}
 }
 

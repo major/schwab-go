@@ -24,6 +24,15 @@ type responsePayload struct {
 	Price  int    `json:"price"`
 }
 
+type testTokenProvider struct {
+	token string
+	err   error
+}
+
+func (p *testTokenProvider) Token(context.Context) (string, error) {
+	return p.token, p.err
+}
+
 type doTestCase struct {
 	name                string
 	status              int
@@ -47,6 +56,7 @@ func TestNewConfig(t *testing.T) {
 
 	defaultClient := &http.Client{}
 	customClient := &http.Client{}
+	provider := &testTokenProvider{token: "dynamic"}
 
 	tests := []struct {
 		name              string
@@ -61,6 +71,7 @@ func TestNewConfig(t *testing.T) {
 		wantBodyLimit     int64
 		wantEmptyBase     bool
 		wantDistinctClone bool
+		wantProvider      schwab.TokenProvider
 	}{
 		{
 			name:             "happy path uses defaults",
@@ -98,6 +109,7 @@ func TestNewConfig(t *testing.T) {
 			defaultClient: defaultClient,
 			opts: []schwab.Option{
 				schwab.WithToken("tok"),
+				schwab.WithTokenProvider(provider),
 				schwab.WithBaseURL("http://example.com"),
 				schwab.WithHTTPClient(customClient),
 				schwab.WithResponseBodyLimit(512),
@@ -107,6 +119,7 @@ func TestNewConfig(t *testing.T) {
 			wantClientNonNil: true,
 			wantToken:        "tok",
 			wantBodyLimit:    512,
+			wantProvider:     provider,
 		},
 		{
 			name:          "invalid base URL option preserves default and stores error",
@@ -143,6 +156,11 @@ func TestNewConfig(t *testing.T) {
 				assert.NotSame(t, defaultClient, cfg.HTTPClient)
 			}
 			assert.Equal(t, tt.wantToken, cfg.Token)
+			if tt.wantProvider == nil {
+				assert.Nil(t, cfg.TokenProvider)
+			} else {
+				assert.Same(t, tt.wantProvider, cfg.TokenProvider)
+			}
 			if tt.wantOptionError == "" {
 				require.NoError(t, cfg.OptionError)
 			} else {
@@ -300,6 +318,48 @@ func TestNewRequest(t *testing.T) {
 			assert.JSONEq(t, tt.wantBody, string(bodyBytes))
 		})
 	}
+}
+
+func TestNewRequest_DynamicToken(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{
+		BaseURL:       baseURL,
+		Token:         "static-token",
+		TokenProvider: &testTokenProvider{token: "dynamic-token"},
+	}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+
+	assert.Equal(t, "Bearer dynamic-token", req.Header.Get("Authorization"))
+}
+
+func TestNewRequest_StaticTokenFallback(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{BaseURL: baseURL, Token: "static-token"}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+
+	assert.Equal(t, "Bearer static-token", req.Header.Get("Authorization"))
+}
+
+func TestNewRequest_TokenProviderError(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{BaseURL: baseURL, TokenProvider: &testTokenProvider{err: assert.AnError}}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, assert.AnError)
+	assert.Nil(t, req)
 }
 
 func TestNewRequest_AppliesConfiguredHeaders(t *testing.T) {

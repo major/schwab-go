@@ -34,6 +34,7 @@ type Config struct {
 	BaseURL           *url.URL
 	HTTPClient        *http.Client
 	Token             string
+	TokenProvider     schwab.TokenProvider
 	OptionError       error
 	ResponseBodyLimit int64
 	Headers           http.Header
@@ -59,6 +60,7 @@ func NewConfig(defaultBase *url.URL, defaultClient *http.Client, opts []schwab.O
 		BaseURL:           cfg.BaseURL,
 		HTTPClient:        cfg.HTTPClient,
 		Token:             cfg.Token,
+		TokenProvider:     cfg.TokenProvider,
 		OptionError:       cfg.OptionError,
 		ResponseBodyLimit: cfg.ResponseBodyLimit,
 		Headers:           cfg.Headers.Clone(),
@@ -88,7 +90,13 @@ func NewRequest(ctx context.Context, cfg Config, method, path string, body any) 
 	}
 	applyHeaders(req.Header, cfg.Headers)
 	req.Header.Set(acceptHeader, jsonContentType)
-	if cfg.Token != "" {
+	if cfg.TokenProvider != nil {
+		token, tokenErr := cfg.TokenProvider.Token(ctx)
+		if tokenErr != nil {
+			return nil, tokenErr
+		}
+		req.Header.Set(authorizationHeader, "Bearer "+token)
+	} else if cfg.Token != "" {
 		req.Header.Set(authorizationHeader, "Bearer "+cfg.Token)
 	}
 	if body != nil && body != http.NoBody {
