@@ -2,6 +2,7 @@ package schwab
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -57,6 +58,18 @@ func WithHTTPClient(c *http.Client) Option {
 		if c != nil {
 			cfg.HTTPClient = c
 		}
+	}
+}
+
+// WithTLSConfig sets the TLS configuration used by the client's HTTP
+// transport. A nil value is ignored. When the existing transport is nil or an
+// [http.Transport], the transport is cloned before TLSClientConfig is replaced.
+func WithTLSConfig(tlsCfg *tls.Config) Option {
+	return func(cfg *ClientConfig) {
+		if tlsCfg == nil {
+			return
+		}
+		cfg.HTTPClient = httpClientWithTLSConfig(cfg.HTTPClient, tlsCfg)
 	}
 }
 
@@ -134,4 +147,29 @@ func ApplyOptions(cfg *ClientConfig, opts []Option) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+}
+
+func httpClientWithTLSConfig(client *http.Client, tlsCfg *tls.Config) *http.Client {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	configuredClient := *client
+	configuredClient.Transport = transportWithTLSConfig(client.Transport, tlsCfg)
+	return &configuredClient
+}
+
+func transportWithTLSConfig(transport http.RoundTripper, tlsCfg *tls.Config) http.RoundTripper {
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+
+	httpTransport, ok := transport.(*http.Transport)
+	if !ok {
+		return transport
+	}
+
+	configuredTransport := httpTransport.Clone()
+	configuredTransport.TLSClientConfig = tlsCfg
+	return configuredTransport
 }
