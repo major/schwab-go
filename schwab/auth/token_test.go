@@ -100,3 +100,125 @@ func TestIsRefreshTokenStale(t *testing.T) {
 		})
 	}
 }
+
+func TestInspectToken(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, time.May, 7, 12, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name string
+		tf   TokenFile
+		want TokenStatus
+	}{
+		{
+			name: "valid token can refresh",
+			tf: TokenFile{
+				CreationTimestamp: now.Add(-time.Hour).Unix(),
+				Token: TokenData{
+					AccessToken:  "access-token",
+					RefreshToken: "refresh-token",
+					ExpiresAt:    now.Add(time.Hour).Unix(),
+				},
+			},
+			want: TokenStatus{
+				AccessTokenExpiresAt:  now.Add(time.Hour),
+				RefreshTokenCreatedAt: now.Add(-time.Hour),
+				RefreshTokenExpiresAt: now.Add(-time.Hour).Add(refreshTokenMaxAge * time.Second),
+				CanRefresh:            true,
+			},
+		},
+		{
+			name: "access token inside buffer is expired but refreshable",
+			tf: TokenFile{
+				CreationTimestamp: now.Add(-time.Hour).Unix(),
+				Token: TokenData{
+					AccessToken:  "access-token",
+					RefreshToken: "refresh-token",
+					ExpiresAt:    now.Add(4 * time.Minute).Unix(),
+				},
+			},
+			want: TokenStatus{
+				AccessTokenExpiresAt:  now.Add(4 * time.Minute),
+				AccessTokenExpired:    true,
+				RefreshTokenCreatedAt: now.Add(-time.Hour),
+				RefreshTokenExpiresAt: now.Add(-time.Hour).Add(refreshTokenMaxAge * time.Second),
+				CanRefresh:            true,
+			},
+		},
+		{
+			name: "stale refresh token requires login",
+			tf: TokenFile{
+				CreationTimestamp: now.Add(-8 * 24 * time.Hour).Unix(),
+				Token: TokenData{
+					AccessToken:  "access-token",
+					RefreshToken: "refresh-token",
+					ExpiresAt:    now.Add(-time.Hour).Unix(),
+				},
+			},
+			want: TokenStatus{
+				AccessTokenExpiresAt:  now.Add(-time.Hour),
+				AccessTokenExpired:    true,
+				RefreshTokenCreatedAt: now.Add(-8 * 24 * time.Hour),
+				RefreshTokenExpiresAt: now.Add(-8 * 24 * time.Hour).Add(refreshTokenMaxAge * time.Second),
+				RefreshTokenStale:     true,
+				LoginRequired:         true,
+			},
+		},
+		{
+			name: "stale refresh token with active access token warns without requiring login",
+			tf: TokenFile{
+				CreationTimestamp: now.Add(-8 * 24 * time.Hour).Unix(),
+				Token: TokenData{
+					AccessToken:  "access-token",
+					RefreshToken: "refresh-token",
+					ExpiresAt:    now.Add(time.Hour).Unix(),
+				},
+			},
+			want: TokenStatus{
+				AccessTokenExpiresAt:  now.Add(time.Hour),
+				RefreshTokenCreatedAt: now.Add(-8 * 24 * time.Hour),
+				RefreshTokenExpiresAt: now.Add(-8 * 24 * time.Hour).Add(refreshTokenMaxAge * time.Second),
+				RefreshTokenStale:     true,
+			},
+		},
+		{
+			name: "empty token requires login",
+			want: TokenStatus{LoginRequired: true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := InspectToken(tt.tf, now)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestInspectTokenZeroNowUsesCurrentTime(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now().UTC().Truncate(time.Second)
+	createdAt := now.Add(-time.Hour)
+	expiresAt := now.Add(time.Hour)
+	tf := TokenFile{
+		CreationTimestamp: createdAt.Unix(),
+		Token: TokenData{
+			AccessToken:  "access-token",
+			RefreshToken: "refresh-token",
+			ExpiresAt:    expiresAt.Unix(),
+		},
+	}
+
+	got := InspectToken(tf, time.Time{})
+
+	assert.Equal(t, expiresAt, got.AccessTokenExpiresAt)
+	assert.False(t, got.AccessTokenExpired)
+	assert.Equal(t, createdAt, got.RefreshTokenCreatedAt)
+	assert.Equal(t, createdAt.Add(refreshTokenMaxAge*time.Second), got.RefreshTokenExpiresAt)
+	assert.False(t, got.RefreshTokenStale)
+	assert.True(t, got.CanRefresh)
+	assert.False(t, got.LoginRequired)
+}

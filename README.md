@@ -130,7 +130,7 @@ if apiErr, ok := errors.AsType[*schwab.APIError](err); ok {
 
 ## Authentication
 
-The `schwab/auth` package handles OAuth2 authorization code flow, token refresh, and persistence as part of the core `github.com/major/schwab-go` module.
+The `schwab/auth` package handles OAuth2 authorization code flow, token refresh, read-only token status inspection, and persistence as part of the core `github.com/major/schwab-go` module.
 
 ```go
 import (
@@ -162,7 +162,7 @@ if err != nil {
 client := marketdata.NewClient(schwab.WithTokenProvider(provider))
 ```
 
-For headless or SSH environments, pass a `urlHandler` that prints the URL instead of opening a browser. Tokens are refreshed automatically and written back to the store.
+For headless or SSH environments, pass a `urlHandler` that prints the URL instead of opening a browser. `Provider.Token` refreshes expired access tokens automatically and writes refreshed tokens back to the store. Use `Provider.Refresh` for explicit refresh commands, and `Provider.Status` or `auth.InspectToken` for read-only status output that must not refresh or save tokens.
 
 CLI applications that need `auth login`, `auth status`, `auth refresh`, a global auth gate, JSON output envelopes, or post-login default-account setup should keep that command policy in the application adapter layer. See [Auth CLI adapter pattern](docs/auth-cli-adapter.md) for Cobra-oriented guidance.
 

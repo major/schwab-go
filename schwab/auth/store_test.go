@@ -203,6 +203,15 @@ func TestReplaceTokenFileReportsFallbackRenameErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "fallback rename token file")
 }
 
+func TestSyncParentDir(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "token.json")
+	require.NoError(t, os.WriteFile(path, []byte("token"), tokenFilePerm))
+
+	require.NoError(t, syncParentDir(path))
+}
+
 func testTokenFile() TokenFile {
 	return TokenFile{
 		CreationTimestamp: 1715000000,
