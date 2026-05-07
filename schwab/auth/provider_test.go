@@ -404,14 +404,32 @@ func TestProvider(t *testing.T) {
 func TestNewFileProvider(t *testing.T) {
 	t.Parallel()
 
-	provider, err := NewFileProvider(
-		providerTestConfig("https://api.schwabapi.com/v1/oauth"),
-		filepath.Join(t.TempDir(), "tokens.json"),
-		nil,
-	)
+	t.Run("valid file provider", func(t *testing.T) {
+		t.Parallel()
 
-	require.NoError(t, err)
-	require.NotNil(t, provider)
+		provider, err := NewFileProvider(
+			providerTestConfig("https://127.0.0.1:8182/oauth"),
+			filepath.Join(t.TempDir(), "tokens.json"),
+			nil,
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, provider)
+	})
+
+	t.Run("empty token path returns error", func(t *testing.T) {
+		t.Parallel()
+
+		provider, err := NewFileProvider(
+			providerTestConfig("https://127.0.0.1:8182/oauth"),
+			"",
+			nil,
+		)
+
+		require.Error(t, err)
+		assert.Nil(t, provider)
+		assert.ErrorContains(t, err, "token path")
+	})
 }
 
 type providerMemoryStore struct {

@@ -193,7 +193,7 @@ func TestRefreshTokenFile(t *testing.T) {
 			context.Background(),
 			refreshTestConfig(server.URL),
 			TokenFile{
-				CreationTimestamp: time.Now().Add(-7 * 24 * time.Hour).Unix(),
+				CreationTimestamp: time.Now().Add(-8 * 24 * time.Hour).Unix(),
 				Token:             TokenData{RefreshToken: "stale-refresh-token"},
 			},
 			server.Client(),

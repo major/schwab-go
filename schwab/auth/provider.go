@@ -46,7 +46,13 @@ func NewProvider(cfg Config, store TokenStore, httpClient *http.Client) (*Provid
 }
 
 // NewFileProvider creates a Provider that persists tokens at tokenPath.
+// It returns an error when tokenPath is empty so configuration mistakes fail
+// before token load or refresh operations run.
 func NewFileProvider(cfg Config, tokenPath string, httpClient *http.Client) (*Provider, error) {
+	if tokenPath == "" {
+		return nil, errors.New("token path is required")
+	}
+
 	return NewProvider(cfg, NewFileTokenStore(tokenPath), httpClient)
 }
 

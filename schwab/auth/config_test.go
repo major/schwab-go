@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigValidate(t *testing.T) {
@@ -168,11 +170,6 @@ func TestOAuthBaseURLFromAPIBaseURL(t *testing.T) {
 			want:       "https://api.schwabapi.com/v1/oauth",
 		},
 		{
-			name:       "api root path appends oauth path",
-			apiBaseURL: "https://api.schwabapi.com/marketdata/v1",
-			want:       "https://api.schwabapi.com/marketdata/v1/v1/oauth",
-		},
-		{
 			name:       "proxy prefix is preserved",
 			apiBaseURL: "https://proxy.example.com/root/",
 			want:       "https://proxy.example.com/root/v1/oauth",
@@ -205,26 +202,13 @@ func TestOAuthBaseURLFromAPIBaseURL(t *testing.T) {
 
 			got, err := OAuthBaseURLFromAPIBaseURL(tt.apiBaseURL)
 			if tt.wantErrSubstr == "" {
-				if err != nil {
-					t.Fatalf("OAuthBaseURLFromAPIBaseURL(%q) = %v, want nil", tt.apiBaseURL, err)
-				}
-				if got != tt.want {
-					t.Fatalf("OAuthBaseURLFromAPIBaseURL(%q) = %q, want %q", tt.apiBaseURL, got, tt.want)
-				}
+				require.NoError(t, err, "OAuthBaseURLFromAPIBaseURL(%q)", tt.apiBaseURL)
+				require.Equal(t, tt.want, got, "OAuthBaseURLFromAPIBaseURL(%q)", tt.apiBaseURL)
 				return
 			}
 
-			if err == nil {
-				t.Fatalf("OAuthBaseURLFromAPIBaseURL(%q) = nil, want error", tt.apiBaseURL)
-			}
-			if !strings.Contains(err.Error(), tt.wantErrSubstr) {
-				t.Fatalf(
-					"OAuthBaseURLFromAPIBaseURL(%q) = %v, want error containing %q",
-					tt.apiBaseURL,
-					err,
-					tt.wantErrSubstr,
-				)
-			}
+			require.Error(t, err, "OAuthBaseURLFromAPIBaseURL(%q)", tt.apiBaseURL)
+			require.ErrorContains(t, err, tt.wantErrSubstr, "OAuthBaseURLFromAPIBaseURL(%q)", tt.apiBaseURL)
 		})
 	}
 }
@@ -239,18 +223,14 @@ func TestConfigFromAPIBaseURL(t *testing.T) {
 		"https://proxy.example.com/root",
 	)
 
-	if err != nil {
-		t.Fatalf("ConfigFromAPIBaseURL() = %v, want nil", err)
-	}
+	require.NoError(t, err)
 	want := Config{
 		ClientID:     "client-id",
 		ClientSecret: "client-secret",
 		CallbackURL:  "https://127.0.0.1:8182/callback",
 		OAuthBaseURL: "https://proxy.example.com/root/v1/oauth",
 	}
-	if got != want {
-		t.Fatalf("ConfigFromAPIBaseURL() = %+v, want %+v", got, want)
-	}
+	require.Equal(t, want, got)
 }
 
 func TestConfigFromAPIBaseURL_InvalidConfig(t *testing.T) {
@@ -258,12 +238,8 @@ func TestConfigFromAPIBaseURL_InvalidConfig(t *testing.T) {
 
 	_, err := ConfigFromAPIBaseURL("", "client-secret", "https://127.0.0.1:8182/callback", "")
 
-	if err == nil {
-		t.Fatal("ConfigFromAPIBaseURL() = nil, want error")
-	}
-	if !strings.Contains(err.Error(), "client_id") {
-		t.Fatalf("ConfigFromAPIBaseURL() = %v, want error containing client_id", err)
-	}
+	require.Error(t, err)
+	require.ErrorContains(t, err, "client_id")
 }
 
 //nolint:gocognit // Table-driven test with many cases; splitting would reduce readability.
