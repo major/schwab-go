@@ -1,9 +1,11 @@
 package marketdata
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -108,14 +110,77 @@ func (o *OptionContract) UnmarshalJSON(data []byte) error {
 	var raw struct {
 		*optionContract
 
-		TradeDate json.RawMessage `json:"tradeDate"`
+		Bid        json.RawMessage `json:"bid"`
+		Ask        json.RawMessage `json:"ask"`
+		Last       json.RawMessage `json:"last"`
+		Mark       json.RawMessage `json:"mark"`
+		InTheMoney *bool           `json:"inTheMoney"`
+		TradeDate  json.RawMessage `json:"tradeDate"`
 	}
 	raw.optionContract = (*optionContract)(o)
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
+	if hasNonNullJSON(raw.Bid) {
+		bid, err := decodeFlexibleFloat(raw.Bid)
+		if err != nil {
+			return fmt.Errorf("decode bid: %w", err)
+		}
+		o.BidPrice = bid
+	}
+	if hasNonNullJSON(raw.Ask) {
+		ask, err := decodeFlexibleFloat(raw.Ask)
+		if err != nil {
+			return fmt.Errorf("decode ask: %w", err)
+		}
+		o.AskPrice = ask
+	}
+	if hasNonNullJSON(raw.Last) {
+		last, err := decodeFlexibleFloat(raw.Last)
+		if err != nil {
+			return fmt.Errorf("decode last: %w", err)
+		}
+		o.LastPrice = last
+	}
+	if hasNonNullJSON(raw.Mark) {
+		mark, err := decodeFlexibleFloat(raw.Mark)
+		if err != nil {
+			return fmt.Errorf("decode mark: %w", err)
+		}
+		o.MarkPrice = mark
+	}
+	if raw.InTheMoney != nil {
+		o.InTheMoney = *raw.InTheMoney
+	}
 	o.TradeDate = decodeFlexibleString(raw.TradeDate)
 	return nil
+}
+
+func hasNonNullJSON(raw json.RawMessage) bool {
+	trimmed := bytes.TrimSpace(raw)
+	return len(trimmed) > 0 && !bytes.Equal(trimmed, []byte("null"))
+}
+
+func decodeFlexibleFloat(raw json.RawMessage) (float64, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0, nil
+	}
+	var number float64
+	if err := json.Unmarshal(raw, &number); err == nil {
+		return number, nil
+	}
+	var text string
+	if err := json.Unmarshal(raw, &text); err != nil {
+		return 0, err
+	}
+	if strings.TrimSpace(text) == "" {
+		return 0, nil
+	}
+	parsed, err := strconv.ParseFloat(strings.TrimSpace(text), 64)
+	if err != nil {
+		return 0, err
+	}
+	return parsed, nil
 }
 
 func decodeFlexibleString(raw json.RawMessage) string {

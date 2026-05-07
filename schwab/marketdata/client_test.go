@@ -30,6 +30,16 @@ func TestNewClient_WithToken(t *testing.T) {
 	require.Equal(t, "test-token", client.token)
 }
 
+func TestNewClient_WithTokenProvider(t *testing.T) {
+	client := NewClient(schwab.WithTokenProvider(staticTokenProvider{token: "provider-token"}))
+	require.NotNil(t, client)
+	require.NotNil(t, client.config().TokenProvider)
+
+	req, err := client.newRequest(context.Background(), "/test")
+	require.NoError(t, err)
+	require.Equal(t, "Bearer provider-token", req.Header.Get("Authorization"))
+}
+
 func TestNewClient_WithBaseURL(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
@@ -209,6 +219,14 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (fn roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return fn(req)
+}
+
+type staticTokenProvider struct {
+	token string
+}
+
+func (p staticTokenProvider) Token(context.Context) (string, error) {
+	return p.token, nil
 }
 
 func TestDo_ErrorWithTitleFallback(t *testing.T) {

@@ -40,6 +40,17 @@ type Config struct {
 	Headers           http.Header
 }
 
+// Response contains transport metadata from a completed API response.
+// The response body is always consumed and closed before this value is returned.
+type Response struct {
+	// StatusCode is the HTTP response status code returned by the server.
+	StatusCode int
+
+	// Header is a snapshot of the response headers cloned from the transport.
+	// It is safe to read after the response body has been consumed and closed.
+	Header http.Header
+}
+
 // NewConfig applies shared Schwab client options to default HTTP settings.
 // It defensively nil-guards defaultBase and defaultClient to prevent panics in NewRequest or Do.
 func NewConfig(defaultBase *url.URL, defaultClient *http.Client, opts []schwab.Option) Config {
@@ -131,40 +142,50 @@ func isLibraryHeader(name string) bool {
 
 // Do executes the request and decodes the response into out.
 func Do(cfg Config, req *http.Request, out any, extractError func([]byte) string) error {
+	_, err := DoWithResponse(cfg, req, out, extractError)
+	return err
+}
+
+// DoWithResponse executes the request, decodes the response into out, and returns response metadata.
+func DoWithResponse(cfg Config, req *http.Request, out any, extractError func([]byte) string) (*Response, error) {
 	//nolint:gosec // Base URLs are Schwab defaults or explicit caller-provided test/API endpoints.
 	resp, err := cfg.HTTPClient.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
+	response := &Response{
+		StatusCode: resp.StatusCode,
+		Header:     resp.Header.Clone(),
+	}
 	limitedBody := http.MaxBytesReader(nil, resp.Body, responseBodyLimit(cfg))
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= 300 {
-		return apiErrorFromResponse(resp.StatusCode, limitedBody, extractError)
+		return response, apiErrorFromResponse(resp.StatusCode, limitedBody, extractError)
 	}
 
 	if out == nil {
 		if _, copyErr := io.Copy(io.Discard, limitedBody); copyErr != nil {
-			return responseBodyReadError("drain response body", copyErr)
+			return response, responseBodyReadError("drain response body", copyErr)
 		}
-		return nil
+		return response, nil
 	}
 
 	bodyReader := bufio.NewReader(limitedBody)
 	if contentTypeErr := validateJSONContentType(resp.Header.Get("Content-Type"), bodyReader); contentTypeErr != nil {
-		return contentTypeErr
+		return response, contentTypeErr
 	}
 	decoder := json.NewDecoder(bodyReader)
 	if decodeErr := decoder.Decode(out); decodeErr != nil {
 		if limitErr := responseBodyLimitError("decode response body", decodeErr); limitErr != nil {
-			return limitErr
+			return response, limitErr
 		}
-		return fmt.Errorf("decode response body: %w", decodeErr)
+		return response, fmt.Errorf("decode response body: %w", decodeErr)
 	}
 	if _, copyErr := io.Copy(io.Discard, io.MultiReader(decoder.Buffered(), bodyReader)); copyErr != nil {
-		return responseBodyReadError("drain response body", copyErr)
+		return response, responseBodyReadError("drain response body", copyErr)
 	}
-	return nil
+	return response, nil
 }
 
 func apiErrorFromResponse(statusCode int, body io.Reader, extractError func([]byte) string) *schwab.APIError {

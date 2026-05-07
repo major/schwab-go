@@ -1,8 +1,11 @@
 package trader
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 
 	schwab "github.com/major/schwab-go/schwab"
@@ -30,11 +33,12 @@ const (
 )
 
 // TransactionListParams contains parameters for listing transactions.
-// StartDate, EndDate, and Types are required by the API.
+// StartDate and EndDate are required by the API. Types is optional and, when empty,
+// is omitted so the API can return all transaction types supported for the account.
 type TransactionListParams struct {
-	StartDate string // required, yyyy-MM-dd format
-	EndDate   string // required, yyyy-MM-dd format
-	Types     string // required, comma-separated TransactionType values
+	StartDate string // required, ISO-8601 timestamp
+	EndDate   string // required, ISO-8601 timestamp
+	Types     string // optional, comma-separated TransactionType values
 	Symbol    string // optional, filter by symbol
 }
 
@@ -128,10 +132,6 @@ func (c *Client) GetTransactions(
 	if params.EndDate == "" {
 		return nil, errors.New("endDate is required")
 	}
-	if params.Types == "" {
-		return nil, errors.New("types is required")
-	}
-
 	req, err := c.newRequest(ctx, "GET", accountPath(accountHash, "transactions"), nil)
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (c *Client) GetTransactions(
 	q := req.URL.Query()
 	q.Set("startDate", params.StartDate)
 	q.Set("endDate", params.EndDate)
-	q.Set("types", params.Types)
+	setOptionalString(q, "types", params.Types)
 	setOptionalString(q, "symbol", params.Symbol)
 	req.URL.RawQuery = q.Encode()
 
@@ -151,17 +151,59 @@ func (c *Client) GetTransactions(
 	return result, nil
 }
 
-// GetTransaction retrieves transactions matching one transaction ID for the given account.
-func (c *Client) GetTransaction(ctx context.Context, accountHash string, transactionID int64) ([]Transaction, error) {
+// GetTransactionByID retrieves a single transaction by ID for the given account.
+func (c *Client) GetTransactionByID(
+	ctx context.Context,
+	accountHash string,
+	transactionID int64,
+) (*Transaction, error) {
 	txnPath := accountPath(accountHash, "transactions", strconv.FormatInt(transactionID, 10))
 	req, err := c.newRequest(ctx, "GET", txnPath, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var result []Transaction
-	if doErr := c.do(req, &result); doErr != nil {
+	var raw json.RawMessage
+	if doErr := c.do(req, &raw); doErr != nil {
 		return nil, doErr
 	}
-	return result, nil
+	return decodeSingleTransaction(raw)
+}
+
+func decodeSingleTransaction(raw json.RawMessage) (*Transaction, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 {
+		return nil, errors.New("transaction response did not include a transaction")
+	}
+	if bytes.Equal(trimmed, []byte("null")) {
+		return nil, errors.New("transaction response did not include a transaction")
+	}
+	if trimmed[0] == '[' {
+		var transactions []Transaction
+		if err := json.Unmarshal(trimmed, &transactions); err != nil {
+			return nil, err
+		}
+		if len(transactions) == 0 {
+			return nil, errors.New("transaction response did not include a transaction")
+		}
+		if len(transactions) > 1 {
+			return nil, fmt.Errorf("transaction response contained %d transactions, expected 1", len(transactions))
+		}
+		return &transactions[0], nil
+	}
+
+	var transaction Transaction
+	if err := json.Unmarshal(trimmed, &transaction); err != nil {
+		return nil, err
+	}
+	return &transaction, nil
+}
+
+// GetTransaction retrieves transactions matching one transaction ID for the given account.
+func (c *Client) GetTransaction(ctx context.Context, accountHash string, transactionID int64) ([]Transaction, error) {
+	transaction, err := c.GetTransactionByID(ctx, accountHash, transactionID)
+	if err != nil {
+		return nil, err
+	}
+	return []Transaction{*transaction}, nil
 }

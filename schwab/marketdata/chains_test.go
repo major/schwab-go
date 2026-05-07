@@ -126,6 +126,51 @@ func TestOptionContractTradeDateAbsentUnmarshal(t *testing.T) {
 	assert.Equal(t, "SPY_C470", contract.Symbol)
 }
 
+func TestOptionContractLivePriceAliasesUnmarshal(t *testing.T) {
+	var contract OptionContract
+	err := json.Unmarshal([]byte(`{
+		"bid": 3.40,
+		"ask": "3.45",
+		"last": 3.42,
+		"mark": "3.43",
+		"inTheMoney": true
+	}`), &contract)
+	require.NoError(t, err)
+
+	assert.InDelta(t, 3.40, contract.BidPrice, 0.000001)
+	assert.InDelta(t, 3.45, contract.AskPrice, 0.000001)
+	assert.InDelta(t, 3.42, contract.LastPrice, 0.000001)
+	assert.InDelta(t, 3.43, contract.MarkPrice, 0.000001)
+	assert.True(t, contract.InTheMoney)
+}
+
+func TestOptionContractLivePriceAliasInvalidUnmarshal(t *testing.T) {
+	var contract OptionContract
+	err := json.Unmarshal([]byte(`{"bid":"not-a-number"}`), &contract)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "decode bid")
+}
+
+func TestOptionContractLivePriceAliasNullDoesNotClobberLongName(t *testing.T) {
+	var contract OptionContract
+	err := json.Unmarshal([]byte(`{
+		"bidPrice": 3.40,
+		"askPrice": 3.45,
+		"lastPrice": 3.42,
+		"markPrice": 3.43,
+		"bid": null,
+		"ask": null,
+		"last": null,
+		"mark": null
+	}`), &contract)
+	require.NoError(t, err)
+
+	assert.InDelta(t, 3.40, contract.BidPrice, 0.000001)
+	assert.InDelta(t, 3.45, contract.AskPrice, 0.000001)
+	assert.InDelta(t, 3.42, contract.LastPrice, 0.000001)
+	assert.InDelta(t, 3.43, contract.MarkPrice, 0.000001)
+}
+
 func TestOptionContractUnmarshalInvalidJSON(t *testing.T) {
 	var contract OptionContract
 	err := json.Unmarshal([]byte(`{not valid`), &contract)

@@ -25,10 +25,27 @@ type PreferenceAccount struct {
 // StreamerInfo contains streaming connection configuration.
 type StreamerInfo struct {
 	StreamerSocketURL      string `json:"streamerSocketUrl"`
+	StreamerURL            string `json:"streamerUrl"`
+	Token                  string `json:"token"`
+	TokenExpirationTime    string `json:"tokenExpTime"`
+	AppID                  string `json:"appId"`
+	ACL                    string `json:"acl"`
 	SchwabClientCustomerID string `json:"schwabClientCustomerId"`
 	SchwabClientCorrelID   string `json:"schwabClientCorrelId"`
 	SchwabClientChannel    string `json:"schwabClientChannel"`
 	SchwabClientFunctionID string `json:"schwabClientFunctionId"`
+}
+
+// String returns a redacted representation of StreamerInfo for safe logging.
+func (s StreamerInfo) String() string {
+	return "{StreamerSocketURL:" + s.StreamerSocketURL +
+		" StreamerURL:" + s.StreamerURL +
+		" Token:<redacted> TokenExpirationTime:" + s.TokenExpirationTime +
+		" AppID:" + s.AppID + " ACL:<redacted>" +
+		" SchwabClientCustomerID:" + s.SchwabClientCustomerID +
+		" SchwabClientCorrelID:" + s.SchwabClientCorrelID +
+		" SchwabClientChannel:" + s.SchwabClientChannel +
+		" SchwabClientFunctionID:" + s.SchwabClientFunctionID + "}"
 }
 
 // Offer represents an available service offer.

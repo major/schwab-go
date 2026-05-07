@@ -206,10 +206,12 @@ Typed market hours methods use `MarketID` constants such as `marketdata.MarketID
 |--------|-------------|
 | `GetAccountNumbers` | Encrypted account hashes (call first) |
 | `GetAccounts` / `GetAccount` | Account details with optional positions |
+| `GetAccountsRaw` / `GetAccountRaw` | Raw account JSON for compatibility adapters that need exact API fields |
 | `GetOrders` / `GetAllOrders` / `GetOrder` | Retrieve orders |
 | `CreateOrder` / `ReplaceOrder` / `CancelOrder` | Order lifecycle |
-| `PreviewOrder` | Preview an order before submission |
-| `GetTransactions` / `GetTransaction` | Transaction history |
+| `CreateOrderWithResponse` / `ReplaceOrderWithResponse` | Create/replace orders and return parsed order ID from Location header |
+| `PreviewOrder` / `PreviewOrderRequestBody` | Preview an order before submission |
+| `GetTransactions` / `GetTransaction` / `GetTransactionByID` | Transaction history |
 | `GetUserPreference` | User preferences |
 
 ## Documentation
