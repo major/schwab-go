@@ -13,7 +13,10 @@ import (
 	"time"
 )
 
-const invalidGrantError = "invalid_grant"
+const (
+	invalidGrantError        = "invalid_grant"
+	refreshTokenExpiredError = "refresh token expired or revoked"
+)
 
 type tokenErrorResponse struct {
 	Error string `json:"error"`
@@ -88,6 +91,35 @@ func RefreshAccessToken(
 	}, nil
 }
 
+// RefreshTokenFile refreshes the token stored in tf and preserves the original
+// creation timestamp when it is set so refresh-token age remains accurate.
+func RefreshTokenFile(
+	ctx context.Context,
+	cfg Config,
+	tf TokenFile,
+	httpClient *http.Client,
+) (TokenFile, error) {
+	if err := cfg.Validate(); err != nil {
+		return TokenFile{}, err
+	}
+	if tf.Token.RefreshToken == "" {
+		return TokenFile{}, errors.New("refresh token must not be empty")
+	}
+	if IsRefreshTokenStale(tf) {
+		return TokenFile{}, &AuthExpiredError{Msg: refreshTokenExpiredError}
+	}
+
+	refreshedTokenFile, err := RefreshAccessToken(ctx, cfg, tf.Token.RefreshToken, httpClient)
+	if err != nil {
+		return TokenFile{}, err
+	}
+	if tf.CreationTimestamp != 0 {
+		refreshedTokenFile.CreationTimestamp = tf.CreationTimestamp
+	}
+
+	return refreshedTokenFile, nil
+}
+
 func tokenRefreshHTTPError(response *http.Response) error {
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxOAuthErrorBodyBytes))
 	if err != nil {
@@ -102,7 +134,7 @@ func tokenRefreshHTTPError(response *http.Response) error {
 		var tokenErr tokenErrorResponse
 		err = json.Unmarshal(body, &tokenErr)
 		if err == nil && tokenErr.Error == invalidGrantError {
-			return &AuthExpiredError{Msg: "refresh token expired or revoked"}
+			return &AuthExpiredError{Msg: refreshTokenExpiredError}
 		}
 	}
 

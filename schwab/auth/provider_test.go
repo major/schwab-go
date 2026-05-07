@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -398,6 +399,19 @@ func TestProvider(t *testing.T) {
 		assert.Nil(t, provider)
 		assert.ErrorContains(t, err, "client_id is required")
 	})
+}
+
+func TestNewFileProvider(t *testing.T) {
+	t.Parallel()
+
+	provider, err := NewFileProvider(
+		providerTestConfig("https://api.schwabapi.com/v1/oauth"),
+		filepath.Join(t.TempDir(), "tokens.json"),
+		nil,
+	)
+
+	require.NoError(t, err)
+	require.NotNil(t, provider)
 }
 
 type providerMemoryStore struct {

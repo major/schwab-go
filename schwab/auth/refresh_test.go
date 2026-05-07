@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -138,6 +139,98 @@ func TestRefreshAccessToken(t *testing.T) {
 		assert.Equal(t, "application/x-www-form-urlencoded", snapshot.contentType)
 		assert.Equal(t, "refresh_token", snapshot.form.Get("grant_type"))
 		assert.Equal(t, "old-refresh-token", snapshot.form.Get("refresh_token"))
+	})
+}
+
+func TestRefreshTokenFile(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success preserves original creation timestamp", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"new-refresh-token"}`,
+			)
+			assert.NoError(t, err)
+		}))
+		t.Cleanup(server.Close)
+
+		createdAt := time.Now().Add(-time.Hour).Unix()
+		tokenFile := TokenFile{
+			CreationTimestamp: createdAt,
+			Token: TokenData{
+				AccessToken:  "old-access-token",
+				RefreshToken: "old-refresh-token",
+			},
+		}
+
+		refreshed, err := RefreshTokenFile(
+			context.Background(),
+			refreshTestConfig(server.URL),
+			tokenFile,
+			server.Client(),
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, createdAt, refreshed.CreationTimestamp)
+		assert.Equal(t, "new-access-token", refreshed.Token.AccessToken)
+		assert.Equal(t, "new-refresh-token", refreshed.Token.RefreshToken)
+	})
+
+	t.Run("stale refresh token returns expired before request", func(t *testing.T) {
+		t.Parallel()
+
+		var requestCount atomic.Int32
+		server := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			requestCount.Add(1)
+		}))
+		t.Cleanup(server.Close)
+
+		_, err := RefreshTokenFile(
+			context.Background(),
+			refreshTestConfig(server.URL),
+			TokenFile{
+				CreationTimestamp: time.Now().Add(-7 * 24 * time.Hour).Unix(),
+				Token:             TokenData{RefreshToken: "stale-refresh-token"},
+			},
+			server.Client(),
+		)
+
+		require.Error(t, err)
+		var expiredErr *AuthExpiredError
+		require.ErrorAs(t, err, &expiredErr)
+		assert.Equal(t, int32(0), requestCount.Load())
+	})
+
+	t.Run("missing refresh token returns error", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := RefreshTokenFile(
+			context.Background(),
+			refreshTestConfig("https://api.schwabapi.com/v1/oauth"),
+			TokenFile{CreationTimestamp: time.Now().Unix()},
+			nil,
+		)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "refresh token")
+	})
+
+	t.Run("invalid config returns error", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := RefreshTokenFile(
+			context.Background(),
+			Config{ClientSecret: "client-secret", CallbackURL: "https://127.0.0.1:8182/callback"},
+			TokenFile{CreationTimestamp: time.Now().Unix(), Token: TokenData{RefreshToken: "refresh-token"}},
+			nil,
+		)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "client_id")
 	})
 }
 

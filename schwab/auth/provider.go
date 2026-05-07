@@ -45,6 +45,11 @@ func NewProvider(cfg Config, store TokenStore, httpClient *http.Client) (*Provid
 	}, nil
 }
 
+// NewFileProvider creates a Provider that persists tokens at tokenPath.
+func NewFileProvider(cfg Config, tokenPath string, httpClient *http.Client) (*Provider, error) {
+	return NewProvider(cfg, NewFileTokenStore(tokenPath), httpClient)
+}
+
 type tokenProvider interface {
 	Token(context.Context) (string, error)
 }
@@ -110,7 +115,7 @@ func (p *Provider) Status(ctx context.Context, now time.Time) (TokenStatus, erro
 
 func (p *Provider) refreshLocked(ctx context.Context, tokenFile TokenFile) (TokenFile, error) {
 	if IsRefreshTokenStale(tokenFile) {
-		return TokenFile{}, &AuthExpiredError{Msg: "refresh token expired or revoked"}
+		return TokenFile{}, &AuthExpiredError{Msg: refreshTokenExpiredError}
 	}
 
 	refreshedTokenFile, err := RefreshAccessToken(ctx, p.cfg, tokenFile.Token.RefreshToken, p.http)
