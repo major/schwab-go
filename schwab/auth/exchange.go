@@ -42,7 +42,9 @@ func ExchangeCode(
 		return TokenFile{}, fmt.Errorf("failed to create token exchange request: %w", err)
 	}
 
-	credentials := base64.StdEncoding.EncodeToString([]byte(cfg.ClientID + ":" + cfg.ClientSecret))
+	credentials := base64.StdEncoding.EncodeToString(
+		[]byte(url.QueryEscape(cfg.ClientID) + ":" + url.QueryEscape(cfg.ClientSecret)),
+	)
 	request.Header.Set("Authorization", "Basic "+credentials)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 

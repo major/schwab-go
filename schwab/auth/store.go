@@ -25,7 +25,9 @@ func NewFileTokenStore(path string) *FileTokenStore {
 
 // Save writes tf to disk using a temporary file and atomic rename.
 func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
-	_ = ctx
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -42,7 +44,7 @@ func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 
 	tmpFile, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, tokenFilePerm)
 	if err != nil {
-		return fmt.Errorf("write temporary token file: %w", err)
+		return fmt.Errorf("create temporary token file: %w", err)
 	}
 	defer func() {
 		_ = os.Remove(tmpPath)
@@ -69,7 +71,9 @@ func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 
 // Load reads and decodes a persisted token file from disk.
 func (s *FileTokenStore) Load(ctx context.Context) (TokenFile, error) {
-	_ = ctx
+	if err := ctx.Err(); err != nil {
+		return TokenFile{}, err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

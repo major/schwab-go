@@ -112,10 +112,9 @@ func TestIntegration_WithTokenProvider(t *testing.T) {
 	provider := newTestProvider(t, "https://127.0.0.1:8182/oauth", store, nil)
 
 	option := schwab.WithTokenProvider(provider)
+	require.NotNil(t, option)
 	config := schwab.ClientConfig{}
 	option(&config)
-
-	require.NotNil(t, option)
 	assert.Equal(t, provider, config.TokenProvider)
 }
 

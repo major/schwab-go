@@ -98,6 +98,33 @@ func TestCallbackServer(t *testing.T) {
 		}
 	})
 
+	t.Run("OAuth error query param sends error", func(t *testing.T) {
+		t.Parallel()
+
+		callbackURL := newCallbackTestURL(t)
+		_, errs, shutdown, err := StartCallbackServer(context.Background(), callbackURL)
+		require.NoError(t, err)
+		t.Cleanup(shutdown)
+
+		resp := getCallback(t, callbackURL, url.Values{
+			"error":             {"access_denied"},
+			"error_description": {"user declined"},
+		})
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		_ = readResponseBody(t, resp)
+
+		var callbackErr *AuthCallbackError
+		select {
+		case gotErr := <-errs:
+			require.ErrorAs(t, gotErr, &callbackErr)
+			assert.Contains(t, callbackErr.Msg, "access_denied")
+			assert.Contains(t, callbackErr.Msg, "user declined")
+			assert.Equal(t, http.StatusBadRequest, callbackErr.Code)
+		case <-time.After(callbackTestTimeout):
+			t.Fatal("StartCallbackServer() did not send OAuth error")
+		}
+	})
+
 	t.Run("shutdown via context stops accepting connections", func(t *testing.T) {
 		t.Parallel()
 

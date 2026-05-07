@@ -139,6 +139,20 @@ func callbackHandler(
 		}
 
 		query := r.URL.Query()
+
+		if oauthErr := query.Get("error"); oauthErr != "" {
+			desc := query.Get("error_description")
+			msg := "OAuth authorization failed: " + oauthErr
+			if desc != "" {
+				msg += ": " + desc
+			}
+			http.Error(w, oauthErr, http.StatusBadRequest)
+			sendOnce.Do(func() {
+				errs <- &AuthCallbackError{Msg: msg, Code: http.StatusBadRequest}
+			})
+			return
+		}
+
 		code := query.Get("code")
 		state := query.Get("state")
 

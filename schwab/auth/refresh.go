@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,6 +27,10 @@ func RefreshAccessToken(
 	refreshToken string,
 	httpClient *http.Client,
 ) (TokenFile, error) {
+	if refreshToken == "" {
+		return TokenFile{}, errors.New("refresh token must not be empty")
+	}
+
 	client := httpClient
 	if client == nil {
 		client = http.DefaultClient
@@ -45,7 +50,9 @@ func RefreshAccessToken(
 		return TokenFile{}, fmt.Errorf("failed to create token refresh request: %w", err)
 	}
 
-	credentials := base64.StdEncoding.EncodeToString([]byte(cfg.ClientID + ":" + cfg.ClientSecret))
+	credentials := base64.StdEncoding.EncodeToString(
+		[]byte(url.QueryEscape(cfg.ClientID) + ":" + url.QueryEscape(cfg.ClientSecret)),
+	)
 	request.Header.Set("Authorization", "Basic "+credentials)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 

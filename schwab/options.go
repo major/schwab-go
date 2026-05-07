@@ -41,8 +41,12 @@ func WithToken(token string) Option {
 }
 
 // WithTokenProvider sets the bearer token provider for API authentication.
+// A nil value is ignored.
 func WithTokenProvider(tp TokenProvider) Option {
 	return func(cfg *ClientConfig) {
+		if tp == nil {
+			return
+		}
 		cfg.TokenProvider = tp
 	}
 }

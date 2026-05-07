@@ -19,11 +19,14 @@ func TestGenerateSelfSignedCert(t *testing.T) {
 	parsedCert, err := x509.ParseCertificate(certificate.Certificate[0])
 	require.NoError(t, err)
 
-	t.Run("valid only for loopback ip", func(t *testing.T) {
+	t.Run("valid for loopback addresses", func(t *testing.T) {
 		t.Parallel()
 
-		require.Len(t, parsedCert.IPAddresses, 1)
+		require.Len(t, parsedCert.IPAddresses, 2)
 		assert.True(t, parsedCert.IPAddresses[0].Equal(net.ParseIP("127.0.0.1")))
+		assert.True(t, parsedCert.IPAddresses[1].Equal(net.ParseIP("::1")))
+		require.Len(t, parsedCert.DNSNames, 1)
+		assert.Equal(t, "localhost", parsedCert.DNSNames[0])
 	})
 
 	t.Run("not valid for other ip", func(t *testing.T) {

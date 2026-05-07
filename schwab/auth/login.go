@@ -19,7 +19,9 @@ type loginConfig struct {
 // If not set, [http.DefaultClient] is used.
 func WithLoginHTTPClient(c *http.Client) LoginOption {
 	return func(cfg *loginConfig) {
-		cfg.httpClient = c
+		if c != nil {
+			cfg.httpClient = c
+		}
 	}
 }
 
@@ -87,7 +89,7 @@ func Login(
 	select {
 	case result = <-results:
 		if result.State != expectedState {
-			return nil, &AuthCallbackError{Msg: errStateMismatch, Code: 0}
+			return nil, &AuthCallbackError{Msg: errStateMismatch, Code: http.StatusBadRequest}
 		}
 	case err = <-errs:
 		return nil, err

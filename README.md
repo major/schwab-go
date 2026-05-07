@@ -138,6 +138,10 @@ go get github.com/major/schwab-go/schwab/auth
 
 ```go
 import (
+    "context"
+    "log"
+    "os/exec"
+
     "github.com/major/schwab-go/schwab/auth"
     schwab "github.com/major/schwab-go/schwab"
     "github.com/major/schwab-go/schwab/marketdata"
@@ -150,10 +154,14 @@ cfg := auth.Config{
 }
 
 store := auth.NewFileTokenStore("/path/to/tokens.json")
+ctx := context.Background()
 
 // urlHandler receives the authorize URL. Open it in a browser or print it for SSH/headless use.
 openBrowser := func(url string) error { return exec.Command("xdg-open", url).Start() }
 provider, err := auth.Login(ctx, cfg, store, openBrowser)
+if err != nil {
+    log.Fatal(err)
+}
 
 client := marketdata.NewClient(schwab.WithTokenProvider(provider))
 ```

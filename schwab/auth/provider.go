@@ -4,9 +4,12 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"time"
 
 	schwab "github.com/major/schwab-go/schwab"
 )
+
+const defaultProviderHTTPTimeout = 30 * time.Second
 
 // Provider implements schwab.TokenProvider with automatic token
 // refresh. It is safe for concurrent use.
@@ -28,7 +31,7 @@ func NewProvider(cfg Config, store TokenStore, httpClient *http.Client) (*Provid
 
 	client := httpClient
 	if client == nil {
-		client = http.DefaultClient
+		client = &http.Client{Timeout: defaultProviderHTTPTimeout}
 	}
 
 	return &Provider{
