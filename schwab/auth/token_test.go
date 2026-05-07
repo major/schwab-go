@@ -165,6 +165,23 @@ func TestInspectToken(t *testing.T) {
 			},
 		},
 		{
+			name: "stale refresh token with active access token warns without requiring login",
+			tf: TokenFile{
+				CreationTimestamp: now.Add(-8 * 24 * time.Hour).Unix(),
+				Token: TokenData{
+					AccessToken:  "access-token",
+					RefreshToken: "refresh-token",
+					ExpiresAt:    now.Add(time.Hour).Unix(),
+				},
+			},
+			want: TokenStatus{
+				AccessTokenExpiresAt:  now.Add(time.Hour),
+				RefreshTokenCreatedAt: now.Add(-8 * 24 * time.Hour),
+				RefreshTokenExpiresAt: now.Add(-8 * 24 * time.Hour).Add(refreshTokenMaxAge * time.Second),
+				RefreshTokenStale:     true,
+			},
+		},
+		{
 			name: "empty token requires login",
 			want: TokenStatus{LoginRequired: true},
 		},

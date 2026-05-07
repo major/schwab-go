@@ -81,7 +81,7 @@ Suggested CLI interpretation:
 |---|---|
 | `LoginRequired` | The user needs `auth login` before API calls can succeed. |
 | `AccessTokenExpired` with `CanRefresh` | API calls through `Provider.Token` can refresh automatically; an explicit status command should report the expiry without mutating the token file. |
-| `RefreshTokenStale` | The refresh token is too old to rely on; prompt for login. |
+| `RefreshTokenStale` | The refresh token is too old to rely on; prompt for login before the current access token expires. |
 | `CanRefresh` | An explicit `auth refresh` command can call `Provider.Refresh(ctx)`. |
 
 ## Structured output and exit codes

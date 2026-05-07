@@ -80,6 +80,6 @@ func InspectToken(tf TokenFile, now time.Time) TokenStatus {
 		RefreshTokenExpiresAt: refreshTokenExpiresAt,
 		RefreshTokenStale:     refreshTokenStale,
 		CanRefresh:            !refreshTokenStale,
-		LoginRequired:         refreshTokenStale,
+		LoginRequired:         accessTokenExpired && refreshTokenStale,
 	}
 }
