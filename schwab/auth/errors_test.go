@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -127,6 +128,106 @@ func TestAuthErrorsAs(t *testing.T) {
 			t.Parallel()
 
 			tt.check(t, tt.err)
+		})
+	}
+}
+
+func TestAuthErrorClassifiers(t *testing.T) {
+	t.Parallel()
+
+	cause := errors.New("underlying failure")
+	tests := []struct {
+		name         string
+		err          error
+		wantRequired bool
+		wantExpired  bool
+		wantCallback bool
+	}{
+		{
+			name:         "nil",
+			wantRequired: false,
+			wantExpired:  false,
+			wantCallback: false,
+		},
+		{
+			name:         "unrelated",
+			err:          cause,
+			wantRequired: false,
+			wantExpired:  false,
+			wantCallback: false,
+		},
+		{
+			name:         "required",
+			err:          &AuthRequiredError{Msg: "login required"},
+			wantRequired: true,
+			wantExpired:  false,
+			wantCallback: false,
+		},
+		{
+			name:         "expired",
+			err:          &AuthExpiredError{Msg: "token expired"},
+			wantRequired: false,
+			wantExpired:  true,
+			wantCallback: false,
+		},
+		{
+			name:         "callback",
+			err:          &AuthCallbackError{Msg: "state mismatch", Code: 400},
+			wantRequired: false,
+			wantExpired:  false,
+			wantCallback: true,
+		},
+		{
+			name:         "wrapped required",
+			err:          errors.Join(&AuthRequiredError{Msg: "login required"}, cause),
+			wantRequired: true,
+			wantExpired:  false,
+			wantCallback: false,
+		},
+		{
+			name:         "fmt wrapped required",
+			err:          fmt.Errorf("load token: %w", &AuthRequiredError{Msg: "login required"}),
+			wantRequired: true,
+			wantExpired:  false,
+			wantCallback: false,
+		},
+		{
+			name:         "wrapped expired",
+			err:          errors.Join(&AuthExpiredError{Msg: "token expired"}, cause),
+			wantRequired: false,
+			wantExpired:  true,
+			wantCallback: false,
+		},
+		{
+			name:         "fmt wrapped expired",
+			err:          fmt.Errorf("refresh token: %w", &AuthExpiredError{Msg: "token expired"}),
+			wantRequired: false,
+			wantExpired:  true,
+			wantCallback: false,
+		},
+		{
+			name:         "wrapped callback",
+			err:          errors.Join(&AuthCallbackError{Msg: "state mismatch", Code: 400}, cause),
+			wantRequired: false,
+			wantExpired:  false,
+			wantCallback: true,
+		},
+		{
+			name:         "fmt wrapped callback",
+			err:          fmt.Errorf("login callback: %w", &AuthCallbackError{Msg: "state mismatch", Code: 400}),
+			wantRequired: false,
+			wantExpired:  false,
+			wantCallback: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equalf(t, tt.wantRequired, IsRequired(tt.err), "IsRequired(%v)", tt.err)
+			assert.Equalf(t, tt.wantExpired, IsExpired(tt.err), "IsExpired(%v)", tt.err)
+			assert.Equalf(t, tt.wantCallback, IsCallback(tt.err), "IsCallback(%v)", tt.err)
 		})
 	}
 }
