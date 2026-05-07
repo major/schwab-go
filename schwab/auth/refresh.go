@@ -27,6 +27,11 @@ func RefreshAccessToken(
 	refreshToken string,
 	httpClient *http.Client,
 ) (TokenFile, error) {
+	err := cfg.Validate()
+	if err != nil {
+		return TokenFile{}, err
+	}
+
 	if refreshToken == "" {
 		return TokenFile{}, errors.New("refresh token must not be empty")
 	}

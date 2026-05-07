@@ -95,6 +95,9 @@ func NewRequest(ctx context.Context, cfg Config, method, path string, body any) 
 		if tokenErr != nil {
 			return nil, tokenErr
 		}
+		if token == "" {
+			return nil, errors.New("token provider returned an empty token")
+		}
 		req.Header.Set(authorizationHeader, "Bearer "+token)
 	} else if cfg.Token != "" {
 		req.Header.Set(authorizationHeader, "Bearer "+cfg.Token)

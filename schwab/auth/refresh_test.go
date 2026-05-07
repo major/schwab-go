@@ -91,6 +91,16 @@ func TestRefreshAccessToken(t *testing.T) {
 		assert.ErrorContains(t, err, "status 500")
 	})
 
+	t.Run("invalid config returns error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := Config{ClientID: "", ClientSecret: "secret", CallbackURL: "https://127.0.0.1:8182/callback"}
+		_, err := RefreshAccessToken(context.Background(), cfg, "refresh-token", nil)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "client_id")
+	})
+
 	t.Run("request format uses basic auth and refresh form body", func(t *testing.T) {
 		t.Parallel()
 

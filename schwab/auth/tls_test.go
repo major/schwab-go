@@ -42,6 +42,12 @@ func TestGenerateSelfSignedCert(t *testing.T) {
 		assert.Equal(t, parsedCert.Subject.String(), parsedCert.Issuer.String())
 	})
 
+	t.Run("leaf certificate not CA", func(t *testing.T) {
+		t.Parallel()
+
+		assert.False(t, parsedCert.IsCA)
+	})
+
 	t.Run("server auth extended key usage", func(t *testing.T) {
 		t.Parallel()
 

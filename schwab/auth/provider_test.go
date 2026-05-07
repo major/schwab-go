@@ -183,6 +183,16 @@ func TestProvider(t *testing.T) {
 		assert.Empty(t, accessToken)
 		assert.ErrorIs(t, err, loadErr)
 	})
+
+	t.Run("nil store returns error", func(t *testing.T) {
+		t.Parallel()
+
+		provider, err := NewProvider(providerTestConfig("https://127.0.0.1:8182/oauth"), nil, nil)
+
+		require.Error(t, err)
+		assert.Nil(t, provider)
+		assert.ErrorContains(t, err, "token store is required")
+	})
 }
 
 type providerMemoryStore struct {

@@ -40,11 +40,10 @@ func generateSelfSignedCert() (tls.Certificate, error) {
 		},
 		NotBefore:             now,
 		NotAfter:              now.Add(callbackCertificateTTL),
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
 		DNSNames:              []string{"localhost"},
-		IsCA:                  true,
 		BasicConstraintsValid: true,
 	}
 

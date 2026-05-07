@@ -64,6 +64,16 @@ func TestConfigValidate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "callback url uses http scheme",
+			config: Config{
+				ClientID:     "client-id",
+				ClientSecret: "client-secret",
+				CallbackURL:  "http://127.0.0.1:8182/callback",
+			},
+			wantErr:       true,
+			wantErrSubstr: "https",
+		},
+		{
 			name: "callback url uses non-loopback host",
 			config: Config{
 				ClientID:     "client-id",
@@ -72,6 +82,16 @@ func TestConfigValidate(t *testing.T) {
 			},
 			wantErr:       true,
 			wantErrSubstr: "127.0.0.1",
+		},
+		{
+			name: "callback url missing port",
+			config: Config{
+				ClientID:     "client-id",
+				ClientSecret: "client-secret",
+				CallbackURL:  "https://127.0.0.1/callback",
+			},
+			wantErr:       true,
+			wantErrSubstr: "port",
 		},
 		{
 			name: "invalid oauth base url",

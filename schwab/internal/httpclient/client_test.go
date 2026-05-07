@@ -50,6 +50,56 @@ type doTestCase struct {
 	wantLimitError      bool
 }
 
+type newConfigTestCase struct {
+	name              string
+	defaultBase       *url.URL
+	defaultClient     *http.Client
+	opts              []schwab.Option
+	wantBase          string
+	wantClient        *http.Client
+	wantClientNonNil  bool
+	wantToken         string
+	wantOptionError   string
+	wantBodyLimit     int64
+	wantEmptyBase     bool
+	wantDistinctClone bool
+	wantProvider      schwab.TokenProvider
+}
+
+func assertNewConfigResult(t *testing.T, cfg Config, defaultClient *http.Client, tc newConfigTestCase) {
+	t.Helper()
+
+	require.NotNil(t, cfg.BaseURL)
+	if tc.wantEmptyBase {
+		assert.Empty(t, cfg.BaseURL.String())
+	} else {
+		assert.Equal(t, tc.wantBase, cfg.BaseURL.String())
+	}
+
+	if tc.wantClientNonNil {
+		require.NotNil(t, cfg.HTTPClient)
+	}
+	if tc.wantClient != nil {
+		assert.Same(t, tc.wantClient, cfg.HTTPClient)
+	}
+	if tc.wantDistinctClone {
+		assert.NotSame(t, defaultClient, cfg.HTTPClient)
+	}
+	assert.Equal(t, tc.wantToken, cfg.Token)
+	if tc.wantProvider == nil {
+		assert.Nil(t, cfg.TokenProvider)
+	} else {
+		assert.Same(t, tc.wantProvider, cfg.TokenProvider)
+	}
+	if tc.wantOptionError == "" {
+		require.NoError(t, cfg.OptionError)
+	} else {
+		require.Error(t, cfg.OptionError)
+		require.ErrorContains(t, cfg.OptionError, tc.wantOptionError)
+	}
+	assert.Equal(t, tc.wantBodyLimit, cfg.ResponseBodyLimit)
+}
+
 func TestNewConfig(t *testing.T) {
 	defaultBase, err := url.Parse("https://api.example.test/base")
 	require.NoError(t, err)
@@ -58,21 +108,7 @@ func TestNewConfig(t *testing.T) {
 	customClient := &http.Client{}
 	provider := &testTokenProvider{token: "dynamic"}
 
-	tests := []struct {
-		name              string
-		defaultBase       *url.URL
-		defaultClient     *http.Client
-		opts              []schwab.Option
-		wantBase          string
-		wantClient        *http.Client
-		wantClientNonNil  bool
-		wantToken         string
-		wantOptionError   string
-		wantBodyLimit     int64
-		wantEmptyBase     bool
-		wantDistinctClone bool
-		wantProvider      schwab.TokenProvider
-	}{
+	tests := []newConfigTestCase{
 		{
 			name:             "happy path uses defaults",
 			defaultBase:      defaultBase,
@@ -138,36 +174,7 @@ func TestNewConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := NewConfig(tt.defaultBase, tt.defaultClient, tt.opts)
-
-			require.NotNil(t, cfg.BaseURL)
-			if tt.wantEmptyBase {
-				assert.Empty(t, cfg.BaseURL.String())
-			} else {
-				assert.Equal(t, tt.wantBase, cfg.BaseURL.String())
-			}
-
-			if tt.wantClientNonNil {
-				require.NotNil(t, cfg.HTTPClient)
-			}
-			if tt.wantClient != nil {
-				assert.Same(t, tt.wantClient, cfg.HTTPClient)
-			}
-			if tt.wantDistinctClone {
-				assert.NotSame(t, defaultClient, cfg.HTTPClient)
-			}
-			assert.Equal(t, tt.wantToken, cfg.Token)
-			if tt.wantProvider == nil {
-				assert.Nil(t, cfg.TokenProvider)
-			} else {
-				assert.Same(t, tt.wantProvider, cfg.TokenProvider)
-			}
-			if tt.wantOptionError == "" {
-				require.NoError(t, cfg.OptionError)
-			} else {
-				require.Error(t, cfg.OptionError)
-				require.ErrorContains(t, cfg.OptionError, tt.wantOptionError)
-			}
-			assert.Equal(t, tt.wantBodyLimit, cfg.ResponseBodyLimit)
+			assertNewConfigResult(t, cfg, defaultClient, tt)
 		})
 	}
 }
@@ -358,7 +365,19 @@ func TestNewRequest_TokenProviderError(t *testing.T) {
 
 	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, assert.AnError)
+	require.ErrorIs(t, err, assert.AnError)
+	assert.Nil(t, req)
+}
+
+func TestNewRequest_TokenProviderEmptyToken(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{BaseURL: baseURL, TokenProvider: &testTokenProvider{token: ""}}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "empty token")
 	assert.Nil(t, req)
 }
 

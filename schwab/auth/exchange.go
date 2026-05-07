@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,6 +23,10 @@ func ExchangeCode(
 	code string,
 	httpClient *http.Client,
 ) (TokenFile, error) {
+	if code == "" {
+		return TokenFile{}, errors.New("authorization code must not be empty")
+	}
+
 	client := httpClient
 	if client == nil {
 		client = http.DefaultClient

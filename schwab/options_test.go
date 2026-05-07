@@ -35,6 +35,14 @@ func TestWithTokenProvider(t *testing.T) {
 	require.Equal(t, provider, cfg.TokenProvider)
 }
 
+func TestWithTokenProvider_Nil(t *testing.T) {
+	existingProvider := staticTokenProvider{token: "keep-me"}
+	cfg := &ClientConfig{TokenProvider: existingProvider}
+	opt := WithTokenProvider(nil)
+	opt(cfg)
+	require.Equal(t, existingProvider, cfg.TokenProvider)
+}
+
 func TestWithHTTPClient(t *testing.T) {
 	customClient := &http.Client{Timeout: 0}
 	cfg := &ClientConfig{}

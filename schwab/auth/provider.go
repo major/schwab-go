@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"sync"
 	"time"
@@ -21,12 +22,17 @@ type Provider struct {
 }
 
 // NewProvider creates a Provider that manages tokens using the given
-// config and store. The http client is optional (nil uses
-// [http.DefaultClient]) and is used only for refresh requests.
+// config and store. The http client is optional; nil creates a
+// default client with a 30-second timeout used only for refresh
+// requests.
 func NewProvider(cfg Config, store TokenStore, httpClient *http.Client) (*Provider, error) {
 	err := cfg.Validate()
 	if err != nil {
 		return nil, err
+	}
+
+	if store == nil {
+		return nil, errors.New("token store is required")
 	}
 
 	client := httpClient

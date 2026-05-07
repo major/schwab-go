@@ -120,6 +120,20 @@ func TestExchangeCode(t *testing.T) {
 		assert.Equal(t, cfg.CallbackURL, snapshot.form.Get("redirect_uri"))
 	})
 
+	t.Run("empty code returns error", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := ExchangeCode(
+			context.Background(),
+			exchangeTestConfig("https://api.example.test/oauth"),
+			"",
+			nil,
+		)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "authorization code must not be empty")
+	})
+
 	t.Run("empty oauth base url uses default token endpoint", func(t *testing.T) {
 		t.Parallel()
 

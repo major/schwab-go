@@ -8,8 +8,13 @@ import (
 	"os"
 )
 
-// DefaultOAuthBaseURL is the default Schwab OAuth2 base URL.
-const DefaultOAuthBaseURL = "https://api.schwabapi.com/v1/oauth"
+const (
+	// DefaultOAuthBaseURL is the default Schwab OAuth2 base URL.
+	DefaultOAuthBaseURL = "https://api.schwabapi.com/v1/oauth"
+
+	// httpsScheme is the required URL scheme for callback and OAuth URLs.
+	httpsScheme = "https"
+)
 
 // Config holds the OAuth2 client credentials and endpoint configuration
 // for the Schwab API. Construct it directly or load it from a JSON file
@@ -87,8 +92,16 @@ func validateCallbackURL(rawURL string) error {
 		return err
 	}
 
+	if callbackURL.Scheme != httpsScheme {
+		return errors.New("callback_url scheme must be https")
+	}
+
 	if callbackURL.Hostname() != "127.0.0.1" {
 		return errors.New("callback_url host must be 127.0.0.1")
+	}
+
+	if callbackURL.Port() == "" {
+		return errors.New("callback_url must include an explicit port")
 	}
 
 	return nil

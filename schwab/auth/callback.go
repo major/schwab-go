@@ -102,7 +102,7 @@ func callbackListenAddress(callbackURL string) (string, string, error) {
 		return "", "", &AuthCallbackError{Msg: fmt.Sprintf("invalid callback URL: %v", err), Code: 0}
 	}
 
-	if parsedURL.Scheme != "https" {
+	if parsedURL.Scheme != httpsScheme {
 		return "", "", &AuthCallbackError{Msg: "callback URL must use https", Code: 0}
 	}
 
