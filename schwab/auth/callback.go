@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"log" //nolint:depguard // http.Server.ErrorLog requires *log.Logger; discard prevents stderr output.
@@ -101,7 +102,10 @@ func StartCallbackServer(
 func callbackListenAddress(callbackURL string) (string, string, error) {
 	parsedURL, err := url.Parse(callbackURL)
 	if err != nil {
-		return "", "", &AuthCallbackError{Msg: fmt.Sprintf("invalid callback URL: %v", err), Code: 0}
+		return "", "", errors.Join(
+			&AuthCallbackError{Msg: fmt.Sprintf("invalid callback URL: %v", err), Code: 0},
+			err,
+		)
 	}
 
 	if parsedURL.Scheme != httpsScheme {
@@ -110,10 +114,10 @@ func callbackListenAddress(callbackURL string) (string, string, error) {
 
 	host, port, err := net.SplitHostPort(parsedURL.Host)
 	if err != nil {
-		return "", "", &AuthCallbackError{
-			Msg:  fmt.Sprintf("callback URL must include host and port: %v", err),
-			Code: 0,
-		}
+		return "", "", errors.Join(
+			&AuthCallbackError{Msg: fmt.Sprintf("callback URL must include host and port: %v", err), Code: 0},
+			err,
+		)
 	}
 
 	if host != callbackLoopbackHost {

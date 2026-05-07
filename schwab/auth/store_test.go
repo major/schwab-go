@@ -42,6 +42,21 @@ func TestFileTokenStore(t *testing.T) {
 		assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 	})
 
+	t.Run("save creates parent directory with owner only permissions", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		path := filepath.Join(t.TempDir(), "nested", "token.json")
+		store := NewFileTokenStore(path)
+
+		require.NoError(t, store.Save(ctx, testTokenFile()))
+
+		info, err := os.Stat(filepath.Dir(path))
+		require.NoError(t, err)
+		assert.True(t, info.IsDir())
+		assert.Equal(t, os.FileMode(0o700), info.Mode().Perm())
+	})
+
 	t.Run("load missing file returns auth required", func(t *testing.T) {
 		t.Parallel()
 
@@ -53,7 +68,8 @@ func TestFileTokenStore(t *testing.T) {
 		require.Error(t, err)
 
 		var authRequired *AuthRequiredError
-		assert.ErrorAs(t, err, &authRequired)
+		require.ErrorAs(t, err, &authRequired)
+		assert.ErrorIs(t, err, os.ErrNotExist)
 	})
 
 	t.Run("load invalid json returns parse error", func(t *testing.T) {

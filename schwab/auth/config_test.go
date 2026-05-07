@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -230,6 +231,15 @@ func TestLoadConfig(t *testing.T) {
 			for _, substr := range tt.wantErrContains {
 				if !strings.Contains(err.Error(), substr) {
 					t.Fatalf("LoadConfig(%q) = %v, want error containing %q", path, err, substr)
+				}
+			}
+			if tt.name == "missing file" {
+				var authRequired *AuthRequiredError
+				if !errors.As(err, &authRequired) {
+					t.Fatalf("LoadConfig(%q) = %T, want *AuthRequiredError", path, err)
+				}
+				if !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("LoadConfig(%q) = %v, want os.ErrNotExist in error chain", path, err)
 				}
 			}
 		})

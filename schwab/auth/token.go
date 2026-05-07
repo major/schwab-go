@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	accessTokenExpiryBuffer = 30
-	refreshTokenMaxAge      = 7 * 24 * 60 * 60
+	accessTokenExpiryBuffer = 5 * 60
+	refreshTokenMaxAge      = 6*24*60*60 + 12*60*60
 )
 
 // TokenData holds the OAuth2 token response fields from Schwab.
@@ -34,13 +34,13 @@ type TokenStore interface {
 }
 
 // IsAccessTokenExpired reports whether the access token in tf has expired,
-// using a 30-second buffer to account for clock skew.
+// using a 5-minute buffer to account for clock skew and in-flight requests.
 func IsAccessTokenExpired(tf TokenFile) bool {
 	return time.Now().Unix() >= tf.Token.ExpiresAt-accessTokenExpiryBuffer
 }
 
 // IsRefreshTokenStale reports whether the refresh token in tf is older
-// than 7 days and should be considered invalid.
+// than 6.5 days and should be considered invalid.
 func IsRefreshTokenStale(tf TokenFile) bool {
 	return time.Now().Unix() >= tf.CreationTimestamp+refreshTokenMaxAge
 }

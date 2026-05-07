@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,7 +12,10 @@ import (
 	"sync"
 )
 
-const tokenFilePerm = 0o600
+const (
+	tokenDirPerm  = 0o700
+	tokenFilePerm = 0o600
+)
 
 var _ TokenStore = (*FileTokenStore)(nil)
 
@@ -37,6 +41,10 @@ func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 	data, err := json.Marshal(tf)
 	if err != nil {
 		return fmt.Errorf("marshal token file: %w", err)
+	}
+	err = os.MkdirAll(filepath.Dir(s.path), tokenDirPerm)
+	if err != nil {
+		return fmt.Errorf("create token file directory: %w", err)
 	}
 
 	tmpPath := s.path + ".tmp"
@@ -112,7 +120,7 @@ func (s *FileTokenStore) Load(ctx context.Context) (TokenFile, error) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return TokenFile{}, &AuthRequiredError{Msg: "no token file found, login required"}
+			return TokenFile{}, errors.Join(&AuthRequiredError{Msg: "no token file found, login required"}, err)
 		}
 		return TokenFile{}, fmt.Errorf("read token file: %w", err)
 	}
