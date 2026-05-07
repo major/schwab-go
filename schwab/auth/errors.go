@@ -1,5 +1,7 @@
 package auth
 
+import "errors"
+
 // AuthRequiredError indicates no valid tokens exist and login is needed.
 //
 //nolint:revive // Auth-prefixed names are intentional for clarity when used as auth.AuthRequiredError.
@@ -10,6 +12,13 @@ func (e *AuthRequiredError) Error() string {
 	return e.Msg
 }
 
+// IsRequired reports whether err indicates that a user must log in before the
+// application can obtain Schwab API tokens.
+func IsRequired(err error) bool {
+	var target *AuthRequiredError
+	return errors.As(err, &target)
+}
+
 // AuthExpiredError indicates the refresh token has expired or been revoked.
 //
 //nolint:revive // Auth-prefixed names are intentional for clarity when used as auth.AuthExpiredError.
@@ -18,6 +27,13 @@ type AuthExpiredError struct{ Msg string }
 // Error returns a human-readable representation of the auth expired error.
 func (e *AuthExpiredError) Error() string {
 	return e.Msg
+}
+
+// IsExpired reports whether err indicates that stored auth credentials are
+// expired, revoked, or otherwise unable to refresh the Schwab access token.
+func IsExpired(err error) bool {
+	var target *AuthExpiredError
+	return errors.As(err, &target)
 }
 
 // AuthCallbackError indicates the OAuth callback failed.
@@ -31,4 +47,11 @@ type AuthCallbackError struct {
 // Error returns a human-readable representation of the auth callback error.
 func (e *AuthCallbackError) Error() string {
 	return e.Msg
+}
+
+// IsCallback reports whether err indicates that the OAuth callback listener or
+// callback request failed.
+func IsCallback(err error) bool {
+	var target *AuthCallbackError
+	return errors.As(err, &target)
 }

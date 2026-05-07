@@ -99,7 +99,7 @@ func (p *Provider) Status(ctx context.Context, now time.Time) (TokenStatus, erro
 
 	tokenFile, err := p.store.Load(ctx)
 	if err != nil {
-		if _, ok := errors.AsType[*AuthRequiredError](err); ok {
+		if IsRequired(err) {
 			return TokenStatus{LoginRequired: true}, nil
 		}
 		return TokenStatus{}, err

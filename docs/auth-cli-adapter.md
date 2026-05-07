@@ -110,7 +110,7 @@ Suggested mappings:
 | `*auth.AuthCallbackError` | `auth_callback_failed` | Retry login and confirm the callback URL matches the Schwab app. |
 | Other refresh or exchange error | `auth_refresh_failed` | Show the status/message and preserve logs for debugging. |
 
-Use `errors.As` to classify the auth error while `errors.Is` can inspect joined or wrapped underlying causes when the error includes one.
+Use `auth.IsRequired`, `auth.IsExpired`, and `auth.IsCallback` to classify auth errors while `errors.Is` can inspect joined or wrapped underlying causes when the error includes one.
 
 ## Post-login setup
 

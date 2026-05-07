@@ -33,6 +33,9 @@
 // Provider.Status or InspectToken when it needs read-only token lifecycle state
 // without refreshing or saving tokens.
 //
+// Use IsRequired, IsExpired, and IsCallback to classify auth package errors at
+// application boundaries without duplicating [errors.As] checks.
+//
 // For CLI applications, keep command policy outside this package: explicit
 // config and token paths, environment-variable precedence, JSON output
 // envelopes, exit-code mappings, browser selection, and post-login default
