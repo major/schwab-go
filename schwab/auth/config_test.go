@@ -149,6 +149,123 @@ func TestConfigValidate(t *testing.T) {
 	}
 }
 
+func TestOAuthBaseURLFromAPIBaseURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		apiBaseURL    string
+		want          string
+		wantErrSubstr string
+	}{
+		{
+			name: "empty uses production oauth base url",
+			want: DefaultOAuthBaseURL,
+		},
+		{
+			name:       "api origin adds oauth path",
+			apiBaseURL: "https://api.schwabapi.com",
+			want:       "https://api.schwabapi.com/v1/oauth",
+		},
+		{
+			name:       "api root path appends oauth path",
+			apiBaseURL: "https://api.schwabapi.com/marketdata/v1",
+			want:       "https://api.schwabapi.com/marketdata/v1/v1/oauth",
+		},
+		{
+			name:       "proxy prefix is preserved",
+			apiBaseURL: "https://proxy.example.com/root/",
+			want:       "https://proxy.example.com/root/v1/oauth",
+		},
+		{
+			name:          "relative url rejected",
+			apiBaseURL:    "api.schwabapi.com",
+			wantErrSubstr: "scheme and host",
+		},
+		{
+			name:          "http url rejected",
+			apiBaseURL:    "http://api.schwabapi.com",
+			wantErrSubstr: "https",
+		},
+		{
+			name:          "query rejected",
+			apiBaseURL:    "https://api.schwabapi.com?env=test",
+			wantErrSubstr: "query or fragment",
+		},
+		{
+			name:          "fragment rejected",
+			apiBaseURL:    "https://api.schwabapi.com#oauth",
+			wantErrSubstr: "query or fragment",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := OAuthBaseURLFromAPIBaseURL(tt.apiBaseURL)
+			if tt.wantErrSubstr == "" {
+				if err != nil {
+					t.Fatalf("OAuthBaseURLFromAPIBaseURL(%q) = %v, want nil", tt.apiBaseURL, err)
+				}
+				if got != tt.want {
+					t.Fatalf("OAuthBaseURLFromAPIBaseURL(%q) = %q, want %q", tt.apiBaseURL, got, tt.want)
+				}
+				return
+			}
+
+			if err == nil {
+				t.Fatalf("OAuthBaseURLFromAPIBaseURL(%q) = nil, want error", tt.apiBaseURL)
+			}
+			if !strings.Contains(err.Error(), tt.wantErrSubstr) {
+				t.Fatalf(
+					"OAuthBaseURLFromAPIBaseURL(%q) = %v, want error containing %q",
+					tt.apiBaseURL,
+					err,
+					tt.wantErrSubstr,
+				)
+			}
+		})
+	}
+}
+
+func TestConfigFromAPIBaseURL(t *testing.T) {
+	t.Parallel()
+
+	got, err := ConfigFromAPIBaseURL(
+		"client-id",
+		"client-secret",
+		"https://127.0.0.1:8182/callback",
+		"https://proxy.example.com/root",
+	)
+
+	if err != nil {
+		t.Fatalf("ConfigFromAPIBaseURL() = %v, want nil", err)
+	}
+	want := Config{
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+		CallbackURL:  "https://127.0.0.1:8182/callback",
+		OAuthBaseURL: "https://proxy.example.com/root/v1/oauth",
+	}
+	if got != want {
+		t.Fatalf("ConfigFromAPIBaseURL() = %+v, want %+v", got, want)
+	}
+}
+
+func TestConfigFromAPIBaseURL_InvalidConfig(t *testing.T) {
+	t.Parallel()
+
+	_, err := ConfigFromAPIBaseURL("", "client-secret", "https://127.0.0.1:8182/callback", "")
+
+	if err == nil {
+		t.Fatal("ConfigFromAPIBaseURL() = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "client_id") {
+		t.Fatalf("ConfigFromAPIBaseURL() = %v, want error containing client_id", err)
+	}
+}
+
 //nolint:gocognit // Table-driven test with many cases; splitting would reduce readability.
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()

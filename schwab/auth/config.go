@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path"
+	"strings"
 )
 
 const (
@@ -33,6 +35,54 @@ type Config struct {
 	// OAuthBaseURL overrides the OAuth endpoint base URL. When empty, callers
 	// should use DefaultOAuthBaseURL.
 	OAuthBaseURL string `json:"oauth_base_url,omitempty"`
+}
+
+// OAuthBaseURLFromAPIBaseURL returns the Schwab OAuth base URL that corresponds
+// to apiBaseURL. Empty input returns DefaultOAuthBaseURL, and non-empty input
+// must be an absolute HTTPS URL without a query string or fragment.
+func OAuthBaseURLFromAPIBaseURL(apiBaseURL string) (string, error) {
+	trimmedURL := strings.TrimSpace(apiBaseURL)
+	if trimmedURL == "" {
+		return DefaultOAuthBaseURL, nil
+	}
+
+	parsedURL, err := parseAbsoluteURL("api_base_url", trimmedURL)
+	if err != nil {
+		return "", err
+	}
+	if parsedURL.Scheme != httpsScheme {
+		return "", errors.New("api_base_url scheme must be https")
+	}
+	if parsedURL.RawQuery != "" || parsedURL.Fragment != "" {
+		return "", errors.New("api_base_url must not include query or fragment")
+	}
+
+	parsedURL.Path = path.Join(strings.TrimRight(parsedURL.Path, "/"), "/v1/oauth")
+	parsedURL.RawPath = ""
+
+	return parsedURL.String(), nil
+}
+
+// ConfigFromAPIBaseURL returns a Config whose OAuthBaseURL is derived from a
+// Schwab REST API root URL.
+func ConfigFromAPIBaseURL(clientID, clientSecret, callbackURL, apiBaseURL string) (Config, error) {
+	oauthBaseURL, err := OAuthBaseURLFromAPIBaseURL(apiBaseURL)
+	if err != nil {
+		return Config{}, err
+	}
+
+	cfg := Config{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		CallbackURL:  callbackURL,
+		OAuthBaseURL: oauthBaseURL,
+	}
+	validateErr := cfg.Validate()
+	if validateErr != nil {
+		return Config{}, validateErr
+	}
+
+	return cfg, nil
 }
 
 // Validate returns an error if any required Config field is missing or invalid.
