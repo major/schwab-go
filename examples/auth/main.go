@@ -22,7 +22,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -95,16 +94,14 @@ func loadOrLogin(
 	}
 
 	// If the error is anything other than "needs login", surface it.
-	var requiredErr *auth.AuthRequiredError
-	var expiredErr *auth.AuthExpiredError
-	if !errors.As(tokenErr, &requiredErr) && !errors.As(tokenErr, &expiredErr) {
+	if !auth.IsRequired(tokenErr) && !auth.IsExpired(tokenErr) {
 		return nil, tokenErr
 	}
 
 	stdout.Println("No valid token found, starting login flow...")
 
 	provider, err = auth.Login(ctx, cfg, store, func(url string) error {
-		return openBrowser(url, stdout, stderr)
+		return openBrowser(ctx, url, stdout, stderr)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("login: %w", err)
@@ -115,7 +112,7 @@ func loadOrLogin(
 }
 
 // openBrowser opens the authorization URL in the user's default browser.
-func openBrowser(url string, stdout *log.Logger, stderr *log.Logger) error {
+func openBrowser(ctx context.Context, url string, stdout *log.Logger, stderr *log.Logger) error {
 	stdout.Println("Opening browser for Schwab authorization...")
 	stdout.Println("If the browser does not open, visit this URL manually:")
 	stdout.Println()
@@ -126,9 +123,9 @@ func openBrowser(url string, stdout *log.Logger, stderr *log.Logger) error {
 
 	switch runtime.GOOS {
 	case "linux":
-		cmd = exec.CommandContext(context.Background(), "xdg-open", url)
+		cmd = exec.CommandContext(ctx, "xdg-open", url)
 	case "darwin":
-		cmd = exec.CommandContext(context.Background(), "open", url)
+		cmd = exec.CommandContext(ctx, "open", url)
 	default:
 		// On unsupported platforms, the user can copy the URL above.
 		stderr.Println("Automatic browser open not supported on", runtime.GOOS)
