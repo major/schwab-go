@@ -19,8 +19,8 @@ const (
 )
 
 // generateSelfSignedCert generates an in-memory self-signed TLS certificate
-// valid for 127.0.0.1. The certificate is used for the loopback OAuth2
-// callback server and is not persisted to disk.
+// valid for 127.0.0.1, ::1, and localhost. The certificate is used for the
+// loopback OAuth2 callback server and is not persisted to disk.
 func generateSelfSignedCert() (tls.Certificate, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, callbackCertificateBits)
 	if err != nil {

@@ -51,7 +51,7 @@ func (c Config) Validate() error {
 	}
 
 	if c.OAuthBaseURL != "" {
-		_, err = parseAbsoluteURL("oauth_base_url", c.OAuthBaseURL)
+		err = validateOAuthBaseURL(c.OAuthBaseURL)
 		if err != nil {
 			return err
 		}
@@ -105,6 +105,19 @@ func validateCallbackURL(rawURL string) error {
 	}
 
 	return nil
+}
+
+func validateOAuthBaseURL(rawURL string) error {
+	oauthBaseURL, err := parseAbsoluteURL("oauth_base_url", rawURL)
+	if err != nil {
+		return err
+	}
+
+	if oauthBaseURL.Scheme == httpsScheme {
+		return nil
+	}
+
+	return errors.New("oauth_base_url scheme must be https")
 }
 
 // oauthBaseURL returns OAuthBaseURL if set, or DefaultOAuthBaseURL.

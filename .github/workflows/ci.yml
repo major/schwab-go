@@ -104,7 +104,7 @@ jobs:
             exit 0
           fi
 
-          if git diff --name-only "$base" "$head" | grep -q '^schwab/auth/'; then
+          if git diff --name-only "$base" "$head" | grep -Eq '^(schwab/auth/|schwab/[^/]+\.go$|go\.mod$|go\.sum$)'; then
             echo 'changed=true' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=false' >> "$GITHUB_OUTPUT"
@@ -142,7 +142,7 @@ jobs:
             exit 0
           fi
 
-          if git diff --name-only "$base" "$head" | grep -q '^schwab/auth/'; then
+          if git diff --name-only "$base" "$head" | grep -Eq '^(schwab/auth/|schwab/[^/]+\.go$|go\.mod$|go\.sum$)'; then
             echo 'changed=true' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=false' >> "$GITHUB_OUTPUT"
@@ -180,7 +180,7 @@ jobs:
             exit 0
           fi
 
-          if git diff --name-only "$base" "$head" | grep -q '^schwab/auth/'; then
+          if git diff --name-only "$base" "$head" | grep -Eq '^(schwab/auth/|schwab/[^/]+\.go$|go\.mod$|go\.sum$)'; then
             echo 'changed=true' >> "$GITHUB_OUTPUT"
           else
             echo 'changed=false' >> "$GITHUB_OUTPUT"

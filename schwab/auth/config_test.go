@@ -104,6 +104,17 @@ func TestConfigValidate(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "oauth base url uses http scheme for remote host",
+			config: Config{
+				ClientID:     "client-id",
+				ClientSecret: "client-secret",
+				CallbackURL:  "https://127.0.0.1:8182/callback",
+				OAuthBaseURL: "http://api.schwabapi.com/v1/oauth",
+			},
+			wantErr:       true,
+			wantErrSubstr: "https",
+		},
+		{
 			name: "empty oauth base url",
 			config: Config{
 				ClientID:     "client-id",

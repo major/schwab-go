@@ -20,7 +20,7 @@ func TestRefreshAccessToken(t *testing.T) {
 	t.Run("success returns token file", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_, err := fmt.Fprint(
 				w,
@@ -53,7 +53,7 @@ func TestRefreshAccessToken(t *testing.T) {
 	t.Run("expired refresh token returns auth expired error", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := fmt.Fprint(w, `{"error":"invalid_grant"}`)
 			assert.NoError(t, err)
@@ -75,7 +75,7 @@ func TestRefreshAccessToken(t *testing.T) {
 	t.Run("http error returns status", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "server failed", http.StatusInternalServerError)
 		}))
 		t.Cleanup(server.Close)
@@ -105,7 +105,7 @@ func TestRefreshAccessToken(t *testing.T) {
 		t.Parallel()
 
 		requests := make(chan refreshRequestSnapshot, 1)
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err := r.ParseForm()
 			assert.NoError(t, err)
 

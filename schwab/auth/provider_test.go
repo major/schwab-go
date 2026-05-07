@@ -22,7 +22,7 @@ func TestProvider(t *testing.T) {
 		t.Parallel()
 
 		var refreshCalls atomic.Int64
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			refreshCalls.Add(1)
 			http.Error(w, "unexpected refresh", http.StatusInternalServerError)
 		}))
@@ -47,7 +47,7 @@ func TestProvider(t *testing.T) {
 		t.Parallel()
 
 		var refreshCalls atomic.Int64
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			refreshCalls.Add(1)
 			assert.Equal(t, http.MethodPost, r.Method)
 			assert.Equal(t, "/token", r.URL.Path)
@@ -85,7 +85,7 @@ func TestProvider(t *testing.T) {
 		t.Parallel()
 
 		var refreshCalls atomic.Int64
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			refreshCalls.Add(1)
 			http.Error(w, "unexpected refresh", http.StatusInternalServerError)
 		}))
@@ -127,7 +127,7 @@ func TestProvider(t *testing.T) {
 		t.Parallel()
 
 		var refreshCalls atomic.Int64
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			refreshCalls.Add(1)
 			w.Header().Set("Content-Type", "application/json")
 			_, err := fmt.Fprint(

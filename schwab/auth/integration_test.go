@@ -13,8 +13,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	schwab "github.com/major/schwab-go/schwab"
 )
 
 func TestIntegration_FullOAuthFlow(t *testing.T) {
@@ -100,24 +98,6 @@ func TestIntegration_ProviderFromSaved(t *testing.T) {
 	assert.Equal(t, "saved-access-token", accessToken)
 }
 
-func TestIntegration_WithTokenProvider(t *testing.T) {
-	t.Parallel()
-
-	store := newProviderMemoryStore(providerTokenFile(
-		"root-access-token",
-		"root-refresh-token",
-		time.Now().Add(time.Hour),
-		time.Now(),
-	))
-	provider := newTestProvider(t, "https://127.0.0.1:8182/oauth", store, nil)
-
-	option := schwab.WithTokenProvider(provider)
-	require.NotNil(t, option)
-	config := schwab.ClientConfig{}
-	option(&config)
-	assert.Equal(t, provider, config.TokenProvider)
-}
-
 type integrationTokenRequest struct {
 	method       string
 	path         string
@@ -131,7 +111,7 @@ type integrationTokenRequest struct {
 func newIntegrationTokenServer(t *testing.T, requests chan<- integrationTokenRequest) *httptest.Server {
 	t.Helper()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parseErr := r.ParseForm()
 		grantType := r.PostForm.Get("grant_type")
 		requests <- integrationTokenRequest{

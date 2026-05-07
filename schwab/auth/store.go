@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"runtime"
 	"sync"
 )
 
@@ -23,7 +26,7 @@ func NewFileTokenStore(path string) *FileTokenStore {
 	return &FileTokenStore{path: path}
 }
 
-// Save writes tf to disk using a temporary file and atomic rename.
+// Save writes tf to disk using a temporary file and rename.
 func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -50,10 +53,20 @@ func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 		_ = os.Remove(tmpPath)
 	}()
 
-	_, err = tmpFile.Write(data)
+	n, err := tmpFile.Write(data)
 	if err != nil {
 		_ = tmpFile.Close()
 		return fmt.Errorf("write temporary token file: %w", err)
+	}
+	if n != len(data) {
+		_ = tmpFile.Close()
+		return fmt.Errorf("write temporary token file: %w (%d/%d bytes)", io.ErrShortWrite, n, len(data))
+	}
+
+	err = tmpFile.Sync()
+	if err != nil {
+		_ = tmpFile.Close()
+		return fmt.Errorf("sync temporary token file: %w", err)
 	}
 
 	err = tmpFile.Close()
@@ -66,7 +79,26 @@ func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 		return fmt.Errorf("replace token file: %w", err)
 	}
 
+	err = syncParentDir(s.path)
+	if err != nil {
+		return fmt.Errorf("sync token file directory: %w", err)
+	}
+
 	return nil
+}
+
+func syncParentDir(path string) error {
+	if runtime.GOOS == "windows" {
+		return nil
+	}
+
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+
+	return dir.Sync()
 }
 
 // Load reads and decodes a persisted token file from disk.

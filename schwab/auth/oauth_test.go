@@ -14,6 +14,7 @@ func TestAuthorizeURL(t *testing.T) {
 
 	baseConfig := Config{
 		ClientID:     "client-id",
+		ClientSecret: "client-secret",
 		CallbackURL:  "https://127.0.0.1:8182/callback",
 		OAuthBaseURL: "https://auth.example.test/oauth",
 	}

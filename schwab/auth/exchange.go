@@ -23,6 +23,11 @@ func ExchangeCode(
 	code string,
 	httpClient *http.Client,
 ) (TokenFile, error) {
+	err := cfg.Validate()
+	if err != nil {
+		return TokenFile{}, err
+	}
+
 	if code == "" {
 		return TokenFile{}, errors.New("authorization code must not be empty")
 	}

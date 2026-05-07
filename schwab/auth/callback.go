@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log" //nolint:depguard // http.Server.ErrorLog requires *log.Logger; discard prevents stderr output.
 	"net"
 	"net/http"
 	"net/url"
@@ -58,6 +59,7 @@ func StartCallbackServer(
 
 	server := &http.Server{
 		Handler:           mux,
+		ErrorLog:          log.New(io.Discard, "", 0),
 		ReadHeaderTimeout: callbackReadHeaderTimeout,
 	}
 

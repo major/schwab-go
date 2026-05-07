@@ -239,7 +239,7 @@ func (s *loginMemoryStore) Load(ctx context.Context) (TokenFile, error) {
 func newLoginTokenServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
 	t.Helper()
 
-	server := httptest.NewServer(handler)
+	server := httptest.NewTLSServer(handler)
 	t.Cleanup(server.Close)
 	return server
 }

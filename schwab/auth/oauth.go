@@ -17,6 +17,11 @@ const (
 //
 //nolint:nonamedreturns // Named returns document the three distinct string, string, and error return values.
 func AuthorizeURL(cfg Config) (authorizeURL string, state string, err error) {
+	err = cfg.Validate()
+	if err != nil {
+		return "", "", err
+	}
+
 	state, err = randomOAuthState()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate OAuth state: %w", err)

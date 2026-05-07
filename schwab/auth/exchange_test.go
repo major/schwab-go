@@ -20,7 +20,7 @@ func TestExchangeCode(t *testing.T) {
 	t.Run("success returns token file", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_, err := fmt.Fprint(
 				w,
@@ -49,7 +49,7 @@ func TestExchangeCode(t *testing.T) {
 	t.Run("http error returns status", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "invalid grant", http.StatusBadRequest)
 		}))
 		t.Cleanup(server.Close)
@@ -63,7 +63,7 @@ func TestExchangeCode(t *testing.T) {
 	t.Run("invalid json response returns error", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			_, err := fmt.Fprint(w, `not-json`)
 			assert.NoError(t, err)
 		}))
@@ -84,7 +84,7 @@ func TestExchangeCode(t *testing.T) {
 		t.Parallel()
 
 		requests := make(chan exchangeRequestSnapshot, 1)
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err := r.ParseForm()
 			assert.NoError(t, err)
 
@@ -134,10 +134,20 @@ func TestExchangeCode(t *testing.T) {
 		assert.ErrorContains(t, err, "authorization code must not be empty")
 	})
 
+	t.Run("invalid config returns error", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := Config{ClientID: "", ClientSecret: "secret", CallbackURL: "https://127.0.0.1:8182/callback"}
+		_, err := ExchangeCode(context.Background(), cfg, "authorization-code", nil)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "client_id")
+	})
+
 	t.Run("empty oauth base url uses default token endpoint", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_, err := fmt.Fprint(
 				w,
@@ -147,7 +157,7 @@ func TestExchangeCode(t *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 
-		rewriteTransport := newExchangeRewriteTransport(t, server.URL)
+		rewriteTransport := newExchangeRewriteTransport(t, server.URL, server.Client().Transport)
 		client := &http.Client{Transport: rewriteTransport}
 		cfg := exchangeTestConfig("")
 
@@ -172,7 +182,11 @@ type exchangeRewriteTransport struct {
 	originalURLs chan string
 }
 
-func newExchangeRewriteTransport(t *testing.T, targetServerURL string) *exchangeRewriteTransport {
+func newExchangeRewriteTransport(
+	t *testing.T,
+	targetServerURL string,
+	base http.RoundTripper,
+) *exchangeRewriteTransport {
 	t.Helper()
 
 	targetURL, err := url.Parse(targetServerURL)
@@ -180,7 +194,7 @@ func newExchangeRewriteTransport(t *testing.T, targetServerURL string) *exchange
 
 	return &exchangeRewriteTransport{
 		targetURL:    targetURL,
-		base:         http.DefaultTransport,
+		base:         base,
 		originalURLs: make(chan string, 1),
 	}
 }

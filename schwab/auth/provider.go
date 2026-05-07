@@ -6,14 +6,12 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
-	schwab "github.com/major/schwab-go/schwab"
 )
 
 const defaultProviderHTTPTimeout = 30 * time.Second
 
-// Provider implements schwab.TokenProvider with automatic token
-// refresh. It is safe for concurrent use.
+// Provider returns OAuth2 access tokens with automatic refresh. It is safe for
+// concurrent use.
 type Provider struct {
 	mu    sync.Mutex
 	cfg   Config
@@ -22,8 +20,8 @@ type Provider struct {
 }
 
 // NewProvider creates a Provider that manages tokens using the given
-// config and store. The http client is optional; nil creates a
-// default client with a 30-second timeout used only for refresh
+// config and store. The http client is optional; nil creates a new
+// client with a 30-second timeout used only for refresh
 // requests.
 func NewProvider(cfg Config, store TokenStore, httpClient *http.Client) (*Provider, error) {
 	err := cfg.Validate()
@@ -47,8 +45,11 @@ func NewProvider(cfg Config, store TokenStore, httpClient *http.Client) (*Provid
 	}, nil
 }
 
-// Verify interface compliance.
-var _ schwab.TokenProvider = (*Provider)(nil)
+type tokenProvider interface {
+	Token(context.Context) (string, error)
+}
+
+var _ tokenProvider = (*Provider)(nil)
 
 // Token returns a valid access token, refreshing if expired.
 // It is safe for concurrent use from multiple goroutines.
