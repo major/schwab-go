@@ -14,7 +14,7 @@ auth status [--config PATH] [--token PATH]
 auth refresh [--config PATH] [--token PATH]
 ```
 
-`auth login` should load application config, create `auth.NewFileTokenStore(tokenPath)` or `auth.NewFileProvider(cfg, tokenPath, httpClient)`, pass a `urlHandler` to `auth.Login`, then run any application setup. `auth status` should create a provider with `auth.NewProvider(cfg, store, httpClient)` or `auth.NewFileProvider(cfg, tokenPath, httpClient)` and call `Provider.Status(ctx, now)` to report token age and expiry without refreshing or saving. `auth refresh` should create a provider and call `Provider.Refresh(ctx)` so an explicit refresh command always refreshes with the stored refresh token and persists the result.
+`auth login` should load application config, create `auth.NewFileTokenStore(tokenPath)`, pass the store and a `urlHandler` to `auth.Login`, then run any application setup. `auth status` should create a provider with `auth.NewProvider(cfg, store, httpClient)` or `auth.NewFileProvider(cfg, tokenPath, httpClient)` and call `Provider.Status(ctx, now)` to report token age and expiry without refreshing or saving. `auth refresh` should create a provider and call `Provider.Refresh(ctx)` so an explicit refresh command always refreshes with the stored refresh token and persists the result.
 
 ## Global auth gate
 
