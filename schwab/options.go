@@ -64,6 +64,8 @@ func WithHTTPClient(c *http.Client) Option {
 // WithTLSConfig sets the TLS configuration used by the client's HTTP
 // transport. A nil value is ignored. When the existing transport is nil or an
 // [http.Transport], the transport is cloned before TLSClientConfig is replaced.
+// Custom non-[http.Transport] RoundTripper values are left unchanged because
+// the library cannot safely apply TLS settings to caller-owned transport types.
 func WithTLSConfig(tlsCfg *tls.Config) Option {
 	return func(cfg *ClientConfig) {
 		if tlsCfg == nil {
@@ -154,22 +156,27 @@ func httpClientWithTLSConfig(client *http.Client, tlsCfg *tls.Config) *http.Clie
 		client = http.DefaultClient
 	}
 
+	configuredTransport, ok := transportWithTLSConfig(client.Transport, tlsCfg)
+	if !ok {
+		return client
+	}
+
 	configuredClient := *client
-	configuredClient.Transport = transportWithTLSConfig(client.Transport, tlsCfg)
+	configuredClient.Transport = configuredTransport
 	return &configuredClient
 }
 
-func transportWithTLSConfig(transport http.RoundTripper, tlsCfg *tls.Config) http.RoundTripper {
+func transportWithTLSConfig(transport http.RoundTripper, tlsCfg *tls.Config) (http.RoundTripper, bool) {
 	if transport == nil {
 		transport = http.DefaultTransport
 	}
 
 	httpTransport, ok := transport.(*http.Transport)
 	if !ok {
-		return transport
+		return transport, false
 	}
 
 	configuredTransport := httpTransport.Clone()
 	configuredTransport.TLSClientConfig = tlsCfg
-	return configuredTransport
+	return configuredTransport, true
 }

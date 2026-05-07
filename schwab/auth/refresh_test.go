@@ -219,6 +219,28 @@ func TestRefreshTokenFile(t *testing.T) {
 		assert.ErrorContains(t, err, "refresh token")
 	})
 
+	t.Run("refresh failure returns error", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "temporarily unavailable", http.StatusServiceUnavailable)
+		}))
+		t.Cleanup(server.Close)
+
+		_, err := RefreshTokenFile(
+			context.Background(),
+			refreshTestConfig(server.URL),
+			TokenFile{
+				CreationTimestamp: time.Now().Add(-time.Hour).Unix(),
+				Token:             TokenData{RefreshToken: "refresh-token"},
+			},
+			server.Client(),
+		)
+
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "token refresh failed with status 503")
+	})
+
 	t.Run("invalid config returns error", func(t *testing.T) {
 		t.Parallel()
 

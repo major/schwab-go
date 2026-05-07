@@ -242,6 +242,20 @@ func TestConfigFromAPIBaseURL_InvalidConfig(t *testing.T) {
 	require.ErrorContains(t, err, "client_id")
 }
 
+func TestConfigFromAPIBaseURL_InvalidAPIBaseURL(t *testing.T) {
+	t.Parallel()
+
+	_, err := ConfigFromAPIBaseURL(
+		"client-id",
+		"client-secret",
+		"https://127.0.0.1:8182/callback",
+		"http://api.schwabapi.com",
+	)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "api_base_url")
+}
+
 //nolint:gocognit // Table-driven test with many cases; splitting would reduce readability.
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()

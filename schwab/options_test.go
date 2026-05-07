@@ -101,10 +101,12 @@ func TestWithTLSConfig_ClonesExistingHTTPClientTransport(t *testing.T) {
 func TestWithTLSConfig_DoesNotOverrideCustomRoundTripper(t *testing.T) {
 	tlsCfg := &tls.Config{ServerName: "api.schwabapi.com", MinVersion: tls.VersionTLS12}
 	roundTripper := staticRoundTripper{}
-	cfg := &ClientConfig{HTTPClient: &http.Client{Transport: roundTripper}}
+	existingClient := &http.Client{Transport: roundTripper}
+	cfg := &ClientConfig{HTTPClient: existingClient}
 
 	WithTLSConfig(tlsCfg)(cfg)
 
+	require.Same(t, existingClient, cfg.HTTPClient)
 	require.Equal(t, roundTripper, cfg.HTTPClient.Transport)
 }
 

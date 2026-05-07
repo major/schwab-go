@@ -113,9 +113,7 @@ func RefreshTokenFile(
 	if err != nil {
 		return TokenFile{}, err
 	}
-	if tf.CreationTimestamp != 0 {
-		refreshedTokenFile.CreationTimestamp = tf.CreationTimestamp
-	}
+	refreshedTokenFile.CreationTimestamp = tf.CreationTimestamp
 
 	return refreshedTokenFile, nil
 }
