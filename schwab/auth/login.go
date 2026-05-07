@@ -4,12 +4,17 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync"
 )
 
 const errStateMismatch = "state mismatch"
 
 // LoginOption configures the login flow.
 type LoginOption func(*loginConfig)
+
+// LoginWaitFunc waits for the OAuth callback, exchanges the returned code,
+// saves the resulting tokens, and returns a Provider.
+type LoginWaitFunc func(context.Context) (*Provider, error)
 
 type loginConfig struct {
 	httpClient *http.Client
@@ -48,6 +53,39 @@ func Login(
 	urlHandler func(string) error,
 	opts ...LoginOption,
 ) (*Provider, error) {
+	if urlHandler == nil {
+		return nil, errors.New("urlHandler is required")
+	}
+
+	serverCtx, cancelServer := context.WithCancel(ctx)
+	defer cancelServer()
+
+	authorizeURL, wait, err := StartLogin(serverCtx, cfg, store, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	err = urlHandler(authorizeURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return wait(ctx)
+}
+
+// StartLogin starts the OAuth2 callback listener and returns the Schwab
+// authorization URL plus a wait function that completes the login.
+//
+// Callers should present the returned URL to the user, then call the wait
+// function with the context that should bound callback waiting and token
+// exchange. Cancel ctx to stop the callback listener if the returned wait
+// function will not be called.
+func StartLogin(
+	ctx context.Context,
+	cfg Config,
+	store TokenStore,
+	opts ...LoginOption,
+) (string, LoginWaitFunc, error) {
 	loginCfg := loginConfig{httpClient: http.DefaultClient}
 	for _, opt := range opts {
 		opt(&loginCfg)
@@ -55,57 +93,85 @@ func Login(
 
 	err := cfg.Validate()
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	if store == nil {
-		return nil, errors.New("token store is required")
-	}
-
-	if urlHandler == nil {
-		return nil, errors.New("urlHandler is required")
+		return "", nil, errors.New("token store is required")
 	}
 
 	authorizeURL, expectedState, err := AuthorizeURL(cfg)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	serverCtx, cancelServer := context.WithCancel(ctx)
-	defer cancelServer()
-
 	results, errs, shutdown, err := StartCallbackServer(serverCtx, cfg.CallbackURL)
 	if err != nil {
-		return nil, err
-	}
-	defer shutdown()
-
-	err = urlHandler(authorizeURL)
-	if err != nil {
-		return nil, err
+		cancelServer()
+		return "", nil, err
 	}
 
+	var waitOnce sync.Once
+	waitDone := make(chan struct{})
+	var provider *Provider
+	var waitErr error
+	wait := func(waitCtx context.Context) (*Provider, error) {
+		waitOnce.Do(func() {
+			defer close(waitDone)
+			defer cancelServer()
+			defer shutdown()
+			provider, waitErr = finishLogin(
+				waitCtx,
+				serverCtx,
+				cfg,
+				store,
+				loginCfg.httpClient,
+				expectedState,
+				results,
+				errs,
+			)
+		})
+		<-waitDone
+		return provider, waitErr
+	}
+
+	return authorizeURL, wait, nil
+}
+
+func finishLogin(
+	waitCtx context.Context,
+	serverCtx context.Context,
+	cfg Config,
+	store TokenStore,
+	httpClient *http.Client,
+	expectedState string,
+	results <-chan CallbackResult,
+	errs <-chan error,
+) (*Provider, error) {
 	var result CallbackResult
 	select {
 	case result = <-results:
 		if result.State != expectedState {
 			return nil, &AuthCallbackError{Msg: errStateMismatch, Code: http.StatusBadRequest}
 		}
-	case err = <-errs:
+	case err := <-errs:
 		return nil, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	case <-waitCtx.Done():
+		return nil, waitCtx.Err()
+	case <-serverCtx.Done():
+		return nil, serverCtx.Err()
 	}
 
-	tokenFile, err := ExchangeCode(ctx, cfg, result.Code, loginCfg.httpClient)
+	tokenFile, err := ExchangeCode(waitCtx, cfg, result.Code, httpClient)
 	if err != nil {
 		return nil, err
 	}
 
-	err = store.Save(ctx, tokenFile)
+	err = store.Save(waitCtx, tokenFile)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewProvider(cfg, store, loginCfg.httpClient)
+	return NewProvider(cfg, store, httpClient)
 }

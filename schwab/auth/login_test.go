@@ -203,6 +203,152 @@ func TestLogin(t *testing.T) {
 	})
 }
 
+func TestStartLogin(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns authorize URL and wait function completes login", func(t *testing.T) {
+		t.Parallel()
+
+		requests := make(chan loginTokenRequest, 1)
+		server := newLoginTokenServer(t, func(w http.ResponseWriter, r *http.Request) {
+			parseErr := r.ParseForm()
+			requests <- loginTokenRequest{
+				method: r.Method,
+				path:   r.URL.Path,
+				code:   r.PostForm.Get("code"),
+				err:    parseErr,
+			}
+			if parseErr != nil {
+				http.Error(w, "invalid form", http.StatusBadRequest)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"split-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"split-refresh-token","scope":"api"}`,
+			)
+			assert.NoError(t, err)
+		})
+		cfg := newLoginTestConfig(t, server.URL)
+		store := newLoginMemoryStore()
+
+		authorizeURL, wait, err := StartLogin(context.Background(), cfg, store, WithLoginHTTPClient(server.Client()))
+		require.NoError(t, err)
+		require.NotNil(t, wait)
+		assert.NotEmpty(t, authorizeURL)
+
+		callbackErrs := make(chan error, 1)
+		go func() {
+			callbackErrs <- sendLoginCallback(cfg.CallbackURL, authorizeURL, "split-code")
+		}()
+
+		provider, err := wait(context.Background())
+
+		require.NoError(t, err)
+		require.NoError(t, <-callbackErrs)
+		require.NotNil(t, provider)
+		request := <-requests
+		require.NoError(t, request.err)
+		assert.Equal(t, http.MethodPost, request.method)
+		assert.Equal(t, "/token", request.path)
+		assert.Equal(t, "split-code", request.code)
+
+		savedTokenFile, err := store.Load(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, "split-access-token", savedTokenFile.Token.AccessToken)
+		assert.Equal(t, "split-refresh-token", savedTokenFile.Token.RefreshToken)
+
+		accessToken, err := provider.Token(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, "split-access-token", accessToken)
+	})
+
+	t.Run("invalid config returns error before starting login", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := newLoginTestConfig(t, "https://auth.example.test/oauth")
+		cfg.ClientSecret = ""
+		store := newLoginMemoryStore()
+
+		authorizeURL, wait, err := StartLogin(context.Background(), cfg, store)
+
+		require.Error(t, err)
+		assert.Empty(t, authorizeURL)
+		assert.Nil(t, wait)
+		require.ErrorContains(t, err, "client_secret is required")
+	})
+
+	t.Run("nil store returns error before starting login", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := newLoginTestConfig(t, "https://auth.example.test/oauth")
+
+		authorizeURL, wait, err := StartLogin(context.Background(), cfg, nil)
+
+		require.Error(t, err)
+		assert.Empty(t, authorizeURL)
+		assert.Nil(t, wait)
+		require.ErrorContains(t, err, "token store is required")
+	})
+
+	t.Run("state mismatch returns callback error", func(t *testing.T) {
+		t.Parallel()
+
+		var tokenExchangeCalls atomic.Int64
+		server := newLoginTokenServer(t, func(w http.ResponseWriter, _ *http.Request) {
+			tokenExchangeCalls.Add(1)
+			http.Error(w, "unexpected token exchange", http.StatusInternalServerError)
+		})
+		cfg := newLoginTestConfig(t, server.URL)
+		store := newLoginMemoryStore()
+
+		authorizeURL, wait, err := StartLogin(context.Background(), cfg, store, WithLoginHTTPClient(server.Client()))
+		require.NoError(t, err)
+
+		callbackErrs := make(chan error, 1)
+		go func() {
+			_ = authorizeURL
+			callbackErrs <- getLoginCallback(cfg.CallbackURL, url.Values{"code": {"split-code"}, "state": {"wrong-state"}})
+		}()
+
+		provider, err := wait(context.Background())
+
+		require.Error(t, err)
+		require.NoError(t, <-callbackErrs)
+		assert.Nil(t, provider)
+		var callbackErr *AuthCallbackError
+		require.ErrorAs(t, err, &callbackErr)
+		assert.Equal(t, "state mismatch", callbackErr.Msg)
+		assert.Equal(t, int64(0), tokenExchangeCalls.Load())
+	})
+
+	t.Run("wait context cancellation returns context error", func(t *testing.T) {
+		t.Parallel()
+
+		var tokenExchangeCalls atomic.Int64
+		server := newLoginTokenServer(t, func(w http.ResponseWriter, _ *http.Request) {
+			tokenExchangeCalls.Add(1)
+			http.Error(w, "unexpected token exchange", http.StatusInternalServerError)
+		})
+		cfg := newLoginTestConfig(t, server.URL)
+		store := newLoginMemoryStore()
+
+		authorizeURL, wait, err := StartLogin(context.Background(), cfg, store, WithLoginHTTPClient(server.Client()))
+		require.NoError(t, err)
+		assert.NotEmpty(t, authorizeURL)
+
+		waitCtx, cancel := context.WithCancel(context.Background())
+		cancel()
+		provider, err := wait(waitCtx)
+
+		require.Error(t, err)
+		assert.Nil(t, provider)
+		require.ErrorIs(t, err, context.Canceled)
+		assert.Equal(t, int64(0), tokenExchangeCalls.Load())
+	})
+}
+
 type loginMemoryStore struct {
 	mu    sync.Mutex
 	token TokenFile

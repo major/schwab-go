@@ -56,7 +56,7 @@ This keeps reusable OAuth logic in `schwab/auth` while preserving each applicati
 
 For an explicit `auth refresh` command, call `Provider.Refresh(ctx)`. It always refreshes with the stored refresh token, saves through the configured token store, and preserves the original `TokenFile.CreationTimestamp` so refresh-token age stays accurate. Keep direct `auth.RefreshAccessToken` calls for low-level integrations that intentionally manage token loading, saving, and timestamp preservation themselves. `Provider.Token(ctx)` is better for a global auth gate because it returns an existing access token until it is inside the expiry buffer.
 
-`auth.Login` accepts a `urlHandler func(string) error`. Browser CLIs can open the URL with `xdg-open`, `open`, `rundll32`, or a user-selected browser command. Headless CLIs should emit the URL through their normal output path and let the user open it elsewhere.
+`auth.Login` accepts a `urlHandler func(string) error`. Browser CLIs can open the URL with `xdg-open`, `open`, `rundll32`, or a user-selected browser command. Headless CLIs should emit the URL through their normal output path and let the user open it elsewhere. Applications that need to return to their event loop after displaying the URL can call `auth.StartLogin`, render the returned authorization URL, then call the returned wait function when they are ready to block for the callback and token exchange.
 
 Use a context timeout for callback waits:
 
@@ -73,7 +73,7 @@ The callback URL must exactly match the Schwab developer portal value, use `http
 
 `Provider.Status(ctx, now)` loads the configured token store and returns `auth.TokenStatus` without refreshing or saving. Missing token files map to `TokenStatus{LoginRequired: true}` with no error so CLIs can render normal status output for an unauthenticated installation. Other token-store load errors are returned so the adapter can report parse or filesystem failures.
 
-`auth.InspectToken(tokenFile, now)` is the pure helper behind `Provider.Status`. It reports `AccessTokenExpiresAt`, `AccessTokenExpired`, `RefreshTokenCreatedAt`, `RefreshTokenExpiresAt`, `RefreshTokenStale`, `CanRefresh`, and `LoginRequired`. Use those fields to build the CLI's existing JSON envelope or table output, but keep output names and exit-code policy in the adapter.
+`auth.InspectToken(tokenFile, now)` is the pure helper behind `Provider.Status`. It reports `AccessTokenExpiresAt`, `AccessTokenExpired`, `RefreshTokenCreatedAt`, `RefreshTokenExpiresAt`, `RefreshTokenStale`, `CanRefresh`, and `LoginRequired`. Use those fields to build the CLI's existing JSON envelope or table output, but keep output names and exit-code policy in the adapter. If the adapter needs to show raw token or client metadata for troubleshooting, pass those values through `auth.RedactToken` or `auth.RedactClientID` first.
 
 Suggested CLI interpretation:
 
