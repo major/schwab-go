@@ -20,6 +20,7 @@ type Client struct {
 	baseURL           *url.URL
 	httpClient        *http.Client
 	token             string
+	tokenProvider     schwab.TokenProvider
 	optionError       error
 	responseBodyLimit int64
 	headers           http.Header
@@ -36,6 +37,7 @@ func NewClient(opts ...schwab.Option) *Client {
 		baseURL:           httpclient.WithPathPrefix(cfg.BaseURL, apiPathPrefix),
 		httpClient:        cfg.HTTPClient,
 		token:             cfg.Token,
+		tokenProvider:     cfg.TokenProvider,
 		optionError:       cfg.OptionError,
 		responseBodyLimit: cfg.ResponseBodyLimit,
 		headers:           cfg.Headers.Clone(),
@@ -47,6 +49,7 @@ func (c *Client) config() httpclient.Config {
 		BaseURL:           c.baseURL,
 		HTTPClient:        c.httpClient,
 		Token:             c.token,
+		TokenProvider:     c.tokenProvider,
 		OptionError:       c.optionError,
 		ResponseBodyLimit: c.responseBodyLimit,
 		Headers:           c.headers.Clone(),
@@ -64,6 +67,10 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body any) 
 // Note: The Trader API returns empty bodies on errors; this is handled gracefully.
 func (c *Client) do(req *http.Request, out any) error {
 	return httpclient.Do(c.config(), req, out, c.extractError)
+}
+
+func (c *Client) doWithResponse(req *http.Request, out any) (*httpclient.Response, error) {
+	return httpclient.DoWithResponse(c.config(), req, out, c.extractError)
 }
 
 func (c *Client) extractError(body []byte) string {

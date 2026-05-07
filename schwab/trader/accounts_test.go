@@ -2,6 +2,7 @@ package trader
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -135,6 +136,63 @@ func TestGetAccounts_WithFields(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestGetAccountsRaw_PreservesResponseJSON(t *testing.T) {
+	payload := []map[string]any{
+		{
+			"securitiesAccount": map[string]any{
+				"accountNumber": "123456789",
+				"isForeign":     true,
+			},
+		},
+	}
+
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts", r.URL.Path)
+		assert.Equal(t, "positions", r.URL.Query().Get("fields"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, payload)
+	})
+
+	result, err := client.GetAccountsRaw(context.Background(), "positions")
+	require.NoError(t, err)
+
+	var got []map[string]any
+	require.NoError(t, json.Unmarshal(result, &got))
+	require.Equal(t, payload, got)
+}
+
+func TestGetAccountsRaw_NoFields(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts", r.URL.Path)
+		assert.Empty(t, r.URL.Query().Get("fields"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, []map[string]any{})
+	})
+
+	result, err := client.GetAccountsRaw(context.Background(), "")
+	require.NoError(t, err)
+	assert.JSONEq(t, `[]`, string(result))
+}
+
+func TestGetAccountsRaw_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+
+	_, err := client.GetAccountsRaw(context.Background(), "")
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusUnauthorized, apiErr.StatusCode)
+}
+
 func TestGetAccounts_NoFields(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -225,6 +283,61 @@ func TestGetAccount_WithFields(t *testing.T) {
 	result, err := client.GetAccount(context.Background(), "HASH_ABC123", "positions")
 	require.NoError(t, err)
 	assert.Equal(t, "123", result.SecuritiesAccount.AccountNumber)
+}
+
+func TestGetAccountRaw_PreservesResponseJSON(t *testing.T) {
+	payload := map[string]any{
+		"securitiesAccount": map[string]any{
+			"accountNumber": "987654321",
+			"isForeign":     true,
+		},
+	}
+
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123", r.URL.Path)
+		assert.Equal(t, "positions", r.URL.Query().Get("fields"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, payload)
+	})
+
+	result, err := client.GetAccountRaw(context.Background(), "HASH_ABC123", "positions")
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(result, &got))
+	require.Equal(t, payload, got)
+}
+
+func TestGetAccountRaw_NoFields(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123", r.URL.Path)
+		assert.Empty(t, r.URL.Query().Get("fields"))
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, map[string]any{"securitiesAccount": map[string]any{"accountNumber": "123"}})
+	})
+
+	result, err := client.GetAccountRaw(context.Background(), "HASH_ABC123", "")
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"securitiesAccount":{"accountNumber":"123"}}`, string(result))
+}
+
+func TestGetAccountRaw_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	_, err := client.GetAccountRaw(context.Background(), "HASH_ABC123", "")
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
 func TestGetAccount_Error(t *testing.T) {

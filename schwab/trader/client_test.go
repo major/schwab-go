@@ -30,6 +30,16 @@ func TestNewClient_WithToken(t *testing.T) {
 	require.Equal(t, "test-token", client.token)
 }
 
+func TestNewClient_WithTokenProvider(t *testing.T) {
+	client := NewClient(schwab.WithTokenProvider(staticTokenProvider{token: "provider-token"}))
+	require.NotNil(t, client)
+	require.NotNil(t, client.config().TokenProvider)
+
+	req, err := client.newRequest(context.Background(), http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+	require.Equal(t, "Bearer provider-token", req.Header.Get("Authorization"))
+}
+
 func TestNewClient_WithBaseURL(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
@@ -262,4 +272,12 @@ func TestDo_MalformedJSONBody(t *testing.T) {
 	// Verify error chain: the underlying error should be a JSON syntax error
 	var syntaxErr *json.SyntaxError
 	require.ErrorAs(t, err, &syntaxErr)
+}
+
+type staticTokenProvider struct {
+	token string
+}
+
+func (p staticTokenProvider) Token(context.Context) (string, error) {
+	return p.token, nil
 }

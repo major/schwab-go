@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 
 	schwab "github.com/major/schwab-go/schwab"
 )
@@ -318,6 +319,12 @@ type OrderListParams struct {
 	Status          OrderStatus
 }
 
+// OrderResponse contains metadata returned by order mutation endpoints.
+type OrderResponse struct {
+	OrderID  int64
+	Location string
+}
+
 // OrderRequest contains the writable payload for creating, replacing, or previewing orders.
 type OrderRequest struct {
 	Session                  Session                  `json:"session,omitempty"`
@@ -581,11 +588,25 @@ func (c *Client) GetOrders(ctx context.Context, accountHash string, params *Orde
 
 // CreateOrder creates an order for a single account.
 func (c *Client) CreateOrder(ctx context.Context, accountHash string, order *OrderRequest) error {
+	_, err := c.CreateOrderWithResponse(ctx, accountHash, order)
+	return err
+}
+
+// CreateOrderWithResponse creates an order and returns response metadata such as the Location order ID.
+func (c *Client) CreateOrderWithResponse(
+	ctx context.Context,
+	accountHash string,
+	order *OrderRequest,
+) (*OrderResponse, error) {
 	req, err := c.newRequest(ctx, "POST", accountPath(accountHash, "orders"), order)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return c.do(req, nil)
+	resp, err := c.doWithResponse(req, nil)
+	if err != nil {
+		return nil, err
+	}
+	return orderResponseFromLocation(resp.Header.Get("Location")), nil
 }
 
 // GetOrder retrieves a single order for a single account.
@@ -604,11 +625,30 @@ func (c *Client) GetOrder(ctx context.Context, accountHash string, orderID int64
 
 // ReplaceOrder replaces an existing order for a single account.
 func (c *Client) ReplaceOrder(ctx context.Context, accountHash string, orderID int64, order *OrderRequest) error {
+	_, err := c.ReplaceOrderWithResponse(ctx, accountHash, orderID, order)
+	return err
+}
+
+// ReplaceOrderWithResponse replaces an order and returns response metadata such as the Location order ID.
+func (c *Client) ReplaceOrderWithResponse(
+	ctx context.Context,
+	accountHash string,
+	orderID int64,
+	order *OrderRequest,
+) (*OrderResponse, error) {
 	req, err := c.newRequest(ctx, "PUT", accountPath(accountHash, "orders", strconv.FormatInt(orderID, 10)), order)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return c.do(req, nil)
+	resp, err := c.doWithResponse(req, nil)
+	if err != nil {
+		return nil, err
+	}
+	response := orderResponseFromLocation(resp.Header.Get("Location"))
+	if response.OrderID == 0 {
+		response.OrderID = orderID
+	}
+	return response, nil
 }
 
 // CancelOrder cancels an existing order for a single account.
@@ -623,6 +663,24 @@ func (c *Client) CancelOrder(ctx context.Context, accountHash string, orderID in
 // PreviewOrder previews commissions and fees for an order without placing it.
 func (c *Client) PreviewOrder(
 	ctx context.Context, accountHash string, order *PreviewOrderRequest,
+) (*PreviewOrder, error) {
+	req, err := c.newRequest(ctx, "POST", accountPath(accountHash, "previewOrder"), order)
+	if err != nil {
+		return nil, err
+	}
+
+	var result PreviewOrder
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
+	}
+	return &result, nil
+}
+
+// PreviewOrderRequestBody previews commissions and fees using a standard order request payload.
+func (c *Client) PreviewOrderRequestBody(
+	ctx context.Context,
+	accountHash string,
+	order *OrderRequest,
 ) (*PreviewOrder, error) {
 	req, err := c.newRequest(ctx, "POST", accountPath(accountHash, "previewOrder"), order)
 	if err != nil {
@@ -669,4 +727,22 @@ func (c *Client) getOrders(ctx context.Context, path string, params *OrderListPa
 		return nil, doErr
 	}
 	return result, nil
+}
+
+func orderResponseFromLocation(location string) *OrderResponse {
+	response := &OrderResponse{Location: location}
+	if location == "" {
+		return response
+	}
+	trimmed := strings.TrimRight(location, "/")
+	lastSlash := strings.LastIndex(trimmed, "/")
+	if lastSlash >= 0 {
+		trimmed = trimmed[lastSlash+1:]
+	}
+	orderID, err := strconv.ParseInt(trimmed, 10, 64)
+	if err != nil {
+		return response
+	}
+	response.OrderID = orderID
+	return response
 }

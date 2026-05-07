@@ -3,7 +3,9 @@ package trader
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,6 +38,11 @@ func TestGetUserPreference(t *testing.T) {
 				"streamerInfo": []map[string]any{
 					{
 						"streamerSocketUrl":      "wss://streamer.schwab.com/ws",
+						"streamerUrl":            "wss://streamer.schwab.com/legacy",
+						"token":                  "test-stream-token-placeholder",
+						"tokenExpTime":           "2026-05-07T12:00:00Z",
+						"appId":                  "APP-123",
+						"acl":                    "test-acl-placeholder",
 						"schwabClientCustomerId": "customer123",
 						"schwabClientCorrelId":   "correl456",
 						"schwabClientChannel":    "IO",
@@ -71,6 +78,11 @@ func TestGetUserPreference(t *testing.T) {
 	require.Len(t, result[0].StreamerInfo, 1)
 	streamer := result[0].StreamerInfo[0]
 	assert.Equal(t, "wss://streamer.schwab.com/ws", streamer.StreamerSocketURL)
+	assert.Equal(t, "wss://streamer.schwab.com/legacy", streamer.StreamerURL)
+	assert.Equal(t, "test-stream-token-placeholder", streamer.Token)
+	assert.Equal(t, "2026-05-07T12:00:00Z", streamer.TokenExpirationTime)
+	assert.Equal(t, "APP-123", streamer.AppID)
+	assert.Equal(t, "test-acl-placeholder", streamer.ACL)
 	assert.Equal(t, "customer123", streamer.SchwabClientCustomerID)
 	assert.Equal(t, "correl456", streamer.SchwabClientCorrelID)
 	assert.Equal(t, "IO", streamer.SchwabClientChannel)
@@ -81,6 +93,27 @@ func TestGetUserPreference(t *testing.T) {
 	offer := result[0].Offers[0]
 	assert.True(t, offer.Level2Permissions)
 	assert.Equal(t, "NP", offer.MktDataPermission)
+}
+
+func TestStreamerInfoStringRedactsSecrets(t *testing.T) {
+	streamer := StreamerInfo{
+		StreamerSocketURL:   "wss://streamer.schwab.com/ws",
+		StreamerURL:         "wss://streamer.schwab.com/legacy",
+		Token:               "test-stream-token-placeholder",
+		TokenExpirationTime: "2026-05-07T12:00:00Z",
+		AppID:               "APP-123",
+		ACL:                 "test-acl-placeholder",
+	}
+
+	formatted := fmt.Sprint(streamer)
+	assert.NotContains(t, formatted, streamer.Token)
+	assert.NotContains(t, formatted, streamer.ACL)
+	assert.Equal(t, 2, strings.Count(formatted, "<redacted>"))
+
+	debugFormatted := fmt.Sprintf("%#v", streamer)
+	assert.NotContains(t, debugFormatted, streamer.Token)
+	assert.NotContains(t, debugFormatted, streamer.ACL)
+	assert.Equal(t, 2, strings.Count(debugFormatted, "<redacted>"))
 }
 
 func TestGetUserPreference_Error(t *testing.T) {

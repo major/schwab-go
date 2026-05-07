@@ -86,11 +86,27 @@ func TestCreateOrder(t *testing.T) {
 		assert.NotContains(t, raw, "requestedDestination")
 		assert.NotContains(t, raw, "tag")
 
+		w.Header().Set("Location", "https://api.schwabapi.com/trader/v1/accounts/HASH_ABC123/orders/123456789")
 		w.WriteHeader(http.StatusCreated)
 	})
 
 	err := client.CreateOrder(context.Background(), "HASH_ABC123", order)
 	require.NoError(t, err)
+}
+
+func TestCreateOrderWithResponse(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/orders", r.URL.Path)
+		w.Header().Set("Location", "/trader/v1/accounts/HASH_ABC123/orders/123456789")
+		w.WriteHeader(http.StatusCreated)
+	})
+
+	response, err := client.CreateOrderWithResponse(context.Background(), "HASH_ABC123", &OrderRequest{})
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	assert.Equal(t, int64(123456789), response.OrderID)
+	assert.Equal(t, "/trader/v1/accounts/HASH_ABC123/orders/123456789", response.Location)
 }
 
 func TestGetOrder(t *testing.T) {
@@ -129,11 +145,61 @@ func TestReplaceOrder(t *testing.T) {
 		assert.Equal(t, OrderTypeRequestLimit, got.OrderType)
 		assert.InDelta(t, 199.50, got.Price, 0.000001)
 
+		w.Header().Set("Location", "/trader/v1/accounts/HASH_ABC123/orders/9002/")
 		w.WriteHeader(http.StatusOK)
 	})
 
 	err := client.ReplaceOrder(context.Background(), "HASH_ABC123", 9001, order)
 	require.NoError(t, err)
+}
+
+func TestReplaceOrderWithResponse(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPut, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
+		w.Header().Set("Location", "/trader/v1/accounts/HASH_ABC123/orders/9002/")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	response, err := client.ReplaceOrderWithResponse(context.Background(), "HASH_ABC123", 9001, &OrderRequest{})
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	assert.Equal(t, int64(9002), response.OrderID)
+	assert.Equal(t, "/trader/v1/accounts/HASH_ABC123/orders/9002/", response.Location)
+}
+
+func TestReplaceOrderWithResponseFallsBackToOriginalOrderID(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPut, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/orders/9001", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	response, err := client.ReplaceOrderWithResponse(context.Background(), "HASH_ABC123", 9001, &OrderRequest{})
+	require.NoError(t, err)
+	require.NotNil(t, response)
+	assert.Equal(t, int64(9001), response.OrderID)
+	assert.Empty(t, response.Location)
+}
+
+func TestOrderResponseFromLocation(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		location    string
+		wantOrderID int64
+	}{
+		{name: "empty", location: "", wantOrderID: 0},
+		{name: "bare order id", location: "12345", wantOrderID: 12345},
+		{name: "path with trailing slash", location: "/trader/v1/accounts/HASH/orders/67890/", wantOrderID: 67890},
+		{name: "unparseable", location: "/trader/v1/accounts/HASH/orders/not-an-id", wantOrderID: 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			response := orderResponseFromLocation(tt.location)
+			require.NotNil(t, response)
+			assert.Equal(t, tt.wantOrderID, response.OrderID)
+			assert.Equal(t, tt.location, response.Location)
+		})
+	}
 }
 
 func TestCancelOrder(t *testing.T) {
@@ -245,6 +311,46 @@ func TestPreviewOrder(t *testing.T) {
 	require.Len(t, result.CommissionAndFee.Fee.FeeLegs, 1)
 	assert.Equal(t, "SEC_FEE", result.CommissionAndFee.Fee.FeeLegs[0].FeeValues[0].Type)
 	assert.InDelta(t, 0.02, result.CommissionAndFee.Fee.FeeLegs[0].FeeValues[0].Value, 0.000001)
+}
+
+func TestPreviewOrderRequestBody(t *testing.T) {
+	order := &OrderRequest{
+		Session:   SessionNormal,
+		Duration:  DurationDay,
+		OrderType: OrderTypeRequestMarket,
+		OrderLegCollection: []OrderLegRequest{
+			{
+				Instruction: InstructionBuy,
+				Quantity:    1,
+				Instrument: OrderInstrument{
+					AssetType: schwab.AssetTypeEquity,
+					Symbol:    "AAPL",
+				},
+			},
+		},
+	}
+	fixture := PreviewOrder{OrderID: 9001}
+
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/previewOrder", r.URL.Path)
+
+		var got OrderRequest
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&got))
+		assert.Equal(t, OrderTypeRequestMarket, got.OrderType)
+		if assert.Len(t, got.OrderLegCollection, 1) {
+			assert.Equal(t, "AAPL", got.OrderLegCollection[0].Instrument.Symbol)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, fixture)
+	})
+
+	result, err := client.PreviewOrderRequestBody(context.Background(), "HASH_ABC123", order)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, int64(9001), result.OrderID)
 }
 
 func TestGetAllOrders(t *testing.T) {
@@ -371,6 +477,19 @@ func TestPreviewOrder_Error(t *testing.T) {
 	})
 
 	_, err := client.PreviewOrder(context.Background(), "HASH_ABC123", &PreviewOrderRequest{})
+	require.Error(t, err)
+
+	apiErr, ok := errors.AsType[*schwab.APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+}
+
+func TestPreviewOrderRequestBody_Error(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+
+	_, err := client.PreviewOrderRequestBody(context.Background(), "HASH_ABC123", &OrderRequest{})
 	require.Error(t, err)
 
 	apiErr, ok := errors.AsType[*schwab.APIError](err)

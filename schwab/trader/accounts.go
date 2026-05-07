@@ -2,6 +2,7 @@ package trader
 
 import (
 	"context"
+	"encoding/json"
 	"net/url"
 
 	schwab "github.com/major/schwab-go/schwab"
@@ -138,6 +139,26 @@ func (c *Client) GetAccounts(ctx context.Context, fields string) ([]Account, err
 	return result, nil
 }
 
+// GetAccountsRaw retrieves all linked brokerage accounts as raw JSON.
+func (c *Client) GetAccountsRaw(ctx context.Context, fields string) (json.RawMessage, error) {
+	req, err := c.newRequest(ctx, "GET", "/accounts", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if fields != "" {
+		q := req.URL.Query()
+		q.Set("fields", fields)
+		req.URL.RawQuery = q.Encode()
+	}
+
+	var result json.RawMessage
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
+	}
+	return result, nil
+}
+
 // GetAccount retrieves a single brokerage account by its encrypted hash value.
 // accountHash is the encrypted hash value from GetAccountNumbers, not the plain account number.
 // fields: optional comma-separated list of additional fields to include (e.g., "positions");
@@ -160,4 +181,28 @@ func (c *Client) GetAccount(ctx context.Context, accountHash, fields string) (*A
 		return nil, doErr
 	}
 	return &result, nil
+}
+
+// GetAccountRaw retrieves a single brokerage account as raw JSON by its encrypted hash value.
+// accountHash is the encrypted hash value from GetAccountNumbers, not the plain account number.
+// fields: optional comma-separated list of additional fields to include (e.g., "positions");
+// if empty, no fields param is sent.
+func (c *Client) GetAccountRaw(ctx context.Context, accountHash, fields string) (json.RawMessage, error) {
+	path := "/accounts/" + url.PathEscape(accountHash)
+	req, err := c.newRequest(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if fields != "" {
+		q := req.URL.Query()
+		q.Set("fields", fields)
+		req.URL.RawQuery = q.Encode()
+	}
+
+	var result json.RawMessage
+	if doErr := c.do(req, &result); doErr != nil {
+		return nil, doErr
+	}
+	return result, nil
 }

@@ -145,6 +145,25 @@ func TestGetTransactions_WithOptionalParams(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestGetTransactions_OmitsEmptyTypes(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "2024-01-01", r.URL.Query().Get("startDate"))
+		assert.Equal(t, "2024-01-31", r.URL.Query().Get("endDate"))
+		assertParamAbsent(t, r, "types")
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, []Transaction{})
+	})
+
+	_, err := client.GetTransactions(context.Background(), "HASH_ABC123", &TransactionListParams{
+		StartDate: "2024-01-01",
+		EndDate:   "2024-01-31",
+	})
+	require.NoError(t, err)
+}
+
 func TestGetTransaction(t *testing.T) {
 	fixture := Transaction{
 		ActivityID:    2002,
@@ -183,6 +202,109 @@ func TestGetTransaction(t *testing.T) {
 	assert.Equal(t, "DIVIDEND PAYMENT", txn.Description)
 }
 
+func TestGetTransactionByID(t *testing.T) {
+	fixture := Transaction{
+		ActivityID:   2002,
+		Time:         "2024-02-10T14:00:00Z",
+		Type:         TransactionTypeDividendOrInterest,
+		Status:       "VALID",
+		SubAccount:   "CASH",
+		NetAmount:    25.50,
+		Description:  "DIVIDEND PAYMENT",
+		ActivityType: "DIVIDEND_OR_INTEREST",
+	}
+
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/transactions/2002", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, fixture)
+	})
+
+	result, err := client.GetTransactionByID(context.Background(), "HASH_ABC123", 2002)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, int64(2002), result.ActivityID)
+	assert.Equal(t, TransactionTypeDividendOrInterest, result.Type)
+	assert.InDelta(t, 25.50, result.NetAmount, 0.000001)
+}
+
+func TestGetTransactionByIDAcceptsLegacyArrayResponse(t *testing.T) {
+	fixture := Transaction{ActivityID: 2002, Status: "VALID"}
+
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/transactions/2002", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, []Transaction{fixture})
+	})
+
+	result, err := client.GetTransactionByID(context.Background(), "HASH_ABC123", 2002)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, int64(2002), result.ActivityID)
+}
+
+func TestGetTransactionByIDRejectsMultipleTransactions(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/transactions/2002", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, []Transaction{
+			{ActivityID: 2002},
+			{ActivityID: 2003},
+		})
+	})
+
+	_, err := client.GetTransactionByID(context.Background(), "HASH_ABC123", 2002)
+	require.EqualError(t, err, "transaction response contained 2 transactions, expected 1")
+}
+
+func TestGetTransactionByIDRejectsNullResponse(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/transactions/2002", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, writeErr := w.Write([]byte("null"))
+		assert.NoError(t, writeErr)
+	})
+
+	_, err := client.GetTransactionByID(context.Background(), "HASH_ABC123", 2002)
+	require.EqualError(t, err, "transaction response did not include a transaction")
+}
+
+func TestGetTransactionByIDRejectsEmptyArrayResponse(t *testing.T) {
+	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/accounts/HASH_ABC123/transactions/2002", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		writeJSON(t, w, []Transaction{})
+	})
+
+	_, err := client.GetTransactionByID(context.Background(), "HASH_ABC123", 2002)
+	require.EqualError(t, err, "transaction response did not include a transaction")
+}
+
+func TestDecodeSingleTransactionRejectsInvalidArray(t *testing.T) {
+	_, err := decodeSingleTransaction(json.RawMessage(`[{not-valid}]`))
+	require.Error(t, err)
+}
+
+func TestDecodeSingleTransactionRejectsInvalidObject(t *testing.T) {
+	_, err := decodeSingleTransaction(json.RawMessage(`{not-valid}`))
+	require.Error(t, err)
+}
+
 func TestGetTransaction_Error(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -212,12 +334,6 @@ func TestGetTransactionsRequiresParams(t *testing.T) {
 		&TransactionListParams{StartDate: "2024-01-01", Types: "TRADE"},
 	)
 	require.EqualError(t, err, "endDate is required")
-
-	_, err = client.GetTransactions(
-		context.Background(), "HASH_ABC123",
-		&TransactionListParams{StartDate: "2024-01-01", EndDate: "2024-01-31"},
-	)
-	require.EqualError(t, err, "types is required")
 }
 
 func TestGetTransactions_Error(t *testing.T) {
@@ -235,4 +351,10 @@ func TestGetTransactions_Error(t *testing.T) {
 	apiErr, ok := errors.AsType[*schwab.APIError](err)
 	require.True(t, ok)
 	assert.Equal(t, http.StatusUnauthorized, apiErr.StatusCode)
+}
+
+func assertParamAbsent(t *testing.T, r *http.Request, name string) {
+	t.Helper()
+	_, ok := r.URL.Query()[name]
+	assert.False(t, ok, "expected %q query param to be absent", name)
 }

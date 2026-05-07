@@ -20,6 +20,7 @@ type Client struct {
 	baseURL           *url.URL
 	httpClient        *http.Client
 	token             string
+	tokenProvider     schwab.TokenProvider
 	optionError       error
 	responseBodyLimit int64
 	headers           http.Header
@@ -36,6 +37,7 @@ func NewClient(opts ...schwab.Option) *Client {
 		baseURL:           httpclient.WithPathPrefix(cfg.BaseURL, apiPathPrefix),
 		httpClient:        cfg.HTTPClient,
 		token:             cfg.Token,
+		tokenProvider:     cfg.TokenProvider,
 		optionError:       cfg.OptionError,
 		responseBodyLimit: cfg.ResponseBodyLimit,
 		headers:           cfg.Headers.Clone(),
@@ -47,6 +49,7 @@ func (c *Client) config() httpclient.Config {
 		BaseURL:           c.baseURL,
 		HTTPClient:        c.httpClient,
 		Token:             c.token,
+		TokenProvider:     c.tokenProvider,
 		OptionError:       c.optionError,
 		ResponseBodyLimit: c.responseBodyLimit,
 		Headers:           c.headers.Clone(),
