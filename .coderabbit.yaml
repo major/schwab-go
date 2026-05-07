@@ -53,7 +53,7 @@ reviews:
     - path: "schwab/**/*.go"
       instructions: |
         Library API review:
-        - Functional options should stay explicit: WithToken, WithHTTPClient, WithBaseURL, and ApplyOptions
+        - Functional options should stay explicit: WithToken, WithTokenProvider, WithHTTPClient, WithBaseURL, and ApplyOptions
         - Public methods should preserve context propagation and return values plus errors without process-level side effects
         - Request paths, query names, JSON tags, and response structs must match Schwab API documentation
         - Preserve *schwab.APIError for HTTP errors so callers can inspect status, message, and response details
@@ -86,9 +86,9 @@ reviews:
     - path: "schwab/options.go"
       instructions: |
         Functional options review:
-        - Keep client configuration explicit through WithToken, WithHTTPClient, WithBaseURL, and ApplyOptions
-        - Do not add hidden environment variable reads, config-file reads, or token refresh behavior
-        - Callers pass bearer tokens explicitly with WithToken
+        - Keep client configuration explicit through WithToken, WithTokenProvider, WithHTTPClient, WithBaseURL, and ApplyOptions
+        - Do not add hidden environment variable reads or config-file reads
+        - Callers pass static bearer tokens with WithToken or dynamic bearer token sources with WithTokenProvider
 
     - path: "schwab/errors.go"
       instructions: |

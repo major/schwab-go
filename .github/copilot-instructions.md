@@ -7,7 +7,7 @@ Focus on bugs, security, data loss, broken API contracts, and project convention
 ## Project invariants
 
 - Module path is `github.com/major/schwab-go`.
-- Public packages live under `schwab`, `schwab/marketdata`, and `schwab/trader`.
+- Public packages live under `schwab`, `schwab/auth`, `schwab/marketdata`, and `schwab/trader`.
 - Library code must not call `os.Exit`, write user-facing output, read hidden config files, or inspect environment variables unless a public option documents that behavior.
 - Public methods that perform requests take `context.Context` as the first argument.
 - Request paths, query parameters, JSON tags, and response structs must match the Schwab API specification.
