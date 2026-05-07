@@ -107,19 +107,20 @@ func TestMemoryTokenStore(t *testing.T) {
 		require.NoError(t, store.Save(ctx, testTokenFile()))
 
 		const workers = 16
-		errCh := make(chan error, workers)
+		errCh := make(chan error, workers*2)
 		var wg sync.WaitGroup
 		for i := range workers {
+			worker := i
 			wg.Go(func() {
 				tf := testTokenFile()
-				tf.Token.AccessToken = fmt.Sprintf("access-token-%d", i)
+				tf.Token.AccessToken = fmt.Sprintf("access-token-%d", worker)
 				if err := store.Save(ctx, tf); err != nil {
-					errCh <- fmt.Errorf("MemoryTokenStore.Save(worker=%d): %w", i, err)
+					errCh <- fmt.Errorf("MemoryTokenStore.Save(worker=%d): %w", worker, err)
 					return
 				}
 
 				if _, err := store.Load(ctx); err != nil {
-					errCh <- fmt.Errorf("MemoryTokenStore.Load(worker=%d): %w", i, err)
+					errCh <- fmt.Errorf("MemoryTokenStore.Load(worker=%d): %w", worker, err)
 				}
 			})
 		}
