@@ -20,6 +20,7 @@ type SecuritiesAccount struct {
 	RoundTrips              int        `json:"roundTrips"`
 	IsDayTrader             bool       `json:"isDayTrader"`
 	IsClosingOnlyRestricted bool       `json:"isClosingOnlyRestricted"`
+	IsForeign               bool       `json:"isForeign"`
 	PfcbFlag                bool       `json:"pfcbFlag"`
 	Positions               []Position `json:"positions"`
 	InitialBalances         Balance    `json:"initialBalances"`
