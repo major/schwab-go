@@ -1,8 +1,10 @@
 package auth
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 )
 
 // Config holds the OAuth2 client credentials and endpoint configuration
@@ -45,6 +47,26 @@ func (c Config) Validate() error {
 	}
 
 	return nil
+}
+
+// LoadConfig reads a JSON config file from path, validates it, and returns the
+// loaded Config.
+func LoadConfig(path string) (Config, error) {
+	rawConfig, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, fmt.Errorf("read config %q: %w", path, err)
+	}
+
+	var cfg Config
+	if err := json.Unmarshal(rawConfig, &cfg); err != nil {
+		return Config{}, fmt.Errorf("parse config %q: %w", path, err)
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return Config{}, fmt.Errorf("validate config %q: %w", path, err)
+	}
+
+	return cfg, nil
 }
 
 func validateCallbackURL(rawURL string) error {

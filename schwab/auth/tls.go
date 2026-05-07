@@ -17,10 +17,6 @@ const (
 	callbackCertificateTTL  = 24 * time.Hour
 )
 
-// Keep the callback certificate helper visible to static analysis until the
-// callback server wires it in during the next implementation step.
-var _ = generateSelfSignedCert
-
 // generateSelfSignedCert generates an in-memory self-signed TLS certificate
 // valid for 127.0.0.1. The certificate is used for the loopback OAuth2
 // callback server and is not persisted to disk.
