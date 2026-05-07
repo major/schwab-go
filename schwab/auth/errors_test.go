@@ -3,10 +3,13 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	schwab "github.com/major/schwab-go/schwab"
 )
 
 func TestAuthErrors(t *testing.T) {
@@ -203,6 +206,30 @@ func TestAuthErrorClassifiers(t *testing.T) {
 			err:          fmt.Errorf("refresh token: %w", &AuthExpiredError{Msg: "token expired"}),
 			wantRequired: false,
 			wantExpired:  true,
+			wantCallback: false,
+		},
+		{
+			name:         "API unauthorized",
+			err:          &schwab.APIError{StatusCode: http.StatusUnauthorized, Message: "unauthorized"},
+			wantRequired: false,
+			wantExpired:  true,
+			wantCallback: false,
+		},
+		{
+			name: "wrapped API unauthorized",
+			err: fmt.Errorf(
+				"get accounts: %w",
+				&schwab.APIError{StatusCode: http.StatusUnauthorized, Message: "unauthorized"},
+			),
+			wantRequired: false,
+			wantExpired:  true,
+			wantCallback: false,
+		},
+		{
+			name:         "API forbidden",
+			err:          &schwab.APIError{StatusCode: http.StatusForbidden, Message: "forbidden"},
+			wantRequired: false,
+			wantExpired:  false,
 			wantCallback: false,
 		},
 		{

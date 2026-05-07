@@ -50,3 +50,27 @@ func TestAPIError_AsType_NotFound(t *testing.T) {
 	require.False(t, ok)
 	require.Nil(t, extracted)
 }
+
+func TestIsStatusCode(t *testing.T) {
+	t.Parallel()
+
+	apiErr := &APIError{StatusCode: 401, Message: "unauthorized"}
+	wrapped := fmt.Errorf("get accounts: %w", apiErr)
+
+	require.True(t, IsStatusCode(wrapped, 401))
+	require.False(t, IsStatusCode(wrapped, 403))
+	require.False(t, IsStatusCode(errors.New("other error"), 401))
+
+	var nilAPIErr *APIError
+	require.False(t, IsStatusCode(nilAPIErr, 401))
+}
+
+func TestIsUnauthorized(t *testing.T) {
+	t.Parallel()
+
+	apiErr := &APIError{StatusCode: 401, Message: "unauthorized"}
+	wrapped := fmt.Errorf("get accounts: %w", apiErr)
+
+	require.True(t, IsUnauthorized(wrapped))
+	require.False(t, IsUnauthorized(&APIError{StatusCode: 403, Message: "forbidden"}))
+}

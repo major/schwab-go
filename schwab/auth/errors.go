@@ -1,6 +1,10 @@
 package auth
 
-import "errors"
+import (
+	"errors"
+
+	schwab "github.com/major/schwab-go/schwab"
+)
 
 // AuthRequiredError indicates no valid tokens exist and login is needed.
 //
@@ -15,8 +19,8 @@ func (e *AuthRequiredError) Error() string {
 // IsRequired reports whether err indicates that a user must log in before the
 // application can obtain Schwab API tokens.
 func IsRequired(err error) bool {
-	var target *AuthRequiredError
-	return errors.As(err, &target)
+	target, ok := errors.AsType[*AuthRequiredError](err)
+	return ok && target != nil
 }
 
 // AuthExpiredError indicates the refresh token has expired or been revoked.
@@ -32,8 +36,8 @@ func (e *AuthExpiredError) Error() string {
 // IsExpired reports whether err indicates that stored auth credentials are
 // expired, revoked, or otherwise unable to refresh the Schwab access token.
 func IsExpired(err error) bool {
-	var target *AuthExpiredError
-	return errors.As(err, &target)
+	target, ok := errors.AsType[*AuthExpiredError](err)
+	return ok && target != nil || schwab.IsUnauthorized(err)
 }
 
 // AuthCallbackError indicates the OAuth callback failed.
@@ -52,6 +56,6 @@ func (e *AuthCallbackError) Error() string {
 // IsCallback reports whether err indicates that the OAuth callback listener or
 // callback request failed.
 func IsCallback(err error) bool {
-	var target *AuthCallbackError
-	return errors.As(err, &target)
+	target, ok := errors.AsType[*AuthCallbackError](err)
+	return ok && target != nil
 }
