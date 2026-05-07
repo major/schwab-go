@@ -14,7 +14,7 @@ auth status [--config PATH] [--token PATH]
 auth refresh [--config PATH] [--token PATH]
 ```
 
-`auth login` should load application config, create `auth.NewFileTokenStore(tokenPath)`, pass a `urlHandler` to `auth.Login`, then run any application setup. `auth status` should load the token store and report token age and expiry without refreshing unless your CLI explicitly documents that behavior. `auth refresh` should create a provider with `auth.NewProvider(cfg, store, httpClient)` and call `Provider.Token(ctx)` to refresh an expired access token and persist the result.
+`auth login` should load application config, create `auth.NewFileTokenStore(tokenPath)`, pass a `urlHandler` to `auth.Login`, then run any application setup. `auth status` should create a provider with `auth.NewProvider(cfg, store, httpClient)` and call `Provider.Status(ctx, now)` to report token age and expiry without refreshing or saving. `auth refresh` should create a provider and call `Provider.Refresh(ctx)` so an explicit refresh command always refreshes with the stored refresh token and persists the result.
 
 ## Global auth gate
 
@@ -54,7 +54,7 @@ This keeps reusable OAuth logic in `schwab/auth` while preserving each applicati
 
 ## Browser and headless login
 
-For an explicit `auth refresh` command, call `store.Load`, then `auth.RefreshAccessToken` with the stored refresh token, preserve the original `TokenFile.CreationTimestamp`, and save the refreshed token file. `Provider.Token(ctx)` is better for a global auth gate because it returns an existing access token until it is inside the expiry buffer.
+For an explicit `auth refresh` command, call `Provider.Refresh(ctx)`. It always refreshes with the stored refresh token, saves through the configured token store, and preserves the original `TokenFile.CreationTimestamp` so refresh-token age stays accurate. Keep direct `auth.RefreshAccessToken` calls for low-level integrations that intentionally manage token loading, saving, and timestamp preservation themselves. `Provider.Token(ctx)` is better for a global auth gate because it returns an existing access token until it is inside the expiry buffer.
 
 `auth.Login` accepts a `urlHandler func(string) error`. Browser CLIs can open the URL with `xdg-open`, `open`, `rundll32`, or a user-selected browser command. Headless CLIs should emit the URL through their normal output path and let the user open it elsewhere.
 
@@ -68,6 +68,21 @@ provider, err := auth.Login(ctx, cfg, store, handleAuthorizeURL)
 ```
 
 The callback URL must exactly match the Schwab developer portal value, use `https`, include an explicit port, and bind to `127.0.0.1`. Local browser flows use a self-signed loopback certificate, so browsers may show a certificate warning before redirecting back to the CLI.
+
+## Status reporting
+
+`Provider.Status(ctx, now)` loads the configured token store and returns `auth.TokenStatus` without refreshing or saving. Missing token files map to `TokenStatus{LoginRequired: true}` with no error so CLIs can render normal status output for an unauthenticated installation. Other token-store load errors are returned so the adapter can report parse or filesystem failures.
+
+`auth.InspectToken(tokenFile, now)` is the pure helper behind `Provider.Status`. It reports `AccessTokenExpiresAt`, `AccessTokenExpired`, `RefreshTokenCreatedAt`, `RefreshTokenExpiresAt`, `RefreshTokenStale`, `CanRefresh`, and `LoginRequired`. Use those fields to build the CLI's existing JSON envelope or table output, but keep output names and exit-code policy in the adapter.
+
+Suggested CLI interpretation:
+
+| Status field | CLI meaning |
+|---|---|
+| `LoginRequired` | The user needs `auth login` before API calls can succeed. |
+| `AccessTokenExpired` with `CanRefresh` | API calls through `Provider.Token` can refresh automatically; an explicit status command should report the expiry without mutating the token file. |
+| `RefreshTokenStale` | The refresh token is too old to rely on; prompt for login. |
+| `CanRefresh` | An explicit `auth refresh` command can call `Provider.Refresh(ctx)`. |
 
 ## Structured output and exit codes
 

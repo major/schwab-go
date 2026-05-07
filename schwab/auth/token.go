@@ -33,6 +33,17 @@ type TokenStore interface {
 	Load(ctx context.Context) (TokenFile, error)
 }
 
+// TokenStatus describes token lifecycle state without exposing token secrets.
+type TokenStatus struct {
+	AccessTokenExpiresAt  time.Time
+	AccessTokenExpired    bool
+	RefreshTokenCreatedAt time.Time
+	RefreshTokenExpiresAt time.Time
+	RefreshTokenStale     bool
+	CanRefresh            bool
+	LoginRequired         bool
+}
+
 // IsAccessTokenExpired reports whether the access token in tf has expired,
 // using a 5-minute buffer to account for clock skew and in-flight requests.
 func IsAccessTokenExpired(tf TokenFile) bool {
@@ -43,4 +54,32 @@ func IsAccessTokenExpired(tf TokenFile) bool {
 // than 6.5 days and should be considered invalid.
 func IsRefreshTokenStale(tf TokenFile) bool {
 	return time.Now().Unix() >= tf.CreationTimestamp+refreshTokenMaxAge
+}
+
+// InspectToken reports token lifecycle state for tf at now without refreshing or
+// saving tokens. It does not validate token authenticity or contact Schwab.
+func InspectToken(tf TokenFile, now time.Time) TokenStatus {
+	if now.IsZero() {
+		now = time.Now()
+	}
+
+	if tf.Token.AccessToken == "" || tf.Token.RefreshToken == "" || tf.CreationTimestamp == 0 {
+		return TokenStatus{LoginRequired: true}
+	}
+
+	accessTokenExpiresAt := time.Unix(tf.Token.ExpiresAt, 0).UTC()
+	refreshTokenCreatedAt := time.Unix(tf.CreationTimestamp, 0).UTC()
+	refreshTokenExpiresAt := time.Unix(tf.CreationTimestamp+refreshTokenMaxAge, 0).UTC()
+	accessTokenExpired := now.Unix() >= tf.Token.ExpiresAt-accessTokenExpiryBuffer
+	refreshTokenStale := now.Unix() >= tf.CreationTimestamp+refreshTokenMaxAge
+
+	return TokenStatus{
+		AccessTokenExpiresAt:  accessTokenExpiresAt,
+		AccessTokenExpired:    accessTokenExpired,
+		RefreshTokenCreatedAt: refreshTokenCreatedAt,
+		RefreshTokenExpiresAt: refreshTokenExpiresAt,
+		RefreshTokenStale:     refreshTokenStale,
+		CanRefresh:            !refreshTokenStale,
+		LoginRequired:         refreshTokenStale,
+	}
 }

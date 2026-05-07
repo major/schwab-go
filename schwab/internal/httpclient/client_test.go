@@ -8,13 +8,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	schwab "github.com/major/schwab-go/schwab"
+	"github.com/major/schwab-go/schwab/auth"
 )
 
 const relativeBaseURLError = "invalid base URL \"relative/path\": absolute URL with scheme and host required"
@@ -367,6 +370,86 @@ func TestNewRequest_TokenProviderError(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, assert.AnError)
 	assert.Nil(t, req)
+}
+
+func TestNewRequest_AuthProviderRefreshesAndPropagatesTypedErrors(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	t.Run("refreshes through schwab auth provider", func(t *testing.T) {
+		requests := make(chan string, 1)
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if parseErr := r.ParseForm(); parseErr != nil {
+				http.Error(w, "invalid form", http.StatusBadRequest)
+				return
+			}
+			requests <- r.PostForm.Get("grant_type")
+
+			w.Header().Set("Content-Type", "application/json")
+			response := `{"access_token":"refreshed-access-token","token_type":"Bearer",` +
+				`"expires_in":1800,"refresh_token":"new-refresh-token","scope":"api"}`
+			_, writeErr := w.Write([]byte(response))
+			assert.NoError(t, writeErr)
+		}))
+		t.Cleanup(server.Close)
+
+		store := auth.NewFileTokenStore(filepath.Join(t.TempDir(), "tokens.json"))
+		require.NoError(t, store.Save(context.Background(), auth.TokenFile{
+			CreationTimestamp: time.Now().Add(-time.Hour).Unix(),
+			Token: auth.TokenData{
+				AccessToken:  "expired-access-token",
+				TokenType:    "Bearer",
+				ExpiresIn:    1800,
+				RefreshToken: "refresh-token",
+				Scope:        "api",
+				ExpiresAt:    time.Now().Add(-time.Hour).Unix(),
+			},
+		}))
+		provider, providerErr := auth.NewProvider(auth.Config{
+			ClientID:     "client-id",
+			ClientSecret: "client-secret",
+			CallbackURL:  "https://127.0.0.1:8182/callback",
+			OAuthBaseURL: server.URL,
+		}, store, server.Client())
+		require.NoError(t, providerErr)
+
+		cfg := Config{BaseURL: baseURL, TokenProvider: provider}
+
+		req, requestErr := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+
+		require.NoError(t, requestErr)
+		require.NotNil(t, req)
+		assert.Equal(t, "Bearer refreshed-access-token", req.Header.Get("Authorization"))
+		assert.Equal(t, "refresh_token", <-requests)
+	})
+
+	t.Run("propagates typed auth errors unchanged", func(t *testing.T) {
+		store := auth.NewFileTokenStore(filepath.Join(t.TempDir(), "tokens.json"))
+		require.NoError(t, store.Save(context.Background(), auth.TokenFile{
+			CreationTimestamp: time.Now().Add(-8 * 24 * time.Hour).Unix(),
+			Token: auth.TokenData{
+				AccessToken:  "expired-access-token",
+				RefreshToken: "stale-refresh-token",
+				ExpiresAt:    time.Now().Add(-time.Hour).Unix(),
+			},
+		}))
+		provider, providerErr := auth.NewProvider(auth.Config{
+			ClientID:     "client-id",
+			ClientSecret: "client-secret",
+			CallbackURL:  "https://127.0.0.1:8182/callback",
+			OAuthBaseURL: "https://127.0.0.1:8182/oauth",
+		}, store, nil)
+		require.NoError(t, providerErr)
+
+		cfg := Config{BaseURL: baseURL, TokenProvider: provider}
+
+		req, requestErr := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+
+		require.Error(t, requestErr)
+		assert.Nil(t, req)
+		var expiredErr *auth.AuthExpiredError
+		require.ErrorAs(t, requestErr, &expiredErr)
+	})
 }
 
 func TestNewRequest_TokenProviderEmptyToken(t *testing.T) {

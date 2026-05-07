@@ -48,7 +48,10 @@ func StartCallbackServer(
 
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", addr)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to listen for OAuth callback: %w", err)
+		return nil, nil, nil, errors.Join(
+			&AuthCallbackError{Msg: fmt.Sprintf("failed to listen for OAuth callback: %v", err), Code: 0},
+			err,
+		)
 	}
 
 	resultCh := make(chan CallbackResult, 1)

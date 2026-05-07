@@ -1,7 +1,7 @@
-// Package auth implements OAuth2 authorization code flow for the
-// Schwab API. It provides token acquisition, refresh, and persistence
-// as a library suitable for integration into CLI tools, web servers,
-// or any Go application.
+// Package auth implements OAuth2 authorization code flow for the Schwab API. It
+// provides token acquisition, refresh, status inspection, and persistence as a
+// library suitable for integration into CLI tools, web servers, or any Go
+// application.
 //
 // # Quick Start
 //
@@ -25,6 +25,12 @@
 // Use the returned TokenProvider with schwab-go clients:
 //
 //	client := marketdata.NewClient(schwab.WithTokenProvider(provider))
+//
+// Provider.Token returns an existing access token until it is near expiry, then
+// refreshes and saves a replacement through the configured TokenStore. Use
+// Provider.Refresh when an application needs an explicit refresh command, and
+// Provider.Status or InspectToken when it needs read-only token lifecycle state
+// without refreshing or saving tokens.
 //
 // For CLI applications, keep command policy outside this package: explicit
 // config and token paths, environment-variable precedence, JSON output

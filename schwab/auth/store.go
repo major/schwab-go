@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	tokenDirPerm  = 0o700
-	tokenFilePerm = 0o600
+	authRequiredLoginMessage = "no token file found, login required"
+	tokenDirPerm             = 0o700
+	tokenFilePerm            = 0o600
 )
 
 var _ TokenStore = (*FileTokenStore)(nil)
@@ -150,7 +151,7 @@ func (s *FileTokenStore) Load(ctx context.Context) (TokenFile, error) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return TokenFile{}, errors.Join(&AuthRequiredError{Msg: "no token file found, login required"}, err)
+			return TokenFile{}, errors.Join(&AuthRequiredError{Msg: authRequiredLoginMessage}, err)
 		}
 		return TokenFile{}, fmt.Errorf("read token file: %w", err)
 	}

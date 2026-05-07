@@ -66,13 +66,56 @@ func (p *Provider) Token(ctx context.Context) (string, error) {
 		return tokenFile.Token.AccessToken, nil
 	}
 
+	refreshedTokenFile, err := p.refreshLocked(ctx, tokenFile)
+	if err != nil {
+		return "", err
+	}
+
+	return refreshedTokenFile.Token.AccessToken, nil
+}
+
+// Refresh refreshes the stored access token regardless of current access-token
+// expiry and saves the refreshed token through the configured TokenStore.
+// It preserves the original TokenFile.CreationTimestamp so refresh-token age
+// remains accurate across access-token rotations.
+func (p *Provider) Refresh(ctx context.Context) (TokenFile, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	tokenFile, err := p.store.Load(ctx)
+	if err != nil {
+		return TokenFile{}, err
+	}
+
+	return p.refreshLocked(ctx, tokenFile)
+}
+
+// Status reports the currently stored token lifecycle state without refreshing
+// or saving tokens. Missing token files return a status with LoginRequired set
+// and no error; other TokenStore load errors are returned.
+func (p *Provider) Status(ctx context.Context, now time.Time) (TokenStatus, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	tokenFile, err := p.store.Load(ctx)
+	if err != nil {
+		if _, ok := errors.AsType[*AuthRequiredError](err); ok {
+			return TokenStatus{LoginRequired: true}, nil
+		}
+		return TokenStatus{}, err
+	}
+
+	return InspectToken(tokenFile, now), nil
+}
+
+func (p *Provider) refreshLocked(ctx context.Context, tokenFile TokenFile) (TokenFile, error) {
 	if IsRefreshTokenStale(tokenFile) {
-		return "", &AuthExpiredError{Msg: "refresh token expired or revoked"}
+		return TokenFile{}, &AuthExpiredError{Msg: "refresh token expired or revoked"}
 	}
 
 	refreshedTokenFile, err := RefreshAccessToken(ctx, p.cfg, tokenFile.Token.RefreshToken, p.http)
 	if err != nil {
-		return "", err
+		return TokenFile{}, err
 	}
 	if tokenFile.CreationTimestamp != 0 {
 		refreshedTokenFile.CreationTimestamp = tokenFile.CreationTimestamp
@@ -80,8 +123,8 @@ func (p *Provider) Token(ctx context.Context) (string, error) {
 
 	err = p.store.Save(ctx, refreshedTokenFile)
 	if err != nil {
-		return "", err
+		return TokenFile{}, err
 	}
 
-	return refreshedTokenFile.Token.AccessToken, nil
+	return refreshedTokenFile, nil
 }
