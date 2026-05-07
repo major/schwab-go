@@ -3,9 +3,6 @@
 // as a library suitable for integration into CLI tools, web servers,
 // or any Go application.
 //
-// The package is a separate Go module (github.com/major/schwab-go/schwab/auth)
-// and must be imported independently from the root schwab-go module.
-//
 // # Quick Start
 //
 // Create a config and run the login flow:

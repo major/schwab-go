@@ -26,10 +26,10 @@
 
 ## Layout and API boundaries
 
-- Public packages are `schwab` for shared types/options/errors, `schwab/marketdata` for Market Data API endpoints, and `schwab/trader` for Trader API endpoints.
+- Public packages are `schwab` for shared types/options/errors, `schwab/auth` for OAuth2 token acquisition and refresh, `schwab/marketdata` for Market Data API endpoints, and `schwab/trader` for Trader API endpoints.
 - Subpackages import the root package as `schwab "github.com/major/schwab-go/schwab"`.
-- Client construction uses shared functional options from `schwab/options.go`: `WithToken`, `WithHTTPClient`, `WithBaseURL`, and `ApplyOptions`.
-- The library does not handle OAuth or token refresh. Callers pass a bearer token explicitly with `WithToken`; do not add hidden environment or config-file reads.
+- Client construction uses shared functional options from `schwab/options.go`: `WithToken`, `WithTokenProvider`, `WithHTTPClient`, `WithBaseURL`, and `ApplyOptions`.
+- OAuth and token refresh live in the explicit `schwab/auth` package. API clients still accept bearer tokens through `WithToken` or `WithTokenProvider`; do not add hidden environment or config-file reads.
 - Default API bases are `https://api.schwabapi.com/marketdata/v1` and `https://api.schwabapi.com/trader/v1`; tests override them with `WithBaseURL(ts.URL)`.
 
 ## Implementation rules
