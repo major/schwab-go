@@ -42,19 +42,25 @@ const (
 
 func main() {
 	ctx := context.Background()
+	stdout := log.New(os.Stdout, "", 0)
+	stderr := log.New(os.Stderr, "", 0)
 
 	cfg, err := auth.LoadConfig(configPath)
 	if err != nil {
-		log.Fatalf("Failed to load config from %s: %v\n\nCopy config.sample.json to config.json and fill in your Schwab app credentials.", configPath, err)
+		log.Fatalf(
+			"Failed to load config from %s: %v\n\nCopy config.sample.json to config.json and fill in your Schwab app credentials.",
+			configPath,
+			err,
+		)
 	}
 
 	store := auth.NewFileTokenStore(tokenPath)
-	provider, err := loadOrLogin(ctx, cfg, store)
+	provider, err := loadOrLogin(ctx, cfg, store, tokenPath, stdout, stderr)
 	if err != nil {
 		log.Fatalf("Auth failed: %v", err)
 	}
 
-	fmt.Println("Fetching quote for", testSymbol, "...")
+	stdout.Println("Fetching quote for", testSymbol, "...")
 
 	client := marketdata.NewClient(schwab.WithTokenProvider(provider))
 	quote, err := client.GetQuote(ctx, testSymbol, "quote")
@@ -62,13 +68,20 @@ func main() {
 		log.Fatalf("API call failed: %v", err)
 	}
 
-	fmt.Printf("Got quote response for %s: %+v\n", testSymbol, quote)
-	fmt.Println("Auth is working.")
+	stdout.Printf("Got quote response for %s: %+v\n", testSymbol, quote)
+	stdout.Println("Auth is working.")
 }
 
 // loadOrLogin tries to reuse a saved token. If no token exists or it
 // has expired beyond refresh, it runs the full login flow.
-func loadOrLogin(ctx context.Context, cfg auth.Config, store auth.TokenStore) (*auth.Provider, error) {
+func loadOrLogin(
+	ctx context.Context,
+	cfg auth.Config,
+	store auth.TokenStore,
+	tokenFile string,
+	stdout *log.Logger,
+	stderr *log.Logger,
+) (*auth.Provider, error) {
 	provider, err := auth.NewProvider(cfg, store, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create provider: %w", err)
@@ -77,7 +90,7 @@ func loadOrLogin(ctx context.Context, cfg auth.Config, store auth.TokenStore) (*
 	// Try the existing token first.
 	_, tokenErr := provider.Token(ctx)
 	if tokenErr == nil {
-		fmt.Println("Reusing saved token from", tokenPath)
+		stdout.Println("Reusing saved token from", tokenFile)
 		return provider, nil
 	}
 
@@ -88,37 +101,44 @@ func loadOrLogin(ctx context.Context, cfg auth.Config, store auth.TokenStore) (*
 		return nil, tokenErr
 	}
 
-	fmt.Println("No valid token found, starting login flow...")
+	stdout.Println("No valid token found, starting login flow...")
 
-	provider, err = auth.Login(ctx, cfg, store, openBrowser)
+	provider, err = auth.Login(ctx, cfg, store, func(url string) error {
+		return openBrowser(url, stdout, stderr)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("login: %w", err)
 	}
 
-	fmt.Println("Login successful, token saved to", tokenPath)
+	stdout.Println("Login successful, token saved to", tokenFile)
 	return provider, nil
 }
 
 // openBrowser opens the authorization URL in the user's default browser.
-func openBrowser(url string) error {
-	fmt.Println("Opening browser for Schwab authorization...")
-	fmt.Println("If the browser does not open, visit this URL manually:")
-	fmt.Println()
-	fmt.Println(" ", url)
-	fmt.Println()
+func openBrowser(url string, stdout *log.Logger, stderr *log.Logger) error {
+	stdout.Println("Opening browser for Schwab authorization...")
+	stdout.Println("If the browser does not open, visit this URL manually:")
+	stdout.Println()
+	stdout.Println(" ", url)
+	stdout.Println()
 
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
 	case "linux":
-		cmd = exec.Command("xdg-open", url)
+		cmd = exec.CommandContext(context.Background(), "xdg-open", url)
 	case "darwin":
-		cmd = exec.Command("open", url)
+		cmd = exec.CommandContext(context.Background(), "open", url)
 	default:
 		// On unsupported platforms, the user can copy the URL above.
-		fmt.Fprintln(os.Stderr, "Automatic browser open not supported on", runtime.GOOS)
+		stderr.Println("Automatic browser open not supported on", runtime.GOOS)
 		return nil
 	}
 
-	return cmd.Start()
+	if err := cmd.Start(); err != nil {
+		stderr.Println("Automatic browser open failed:", err)
+		return nil
+	}
+
+	return nil
 }

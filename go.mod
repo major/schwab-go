@@ -4,6 +4,7 @@ go 1.26
 
 require (
 	github.com/getkin/kin-openapi v0.137.0
+	github.com/major/schwab-go/schwab/auth v0.0.0-20260507094256-9d2ae641f962
 	github.com/stretchr/testify v1.11.1
 )
 
