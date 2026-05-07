@@ -152,6 +152,74 @@ func TestProvider(t *testing.T) {
 		assert.Equal(t, int64(0), store.saveCalls.Load())
 	})
 
+	t.Run("explicit refresh propagates load error", func(t *testing.T) {
+		t.Parallel()
+
+		loadErr := errors.New("load failed")
+		store := newProviderMemoryStore(TokenFile{})
+		store.loadErr = loadErr
+		provider := newTestProvider(t, "https://127.0.0.1:8182/oauth", store, nil)
+
+		refreshedTokenFile, err := provider.Refresh(context.Background())
+
+		require.Error(t, err)
+		assert.Empty(t, refreshedTokenFile)
+		assert.ErrorIs(t, err, loadErr)
+	})
+
+	t.Run("explicit refresh propagates refresh error", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "refresh failed", http.StatusInternalServerError)
+		}))
+		t.Cleanup(server.Close)
+
+		store := newProviderMemoryStore(providerTokenFile(
+			"active-access-token",
+			"refresh-token",
+			time.Now().Add(time.Hour),
+			time.Now().Add(-time.Hour),
+		))
+		provider := newTestProvider(t, server.URL, store, server.Client())
+
+		refreshedTokenFile, err := provider.Refresh(context.Background())
+
+		require.Error(t, err)
+		assert.Empty(t, refreshedTokenFile)
+		assert.Equal(t, int64(0), store.saveCalls.Load())
+	})
+
+	t.Run("explicit refresh propagates save error", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"new-refresh-token","scope":"api"}`,
+			)
+			assert.NoError(t, err)
+		}))
+		t.Cleanup(server.Close)
+
+		saveErr := errors.New("save failed")
+		store := newProviderMemoryStore(providerTokenFile(
+			"active-access-token",
+			"refresh-token",
+			time.Now().Add(time.Hour),
+			time.Now().Add(-time.Hour),
+		))
+		store.saveErr = saveErr
+		provider := newTestProvider(t, server.URL, store, server.Client())
+
+		refreshedTokenFile, err := provider.Refresh(context.Background())
+
+		require.Error(t, err)
+		assert.Empty(t, refreshedTokenFile)
+		assert.ErrorIs(t, err, saveErr)
+	})
+
 	t.Run("status inspects stored token without refresh or save", func(t *testing.T) {
 		t.Parallel()
 
@@ -191,6 +259,21 @@ func TestProvider(t *testing.T) {
 		assert.True(t, status.LoginRequired)
 		assert.False(t, status.CanRefresh)
 		assert.Equal(t, int64(0), store.saveCalls.Load())
+	})
+
+	t.Run("status propagates non-auth load error", func(t *testing.T) {
+		t.Parallel()
+
+		loadErr := errors.New("read failed")
+		store := newProviderMemoryStore(TokenFile{})
+		store.loadErr = loadErr
+		provider := newTestProvider(t, "https://127.0.0.1:8182/oauth", store, nil)
+
+		status, err := provider.Status(context.Background(), time.Now())
+
+		require.Error(t, err)
+		assert.Empty(t, status)
+		assert.ErrorIs(t, err, loadErr)
 	})
 
 	t.Run("stale refresh token returns auth expired without HTTP call", func(t *testing.T) {
@@ -304,6 +387,16 @@ func TestProvider(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, provider)
 		assert.ErrorContains(t, err, "token store is required")
+	})
+
+	t.Run("invalid config returns validation error", func(t *testing.T) {
+		t.Parallel()
+
+		provider, err := NewProvider(Config{}, newProviderMemoryStore(TokenFile{}), nil)
+
+		require.Error(t, err)
+		assert.Nil(t, provider)
+		assert.ErrorContains(t, err, "client_id is required")
 	})
 }
 

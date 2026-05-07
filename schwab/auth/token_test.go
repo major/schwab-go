@@ -179,3 +179,29 @@ func TestInspectToken(t *testing.T) {
 		})
 	}
 }
+
+func TestInspectTokenZeroNowUsesCurrentTime(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now().UTC().Truncate(time.Second)
+	createdAt := now.Add(-time.Hour)
+	expiresAt := now.Add(time.Hour)
+	tf := TokenFile{
+		CreationTimestamp: createdAt.Unix(),
+		Token: TokenData{
+			AccessToken:  "access-token",
+			RefreshToken: "refresh-token",
+			ExpiresAt:    expiresAt.Unix(),
+		},
+	}
+
+	got := InspectToken(tf, time.Time{})
+
+	assert.Equal(t, expiresAt, got.AccessTokenExpiresAt)
+	assert.False(t, got.AccessTokenExpired)
+	assert.Equal(t, createdAt, got.RefreshTokenCreatedAt)
+	assert.Equal(t, createdAt.Add(refreshTokenMaxAge*time.Second), got.RefreshTokenExpiresAt)
+	assert.False(t, got.RefreshTokenStale)
+	assert.True(t, got.CanRefresh)
+	assert.False(t, got.LoginRequired)
+}
