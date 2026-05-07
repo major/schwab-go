@@ -31,7 +31,8 @@
 // refreshes and saves a replacement through the configured TokenStore. Use
 // Provider.Refresh when an application needs an explicit refresh command, and
 // Provider.Status or InspectToken when it needs read-only token lifecycle state
-// without refreshing or saving tokens.
+// without refreshing or saving tokens. Use RedactToken and RedactClientID when
+// displaying raw auth values in logs, tables, or JSON output.
 //
 // Use IsRequired, IsExpired, and IsCallback to classify auth package errors at
 // application boundaries without duplicating [errors.As] checks.

@@ -73,7 +73,7 @@ The callback URL must exactly match the Schwab developer portal value, use `http
 
 `Provider.Status(ctx, now)` loads the configured token store and returns `auth.TokenStatus` without refreshing or saving. Missing token files map to `TokenStatus{LoginRequired: true}` with no error so CLIs can render normal status output for an unauthenticated installation. Other token-store load errors are returned so the adapter can report parse or filesystem failures.
 
-`auth.InspectToken(tokenFile, now)` is the pure helper behind `Provider.Status`. It reports `AccessTokenExpiresAt`, `AccessTokenExpired`, `RefreshTokenCreatedAt`, `RefreshTokenExpiresAt`, `RefreshTokenStale`, `CanRefresh`, and `LoginRequired`. Use those fields to build the CLI's existing JSON envelope or table output, but keep output names and exit-code policy in the adapter.
+`auth.InspectToken(tokenFile, now)` is the pure helper behind `Provider.Status`. It reports `AccessTokenExpiresAt`, `AccessTokenExpired`, `RefreshTokenCreatedAt`, `RefreshTokenExpiresAt`, `RefreshTokenStale`, `CanRefresh`, and `LoginRequired`. Use those fields to build the CLI's existing JSON envelope or table output, but keep output names and exit-code policy in the adapter. If the adapter needs to show raw token or client metadata for troubleshooting, pass those values through `auth.RedactToken` or `auth.RedactClientID` first.
 
 Suggested CLI interpretation:
 
