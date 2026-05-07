@@ -2,6 +2,7 @@ package schwab
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -57,6 +58,20 @@ func WithHTTPClient(c *http.Client) Option {
 		if c != nil {
 			cfg.HTTPClient = c
 		}
+	}
+}
+
+// WithTLSConfig sets the TLS configuration used by the client's HTTP
+// transport. A nil value is ignored. When the existing transport is nil or an
+// [http.Transport], the transport is cloned before TLSClientConfig is replaced.
+// Custom non-[http.Transport] RoundTripper values are left unchanged because
+// the library cannot safely apply TLS settings to caller-owned transport types.
+func WithTLSConfig(tlsCfg *tls.Config) Option {
+	return func(cfg *ClientConfig) {
+		if tlsCfg == nil {
+			return
+		}
+		cfg.HTTPClient = httpClientWithTLSConfig(cfg.HTTPClient, tlsCfg)
 	}
 }
 
@@ -134,4 +149,34 @@ func ApplyOptions(cfg *ClientConfig, opts []Option) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+}
+
+func httpClientWithTLSConfig(client *http.Client, tlsCfg *tls.Config) *http.Client {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	configuredTransport, ok := transportWithTLSConfig(client.Transport, tlsCfg)
+	if !ok {
+		return client
+	}
+
+	configuredClient := *client
+	configuredClient.Transport = configuredTransport
+	return &configuredClient
+}
+
+func transportWithTLSConfig(transport http.RoundTripper, tlsCfg *tls.Config) (http.RoundTripper, bool) {
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+
+	httpTransport, ok := transport.(*http.Transport)
+	if !ok {
+		return transport, false
+	}
+
+	configuredTransport := httpTransport.Clone()
+	configuredTransport.TLSClientConfig = tlsCfg
+	return configuredTransport, true
 }

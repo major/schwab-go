@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -397,6 +398,37 @@ func TestProvider(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, provider)
 		assert.ErrorContains(t, err, "client_id is required")
+	})
+}
+
+func TestNewFileProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("valid file provider", func(t *testing.T) {
+		t.Parallel()
+
+		provider, err := NewFileProvider(
+			providerTestConfig("https://127.0.0.1:8182/oauth"),
+			filepath.Join(t.TempDir(), "tokens.json"),
+			nil,
+		)
+
+		require.NoError(t, err)
+		require.NotNil(t, provider)
+	})
+
+	t.Run("empty token path returns error", func(t *testing.T) {
+		t.Parallel()
+
+		provider, err := NewFileProvider(
+			providerTestConfig("https://127.0.0.1:8182/oauth"),
+			"",
+			nil,
+		)
+
+		require.Error(t, err)
+		assert.Nil(t, provider)
+		assert.ErrorContains(t, err, "token path")
 	})
 }
 

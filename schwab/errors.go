@@ -21,10 +21,21 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("schwab API error %d: %s", e.StatusCode, e.Message)
 }
 
+// StatusCode returns the HTTP status code from err when it contains an
+// *APIError.
+func StatusCode(err error) (int, bool) {
+	apiErr, ok := errors.AsType[*APIError](err)
+	if !ok || apiErr == nil {
+		return 0, false
+	}
+
+	return apiErr.StatusCode, true
+}
+
 // IsStatusCode reports whether err contains an *APIError with statusCode.
 func IsStatusCode(err error, statusCode int) bool {
-	apiErr, ok := errors.AsType[*APIError](err)
-	return ok && apiErr != nil && apiErr.StatusCode == statusCode
+	actualStatusCode, ok := StatusCode(err)
+	return ok && actualStatusCode == statusCode
 }
 
 // IsUnauthorized reports whether err contains an *APIError with HTTP 401.

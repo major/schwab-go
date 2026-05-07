@@ -27,9 +27,11 @@
 //
 //	client := marketdata.NewClient(schwab.WithTokenProvider(provider))
 //
-// Provider.Token returns an existing access token until it is near expiry, then
-// refreshes and saves a replacement through the configured TokenStore. Use
-// Provider.Refresh when an application needs an explicit refresh command, and
+// Use ConfigFromAPIBaseURL when an application exposes a Schwab API root or
+// proxy prefix and needs the matching OAuth endpoint. Provider.Token returns an
+// existing access token until it is near expiry, then refreshes and saves a
+// replacement through the configured TokenStore. Use Provider.Refresh or
+// RefreshTokenFile when an application needs an explicit refresh command, and
 // Provider.Status or InspectToken when it needs read-only token lifecycle state
 // without refreshing or saving tokens. Use RedactToken and RedactClientID when
 // displaying raw auth values in logs, tables, or JSON output.

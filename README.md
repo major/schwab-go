@@ -16,7 +16,7 @@ Go client library for the [Schwab API](https://developer.schwab.com/). Covers Ma
 - **Auth** (`schwab/auth`) - OAuth2 authorization code flow, token refresh, and file-based token persistence included in the core module
 - **Typed quote accessors** - asset-specific quote and reference types for equities, options, indices, mutual funds, forex, futures, and future options
 - **Structured errors** - `*schwab.APIError` with status code, message, and up to 1 MiB of the raw body
-- **Functional options** - `WithToken`, `WithHTTPClient`, `WithBaseURL`, `WithResponseBodyLimit`, `WithUserAgent`, `WithHeader`, and `WithHeaders` for flexible client configuration. Invalid base URL overrides fail when a request is created instead of falling back to the production Schwab API. Sub-clients append their own API path prefixes, so custom base URLs can point at the API root. Response bodies are capped at 10 MiB by default; non-positive custom limits are ignored.
+- **Functional options** - `WithToken`, `WithHTTPClient`, `WithTLSConfig`, `WithBaseURL`, `WithResponseBodyLimit`, `WithUserAgent`, `WithHeader`, and `WithHeaders` for flexible client configuration. Invalid base URL overrides fail when a request is created instead of falling back to the production Schwab API. Sub-clients append their own API path prefixes, so custom base URLs can point at the API root. Response bodies are capped at 10 MiB by default; non-positive custom limits are ignored.
 - **Context propagation** - all request methods take `context.Context`
 - **Testable** - override HTTP client and base URL for `httptest` integration
 - **No runtime dependencies** - public client packages stay dependency-free; tests use `stretchr/testify` and `kin-openapi`
@@ -128,6 +128,8 @@ if apiErr, ok := errors.AsType[*schwab.APIError](err); ok {
 }
 ```
 
+Use `schwab.StatusCode(err)` or `schwab.IsUnauthorized(err)` when callers only need generic HTTP status classification and should not depend on endpoint-specific error bodies.
+
 ## Authentication
 
 The `schwab/auth` package handles OAuth2 authorization code flow, token refresh, read-only token status inspection, and persistence as part of the core `github.com/major/schwab-go` module.
@@ -163,7 +165,13 @@ if err != nil {
 client := marketdata.NewClient(schwab.WithTokenProvider(provider))
 ```
 
-For headless or SSH environments, pass a `urlHandler` that prints the URL instead of opening a browser. Use `auth.StartLogin` when an application needs to display the authorization URL before blocking for the callback and token exchange. `Provider.Token` refreshes expired access tokens automatically and writes refreshed tokens back to the store. Use `Provider.Refresh` for explicit refresh commands, and `Provider.Status` or `auth.InspectToken` for read-only status output that must not refresh or save tokens. `auth.RedactToken` and `auth.RedactClientID` provide safe display strings for troubleshooting output. `auth.NewMemoryTokenStore` is available for tests, examples, and short-lived applications that do not need token durability across process restarts. Use `auth.IsRequired`, `auth.IsExpired`, and `auth.IsCallback` to classify auth failures at application boundaries without duplicating `errors.As` checks.
+For headless or SSH environments, pass a `urlHandler` that prints the URL instead of opening a browser. Use `auth.StartLogin` when an application needs to display the authorization URL before blocking for the callback and token exchange.
+
+`auth.ConfigFromAPIBaseURL` derives OAuth endpoints from a caller-owned Schwab API root or proxy prefix, and `auth.OAuthBaseURLFromAPIBaseURL` exposes the URL conversion separately for adapters with their own config structs.
+
+`auth.NewFileProvider` is a convenience wrapper around `auth.NewProvider(cfg, auth.NewFileTokenStore(path), httpClient)`. `Provider.Token` refreshes expired access tokens automatically and writes refreshed tokens back to the store. Use `Provider.Refresh` or `auth.RefreshTokenFile` for explicit refresh commands, and `Provider.Status` or `auth.InspectToken` for read-only status output that must not refresh or save tokens.
+
+`auth.RedactToken` and `auth.RedactClientID` provide safe display strings for troubleshooting output. `auth.NewMemoryTokenStore` is available for tests, examples, and short-lived applications that do not need token durability across process restarts. Use `auth.IsRequired`, `auth.IsExpired`, and `auth.IsCallback` to classify auth failures at application boundaries without duplicating `errors.As` checks.
 
 CLI applications that need `auth login`, `auth status`, `auth refresh`, a global auth gate, JSON output envelopes, or post-login default-account setup should keep that command policy in the application adapter layer. See [Auth CLI adapter pattern](docs/auth-cli-adapter.md) for Cobra-oriented guidance.
 

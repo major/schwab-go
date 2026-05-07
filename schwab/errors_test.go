@@ -65,6 +65,26 @@ func TestIsStatusCode(t *testing.T) {
 	require.False(t, IsStatusCode(nilAPIErr, 401))
 }
 
+func TestStatusCode(t *testing.T) {
+	t.Parallel()
+
+	apiErr := &APIError{StatusCode: 429, Message: "too many requests"}
+	wrapped := fmt.Errorf("get quotes: %w", apiErr)
+
+	statusCode, ok := StatusCode(wrapped)
+	require.True(t, ok)
+	require.Equal(t, 429, statusCode)
+
+	statusCode, ok = StatusCode(errors.New("other error"))
+	require.False(t, ok)
+	require.Equal(t, 0, statusCode)
+
+	var nilAPIErr *APIError
+	statusCode, ok = StatusCode(nilAPIErr)
+	require.False(t, ok)
+	require.Equal(t, 0, statusCode)
+}
+
 func TestIsUnauthorized(t *testing.T) {
 	t.Parallel()
 

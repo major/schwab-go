@@ -2,6 +2,7 @@ package schwab
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -59,6 +60,72 @@ func TestWithHTTPClient_Nil(t *testing.T) {
 	require.Equal(t, existingClient, cfg.HTTPClient)
 }
 
+func TestWithTLSConfig(t *testing.T) {
+	tlsCfg := &tls.Config{ServerName: "api.schwabapi.com", MinVersion: tls.VersionTLS12}
+	cfg := &ClientConfig{}
+
+	WithTLSConfig(tlsCfg)(cfg)
+
+	require.NotNil(t, cfg.HTTPClient)
+	transport, ok := cfg.HTTPClient.Transport.(*http.Transport)
+	require.True(t, ok)
+	require.Same(t, tlsCfg, transport.TLSClientConfig)
+	require.NotSame(t, http.DefaultTransport, transport)
+}
+
+func TestWithTLSConfig_Nil(t *testing.T) {
+	existingClient := &http.Client{Timeout: 0}
+	cfg := &ClientConfig{HTTPClient: existingClient}
+
+	WithTLSConfig(nil)(cfg)
+
+	require.Equal(t, existingClient, cfg.HTTPClient)
+}
+
+func TestWithTLSConfig_ClonesExistingHTTPClientTransport(t *testing.T) {
+	tlsCfg := &tls.Config{ServerName: "api.schwabapi.com", MinVersion: tls.VersionTLS12}
+	transport := &http.Transport{MaxIdleConns: 42}
+	existingClient := &http.Client{Transport: transport}
+	cfg := &ClientConfig{HTTPClient: existingClient}
+
+	WithTLSConfig(tlsCfg)(cfg)
+
+	require.NotSame(t, existingClient, cfg.HTTPClient)
+	configuredTransport, ok := cfg.HTTPClient.Transport.(*http.Transport)
+	require.True(t, ok)
+	require.NotSame(t, transport, configuredTransport)
+	require.Equal(t, 42, configuredTransport.MaxIdleConns)
+	require.Same(t, tlsCfg, configuredTransport.TLSClientConfig)
+}
+
+func TestWithTLSConfig_DoesNotOverrideCustomRoundTripper(t *testing.T) {
+	tlsCfg := &tls.Config{ServerName: "api.schwabapi.com", MinVersion: tls.VersionTLS12}
+	roundTripper := staticRoundTripper{}
+	existingClient := &http.Client{Transport: roundTripper}
+	cfg := &ClientConfig{HTTPClient: existingClient}
+
+	WithTLSConfig(tlsCfg)(cfg)
+
+	require.Same(t, existingClient, cfg.HTTPClient)
+	require.Equal(t, roundTripper, cfg.HTTPClient.Transport)
+}
+
+func TestWithTLSConfig_OrderWithHTTPClient(t *testing.T) {
+	tlsCfg := &tls.Config{ServerName: "api.schwabapi.com", MinVersion: tls.VersionTLS12}
+	customClient := &http.Client{Timeout: 0}
+
+	cfg := &ClientConfig{}
+	ApplyOptions(cfg, []Option{WithTLSConfig(tlsCfg), WithHTTPClient(customClient)})
+	require.Equal(t, customClient, cfg.HTTPClient)
+
+	cfg = &ClientConfig{}
+	ApplyOptions(cfg, []Option{WithHTTPClient(customClient), WithTLSConfig(tlsCfg)})
+	require.NotEqual(t, customClient, cfg.HTTPClient)
+	transport, ok := cfg.HTTPClient.Transport.(*http.Transport)
+	require.True(t, ok)
+	require.Same(t, tlsCfg, transport.TLSClientConfig)
+}
+
 func TestWithBaseURL_Valid(t *testing.T) {
 	cfg := &ClientConfig{}
 	opt := WithBaseURL("https://example.com/api")
@@ -66,6 +133,12 @@ func TestWithBaseURL_Valid(t *testing.T) {
 	require.NotNil(t, cfg.BaseURL)
 	require.Equal(t, "https://example.com/api", cfg.BaseURL.String())
 	require.NoError(t, cfg.OptionError)
+}
+
+type staticRoundTripper struct{}
+
+func (staticRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, http.ErrNotSupported
 }
 
 func TestWithBaseURL_Invalid(t *testing.T) {

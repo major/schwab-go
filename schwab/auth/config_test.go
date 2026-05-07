@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigValidate(t *testing.T) {
@@ -147,6 +149,111 @@ func TestConfigValidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOAuthBaseURLFromAPIBaseURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		apiBaseURL    string
+		want          string
+		wantErrSubstr string
+	}{
+		{
+			name: "empty uses production oauth base url",
+			want: DefaultOAuthBaseURL,
+		},
+		{
+			name:       "api origin adds oauth path",
+			apiBaseURL: "https://api.schwabapi.com",
+			want:       "https://api.schwabapi.com/v1/oauth",
+		},
+		{
+			name:       "proxy prefix is preserved",
+			apiBaseURL: "https://proxy.example.com/root/",
+			want:       "https://proxy.example.com/root/v1/oauth",
+		},
+		{
+			name:          "relative url rejected",
+			apiBaseURL:    "api.schwabapi.com",
+			wantErrSubstr: "scheme and host",
+		},
+		{
+			name:          "http url rejected",
+			apiBaseURL:    "http://api.schwabapi.com",
+			wantErrSubstr: "https",
+		},
+		{
+			name:          "query rejected",
+			apiBaseURL:    "https://api.schwabapi.com?env=test",
+			wantErrSubstr: "query or fragment",
+		},
+		{
+			name:          "fragment rejected",
+			apiBaseURL:    "https://api.schwabapi.com#oauth",
+			wantErrSubstr: "query or fragment",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := OAuthBaseURLFromAPIBaseURL(tt.apiBaseURL)
+			if tt.wantErrSubstr == "" {
+				require.NoError(t, err, "OAuthBaseURLFromAPIBaseURL(%q)", tt.apiBaseURL)
+				require.Equal(t, tt.want, got, "OAuthBaseURLFromAPIBaseURL(%q)", tt.apiBaseURL)
+				return
+			}
+
+			require.Error(t, err, "OAuthBaseURLFromAPIBaseURL(%q)", tt.apiBaseURL)
+			require.ErrorContains(t, err, tt.wantErrSubstr, "OAuthBaseURLFromAPIBaseURL(%q)", tt.apiBaseURL)
+		})
+	}
+}
+
+func TestConfigFromAPIBaseURL(t *testing.T) {
+	t.Parallel()
+
+	got, err := ConfigFromAPIBaseURL(
+		"client-id",
+		"client-secret",
+		"https://127.0.0.1:8182/callback",
+		"https://proxy.example.com/root",
+	)
+
+	require.NoError(t, err)
+	want := Config{
+		ClientID:     "client-id",
+		ClientSecret: "client-secret",
+		CallbackURL:  "https://127.0.0.1:8182/callback",
+		OAuthBaseURL: "https://proxy.example.com/root/v1/oauth",
+	}
+	require.Equal(t, want, got)
+}
+
+func TestConfigFromAPIBaseURL_InvalidConfig(t *testing.T) {
+	t.Parallel()
+
+	_, err := ConfigFromAPIBaseURL("", "client-secret", "https://127.0.0.1:8182/callback", "")
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "client_id")
+}
+
+func TestConfigFromAPIBaseURL_InvalidAPIBaseURL(t *testing.T) {
+	t.Parallel()
+
+	_, err := ConfigFromAPIBaseURL(
+		"client-id",
+		"client-secret",
+		"https://127.0.0.1:8182/callback",
+		"http://api.schwabapi.com",
+	)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "api_base_url")
 }
 
 //nolint:gocognit // Table-driven test with many cases; splitting would reduce readability.
