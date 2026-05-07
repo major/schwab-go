@@ -164,6 +164,8 @@ client := marketdata.NewClient(schwab.WithTokenProvider(provider))
 
 For headless or SSH environments, pass a `urlHandler` that prints the URL instead of opening a browser. Tokens are refreshed automatically and written back to the store.
 
+CLI applications that need `auth login`, `auth status`, `auth refresh`, a global auth gate, JSON output envelopes, or post-login default-account setup should keep that command policy in the application adapter layer. See [Auth CLI adapter pattern](docs/auth-cli-adapter.md) for Cobra-oriented guidance.
+
 If you already have a valid bearer token, skip `schwab/auth` and pass it directly with `schwab.WithToken()`.
 
 If you previously installed `schwab/auth` as its own module, remove the separate `require github.com/major/schwab-go/schwab/auth ...` entry and run `go get github.com/major/schwab-go@latest && go mod tidy` so auth resolves from the core module.

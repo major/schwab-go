@@ -65,6 +65,15 @@ func (c Config) Validate() error {
 func LoadConfig(path string) (Config, error) {
 	rawConfig, err := os.ReadFile(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			authErr := &AuthRequiredError{
+				Msg: fmt.Sprintf("read config %q: file not found, configure auth before login", path),
+			}
+			return Config{}, errors.Join(
+				authErr,
+				err,
+			)
+		}
 		return Config{}, fmt.Errorf("read config %q: %w", path, err)
 	}
 

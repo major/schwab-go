@@ -30,16 +30,16 @@ func TestIsAccessTokenExpired(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "thirty second buffer expires token",
+			name: "five minute buffer expires token",
 			tf: TokenFile{
-				Token: TokenData{ExpiresAt: now + 30},
+				Token: TokenData{ExpiresAt: now + int64((5 * time.Minute).Seconds())},
 			},
 			want: true,
 		},
 		{
-			name: "thirty one seconds remains active",
+			name: "six minutes remains active",
 			tf: TokenFile{
-				Token: TokenData{ExpiresAt: now + 31},
+				Token: TokenData{ExpiresAt: now + int64((6 * time.Minute).Seconds())},
 			},
 		},
 	}
@@ -77,11 +77,17 @@ func TestIsRefreshTokenStale(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "seven day token is stale",
+			name: "six and a half day token is stale",
 			tf: TokenFile{
-				CreationTimestamp: now - int64((7 * 24 * time.Hour).Seconds()),
+				CreationTimestamp: now - int64((156 * time.Hour).Seconds()),
 			},
 			want: true,
+		},
+		{
+			name: "six days and twelve hours minus one minute is fresh",
+			tf: TokenFile{
+				CreationTimestamp: now - int64((156*time.Hour - time.Minute).Seconds()),
+			},
 		},
 	}
 

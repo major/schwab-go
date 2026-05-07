@@ -146,6 +146,46 @@ func TestCallbackServer(t *testing.T) {
 	})
 }
 
+func TestCallbackListenAddressPreservesUnderlyingErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		url       string
+		wantCause any
+	}{
+		{
+			name:      "invalid callback URL",
+			url:       "https://%zz:8182/callback",
+			wantCause: new(url.Error),
+		},
+		{
+			name:      "missing port",
+			url:       "https://127.0.0.1/callback",
+			wantCause: new(net.AddrError),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := callbackListenAddress(tt.url)
+			require.Error(t, err)
+
+			var callbackErr *AuthCallbackError
+			require.ErrorAs(t, err, &callbackErr)
+
+			switch cause := tt.wantCause.(type) {
+			case *url.Error:
+				require.ErrorAs(t, err, &cause)
+			case *net.AddrError:
+				require.ErrorAs(t, err, &cause)
+			}
+		})
+	}
+}
+
 func newCallbackTestURL(t *testing.T) string {
 	t.Helper()
 

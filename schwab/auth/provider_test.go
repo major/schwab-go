@@ -61,11 +61,12 @@ func TestProvider(t *testing.T) {
 		}))
 		t.Cleanup(server.Close)
 
+		createdAt := time.Now().Add(-time.Hour)
 		store := newProviderMemoryStore(providerTokenFile(
 			"old-access-token",
 			"old-refresh-token",
 			time.Now().Add(-time.Hour),
-			time.Now(),
+			createdAt,
 		))
 		provider := newTestProvider(t, server.URL, store, server.Client())
 
@@ -79,6 +80,7 @@ func TestProvider(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "new-access-token", savedTokenFile.Token.AccessToken)
 		assert.Equal(t, "new-refresh-token", savedTokenFile.Token.RefreshToken)
+		assert.Equal(t, createdAt.Unix(), savedTokenFile.CreationTimestamp)
 	})
 
 	t.Run("stale refresh token returns auth expired without HTTP call", func(t *testing.T) {

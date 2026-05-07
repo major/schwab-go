@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,6 +40,37 @@ func TestAuthErrors(t *testing.T) {
 			got := tt.err.Error()
 			require.NotEmpty(t, got)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestAuthErrorsCanBeJoinedWithCause(t *testing.T) {
+	t.Parallel()
+
+	cause := errors.New("underlying failure")
+	tests := []struct {
+		name string
+		err  error
+	}{
+		{
+			name: "required",
+			err:  errors.Join(&AuthRequiredError{Msg: "login required"}, cause),
+		},
+		{
+			name: "expired",
+			err:  errors.Join(&AuthExpiredError{Msg: "token expired"}, cause),
+		},
+		{
+			name: "callback",
+			err:  errors.Join(&AuthCallbackError{Msg: "state mismatch", Code: 400}, cause),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.ErrorIs(t, tt.err, cause)
 		})
 	}
 }

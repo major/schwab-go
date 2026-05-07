@@ -74,6 +74,9 @@ func (p *Provider) Token(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if tokenFile.CreationTimestamp != 0 {
+		refreshedTokenFile.CreationTimestamp = tokenFile.CreationTimestamp
+	}
 
 	err = p.store.Save(ctx, refreshedTokenFile)
 	if err != nil {
