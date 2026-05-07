@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 )
 
@@ -42,12 +43,27 @@ func Login(ctx context.Context, cfg Config, store TokenStore, urlHandler func(st
 		opt(&loginCfg)
 	}
 
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
+	if store == nil {
+		return nil, errors.New("token store is required")
+	}
+
+	if urlHandler == nil {
+		return nil, errors.New("urlHandler is required")
+	}
+
 	authorizeURL, expectedState, err := AuthorizeURL(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	results, errs, shutdown, err := StartCallbackServer(ctx, cfg.CallbackURL)
+	serverCtx, cancelServer := context.WithCancel(ctx)
+	defer cancelServer()
+
+	results, errs, shutdown, err := StartCallbackServer(serverCtx, cfg.CallbackURL)
 	if err != nil {
 		return nil, err
 	}
