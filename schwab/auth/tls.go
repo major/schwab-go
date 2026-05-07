@@ -15,6 +15,7 @@ import (
 const (
 	callbackCertificateBits = 2048
 	callbackCertificateTTL  = 24 * time.Hour
+	serialNumberBits        = 128
 )
 
 // generateSelfSignedCert generates an in-memory self-signed TLS certificate
@@ -26,7 +27,7 @@ func generateSelfSignedCert() (tls.Certificate, error) {
 		return tls.Certificate{}, err
 	}
 
-	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), serialNumberBits))
 	if err != nil {
 		return tls.Certificate{}, err
 	}

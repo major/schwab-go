@@ -39,7 +39,10 @@ func TestLogin(t *testing.T) {
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			_, err := fmt.Fprint(w, `{"access_token":"login-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"login-refresh-token","scope":"api"}`)
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"login-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"login-refresh-token","scope":"api"}`,
+			)
 			assert.NoError(t, err)
 		})
 
@@ -80,7 +83,7 @@ func TestLogin(t *testing.T) {
 	t.Run("urlHandler error returns error", func(t *testing.T) {
 		t.Parallel()
 
-		server := newLoginTokenServer(t, func(w http.ResponseWriter, r *http.Request) {
+		server := newLoginTokenServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "unexpected token exchange", http.StatusInternalServerError)
 		})
 		cfg := newLoginTestConfig(t, server.URL)
@@ -111,7 +114,7 @@ func TestLogin(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Nil(t, provider)
-		assert.ErrorContains(t, err, "client_secret is required")
+		require.ErrorContains(t, err, "client_secret is required")
 		assert.False(t, urlHandlerCalled.Load())
 	})
 
@@ -128,7 +131,7 @@ func TestLogin(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Nil(t, provider)
-		assert.ErrorContains(t, err, "token store is required")
+		require.ErrorContains(t, err, "token store is required")
 		assert.False(t, urlHandlerCalled.Load())
 	})
 
@@ -142,14 +145,14 @@ func TestLogin(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Nil(t, provider)
-		assert.ErrorContains(t, err, "urlHandler is required")
+		require.ErrorContains(t, err, "urlHandler is required")
 	})
 
 	t.Run("state mismatch returns callback error", func(t *testing.T) {
 		t.Parallel()
 
 		var tokenExchangeCalls atomic.Int64
-		server := newLoginTokenServer(t, func(w http.ResponseWriter, r *http.Request) {
+		server := newLoginTokenServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			tokenExchangeCalls.Add(1)
 			http.Error(w, "unexpected token exchange", http.StatusInternalServerError)
 		})
@@ -170,8 +173,8 @@ func TestLogin(t *testing.T) {
 		require.NoError(t, <-callbackErrs)
 		assert.Nil(t, provider)
 		var callbackErr *AuthCallbackError
-		assert.ErrorAs(t, err, &callbackErr)
-		assert.Equal(t, "state mismatch", callbackErr.Reason)
+		require.ErrorAs(t, err, &callbackErr)
+		assert.Equal(t, "state mismatch", callbackErr.Msg)
 		assert.Equal(t, int64(0), tokenExchangeCalls.Load())
 	})
 
@@ -179,7 +182,7 @@ func TestLogin(t *testing.T) {
 		t.Parallel()
 
 		var tokenExchangeCalls atomic.Int64
-		server := newLoginTokenServer(t, func(w http.ResponseWriter, r *http.Request) {
+		server := newLoginTokenServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			tokenExchangeCalls.Add(1)
 			http.Error(w, "unexpected token exchange", http.StatusInternalServerError)
 		})
@@ -195,7 +198,7 @@ func TestLogin(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Nil(t, provider)
-		assert.ErrorIs(t, err, context.Canceled)
+		require.ErrorIs(t, err, context.Canceled)
 		assert.Equal(t, int64(0), tokenExchangeCalls.Load())
 	})
 }
@@ -282,7 +285,8 @@ func getLoginCallback(callbackURL string, query url.Values) error {
 
 	client := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // Tests connect to an in-memory self-signed loopback certificate.
+			// Tests use an in-memory self-signed loopback certificate.
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 		Timeout: 5 * time.Second,
 	}

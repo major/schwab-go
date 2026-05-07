@@ -35,7 +35,8 @@ func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 	}
 
 	tmpPath := s.path + ".tmp"
-	if err := os.Remove(tmpPath); err != nil && !os.IsNotExist(err) {
+	err = os.Remove(tmpPath)
+	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove stale temporary token file: %w", err)
 	}
 
@@ -47,16 +48,19 @@ func (s *FileTokenStore) Save(ctx context.Context, tf TokenFile) error {
 		_ = os.Remove(tmpPath)
 	}()
 
-	if _, err := tmpFile.Write(data); err != nil {
+	_, err = tmpFile.Write(data)
+	if err != nil {
 		_ = tmpFile.Close()
 		return fmt.Errorf("write temporary token file: %w", err)
 	}
 
-	if err := tmpFile.Close(); err != nil {
+	err = tmpFile.Close()
+	if err != nil {
 		return fmt.Errorf("close temporary token file: %w", err)
 	}
 
-	if err := os.Rename(tmpPath, s.path); err != nil {
+	err = os.Rename(tmpPath, s.path)
+	if err != nil {
 		return fmt.Errorf("replace token file: %w", err)
 	}
 
@@ -72,13 +76,14 @@ func (s *FileTokenStore) Load(ctx context.Context) (TokenFile, error) {
 	data, err := os.ReadFile(s.path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return TokenFile{}, &AuthRequiredError{}
+			return TokenFile{}, &AuthRequiredError{Msg: "no token file found, login required"}
 		}
 		return TokenFile{}, fmt.Errorf("read token file: %w", err)
 	}
 
 	var tf TokenFile
-	if err := json.Unmarshal(data, &tf); err != nil {
+	err = json.Unmarshal(data, &tf)
+	if err != nil {
 		return TokenFile{}, fmt.Errorf("parse token file: %w", err)
 	}
 

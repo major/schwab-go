@@ -117,6 +117,7 @@ func TestConfigValidate(t *testing.T) {
 	}
 }
 
+//nolint:gocognit // Table-driven test with many cases; splitting would reduce readability.
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 
@@ -140,9 +141,13 @@ func TestLoadConfig(t *testing.T) {
 			wantConfig: validConfig,
 		},
 		{
-			name:       "oauth base url omitted",
-			contents:   `{"client_id":"client-id","client_secret":"client-secret","callback_url":"https://127.0.0.1:8182/callback"}`,
-			wantConfig: Config{ClientID: "client-id", ClientSecret: "client-secret", CallbackURL: "https://127.0.0.1:8182/callback"},
+			name:     "oauth base url omitted",
+			contents: `{"client_id":"client-id","client_secret":"client-secret","callback_url":"https://127.0.0.1:8182/callback"}`,
+			wantConfig: Config{
+				ClientID:     "client-id",
+				ClientSecret: "client-secret",
+				CallbackURL:  "https://127.0.0.1:8182/callback",
+			},
 		},
 		{
 			name:            "missing file",

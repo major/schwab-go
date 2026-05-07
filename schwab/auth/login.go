@@ -6,6 +6,8 @@ import (
 	"net/http"
 )
 
+const errStateMismatch = "state mismatch"
+
 // LoginOption configures the login flow.
 type LoginOption func(*loginConfig)
 
@@ -14,7 +16,7 @@ type loginConfig struct {
 }
 
 // WithLoginHTTPClient sets the HTTP client used for token exchange.
-// If not set, http.DefaultClient is used.
+// If not set, [http.DefaultClient] is used.
 func WithLoginHTTPClient(c *http.Client) LoginOption {
 	return func(cfg *loginConfig) {
 		cfg.httpClient = c
@@ -37,13 +39,20 @@ func WithLoginHTTPClient(c *http.Client) LoginOption {
 // prints or logs the URL for the user to visit manually. Login
 // blocks until the OAuth callback arrives regardless of how the URL
 // is handled.
-func Login(ctx context.Context, cfg Config, store TokenStore, urlHandler func(string) error, opts ...LoginOption) (*Provider, error) {
+func Login(
+	ctx context.Context,
+	cfg Config,
+	store TokenStore,
+	urlHandler func(string) error,
+	opts ...LoginOption,
+) (*Provider, error) {
 	loginCfg := loginConfig{httpClient: http.DefaultClient}
 	for _, opt := range opts {
 		opt(&loginCfg)
 	}
 
-	if err := cfg.Validate(); err != nil {
+	err := cfg.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -69,7 +78,8 @@ func Login(ctx context.Context, cfg Config, store TokenStore, urlHandler func(st
 	}
 	defer shutdown()
 
-	if err := urlHandler(authorizeURL); err != nil {
+	err = urlHandler(authorizeURL)
+	if err != nil {
 		return nil, err
 	}
 
@@ -77,9 +87,9 @@ func Login(ctx context.Context, cfg Config, store TokenStore, urlHandler func(st
 	select {
 	case result = <-results:
 		if result.State != expectedState {
-			return nil, &AuthCallbackError{Reason: "state mismatch"}
+			return nil, &AuthCallbackError{Msg: errStateMismatch, Code: 0}
 		}
-	case err := <-errs:
+	case err = <-errs:
 		return nil, err
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -90,7 +100,8 @@ func Login(ctx context.Context, cfg Config, store TokenStore, urlHandler func(st
 		return nil, err
 	}
 
-	if err := store.Save(ctx, tokenFile); err != nil {
+	err = store.Save(ctx, tokenFile)
+	if err != nil {
 		return nil, err
 	}
 

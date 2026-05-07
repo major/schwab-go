@@ -68,7 +68,8 @@ func TestCallbackServer(t *testing.T) {
 		select {
 		case gotErr := <-errs:
 			require.ErrorAs(t, gotErr, &callbackErr)
-			assert.Contains(t, callbackErr.Reason, "missing code")
+			assert.Contains(t, callbackErr.Msg, "missing code")
+			assert.Equal(t, http.StatusBadRequest, callbackErr.Code)
 		case <-time.After(callbackTestTimeout):
 			t.Fatal("StartCallbackServer() did not send missing code error")
 		}
@@ -90,7 +91,8 @@ func TestCallbackServer(t *testing.T) {
 		select {
 		case gotErr := <-errs:
 			require.ErrorAs(t, gotErr, &callbackErr)
-			assert.Contains(t, callbackErr.Reason, "missing state")
+			assert.Contains(t, callbackErr.Msg, "missing state")
+			assert.Equal(t, http.StatusBadRequest, callbackErr.Code)
 		case <-time.After(callbackTestTimeout):
 			t.Fatal("StartCallbackServer() did not send missing state error")
 		}
@@ -143,7 +145,8 @@ func getCallback(t *testing.T, callbackURL string, query url.Values) *http.Respo
 func callbackTestClient() *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // Tests connect to an in-memory self-signed loopback certificate.
+			// Tests use an in-memory self-signed loopback certificate.
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 		Timeout: callbackTestTimeout,
 	}

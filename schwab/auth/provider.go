@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"sync"
 
@@ -20,9 +19,10 @@ type Provider struct {
 
 // NewProvider creates a Provider that manages tokens using the given
 // config and store. The http client is optional (nil uses
-// http.DefaultClient) and is used only for refresh requests.
+// [http.DefaultClient]) and is used only for refresh requests.
 func NewProvider(cfg Config, store TokenStore, httpClient *http.Client) (*Provider, error) {
-	if err := cfg.Validate(); err != nil {
+	err := cfg.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -49,10 +49,6 @@ func (p *Provider) Token(ctx context.Context) (string, error) {
 
 	tokenFile, err := p.store.Load(ctx)
 	if err != nil {
-		if _, ok := errors.AsType[*AuthRequiredError](err); ok {
-			return "", err
-		}
-
 		return "", err
 	}
 
@@ -61,7 +57,7 @@ func (p *Provider) Token(ctx context.Context) (string, error) {
 	}
 
 	if IsRefreshTokenStale(tokenFile) {
-		return "", &AuthExpiredError{}
+		return "", &AuthExpiredError{Msg: "refresh token expired or revoked"}
 	}
 
 	refreshedTokenFile, err := RefreshAccessToken(ctx, p.cfg, tokenFile.Token.RefreshToken, p.http)
@@ -69,7 +65,8 @@ func (p *Provider) Token(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	if err := p.store.Save(ctx, refreshedTokenFile); err != nil {
+	err = p.store.Save(ctx, refreshedTokenFile)
+	if err != nil {
 		return "", err
 	}
 

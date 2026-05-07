@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -21,15 +20,23 @@ func TestRefreshAccessToken(t *testing.T) {
 	t.Run("success returns token file", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			_, err := fmt.Fprint(w, `{"access_token":"new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"new-refresh-token","scope":"api"}`)
-			require.NoError(t, err)
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"new-refresh-token","scope":"api"}`,
+			)
+			assert.NoError(t, err)
 		}))
 		t.Cleanup(server.Close)
 
 		before := time.Now().Unix()
-		tokenFile, err := RefreshAccessToken(context.Background(), refreshTestConfig(server.URL), "old-refresh-token", server.Client())
+		tokenFile, err := RefreshAccessToken(
+			context.Background(),
+			refreshTestConfig(server.URL),
+			"old-refresh-token",
+			server.Client(),
+		)
 		after := time.Now().Unix()
 
 		require.NoError(t, err)
@@ -46,29 +53,39 @@ func TestRefreshAccessToken(t *testing.T) {
 	t.Run("expired refresh token returns auth expired error", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			_, err := fmt.Fprint(w, `{"error":"invalid_grant"}`)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}))
 		t.Cleanup(server.Close)
 
-		_, err := RefreshAccessToken(context.Background(), refreshTestConfig(server.URL), "expired-refresh-token", server.Client())
+		_, err := RefreshAccessToken(
+			context.Background(),
+			refreshTestConfig(server.URL),
+			"expired-refresh-token",
+			server.Client(),
+		)
 
 		require.Error(t, err)
 		var expiredErr *AuthExpiredError
-		assert.True(t, errors.As(err, &expiredErr), "RefreshAccessToken(%q) error = %v, want *AuthExpiredError", "expired-refresh-token", err)
+		assert.ErrorAs(t, err, &expiredErr)
 	})
 
 	t.Run("http error returns status", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "server failed", http.StatusInternalServerError)
 		}))
 		t.Cleanup(server.Close)
 
-		_, err := RefreshAccessToken(context.Background(), refreshTestConfig(server.URL), "refresh-token", server.Client())
+		_, err := RefreshAccessToken(
+			context.Background(),
+			refreshTestConfig(server.URL),
+			"refresh-token",
+			server.Client(),
+		)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "status 500")
@@ -80,7 +97,7 @@ func TestRefreshAccessToken(t *testing.T) {
 		requests := make(chan refreshRequestSnapshot, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err := r.ParseForm()
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			requests <- refreshRequestSnapshot{
 				method:        r.Method,
@@ -91,8 +108,11 @@ func TestRefreshAccessToken(t *testing.T) {
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			_, err = fmt.Fprint(w, `{"access_token":"new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"new-refresh-token"}`)
-			require.NoError(t, err)
+			_, err = fmt.Fprint(
+				w,
+				`{"access_token":"new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"new-refresh-token"}`,
+			)
+			assert.NoError(t, err)
 		}))
 		t.Cleanup(server.Close)
 
@@ -101,9 +121,10 @@ func TestRefreshAccessToken(t *testing.T) {
 		require.NoError(t, err)
 
 		snapshot := <-requests
+		expectedBasicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("client-id:client-secret"))
 		assert.Equal(t, http.MethodPost, snapshot.method)
 		assert.Equal(t, "/token", snapshot.path)
-		assert.Equal(t, "Basic "+base64.StdEncoding.EncodeToString([]byte("client-id:client-secret")), snapshot.authorization)
+		assert.Equal(t, expectedBasicAuth, snapshot.authorization)
 		assert.Equal(t, "application/x-www-form-urlencoded", snapshot.contentType)
 		assert.Equal(t, "refresh_token", snapshot.form.Get("grant_type"))
 		assert.Equal(t, "old-refresh-token", snapshot.form.Get("refresh_token"))

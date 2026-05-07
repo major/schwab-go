@@ -468,3 +468,6 @@ linters:
           - paralleltest
           - testpackage
           - wrapcheck
+      - path: 'schwab/auth/go\.mod'
+        text: 'local replacement are not allowed: github.com/major/schwab-go'
+        linters: [ gomoddirectives ]

@@ -20,10 +20,13 @@ func TestExchangeCode(t *testing.T) {
 	t.Run("success returns token file", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			_, err := fmt.Fprint(w, `{"access_token":"access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"refresh-token","scope":"api"}`)
-			require.NoError(t, err)
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"refresh-token","scope":"api"}`,
+			)
+			assert.NoError(t, err)
 		}))
 		t.Cleanup(server.Close)
 
@@ -46,7 +49,7 @@ func TestExchangeCode(t *testing.T) {
 	t.Run("http error returns status", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "invalid grant", http.StatusBadRequest)
 		}))
 		t.Cleanup(server.Close)
@@ -60,13 +63,18 @@ func TestExchangeCode(t *testing.T) {
 	t.Run("invalid json response returns error", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			_, err := fmt.Fprint(w, `not-json`)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		}))
 		t.Cleanup(server.Close)
 
-		_, err := ExchangeCode(context.Background(), exchangeTestConfig(server.URL), "authorization-code", server.Client())
+		_, err := ExchangeCode(
+			context.Background(),
+			exchangeTestConfig(server.URL),
+			"authorization-code",
+			server.Client(),
+		)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to parse token exchange response")
@@ -78,7 +86,7 @@ func TestExchangeCode(t *testing.T) {
 		requests := make(chan exchangeRequestSnapshot, 1)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err := r.ParseForm()
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			requests <- exchangeRequestSnapshot{
 				method:        r.Method,
@@ -89,8 +97,11 @@ func TestExchangeCode(t *testing.T) {
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			_, err = fmt.Fprint(w, `{"access_token":"access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"refresh-token"}`)
-			require.NoError(t, err)
+			_, err = fmt.Fprint(
+				w,
+				`{"access_token":"access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"refresh-token"}`,
+			)
+			assert.NoError(t, err)
 		}))
 		t.Cleanup(server.Close)
 
@@ -99,9 +110,10 @@ func TestExchangeCode(t *testing.T) {
 		require.NoError(t, err)
 
 		snapshot := <-requests
+		expectedBasicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("client-id:client-secret"))
 		assert.Equal(t, http.MethodPost, snapshot.method)
 		assert.Equal(t, "/token", snapshot.path)
-		assert.Equal(t, "Basic "+base64.StdEncoding.EncodeToString([]byte("client-id:client-secret")), snapshot.authorization)
+		assert.Equal(t, expectedBasicAuth, snapshot.authorization)
 		assert.Equal(t, "application/x-www-form-urlencoded", snapshot.contentType)
 		assert.Equal(t, "authorization_code", snapshot.form.Get("grant_type"))
 		assert.Equal(t, "authorization-code", snapshot.form.Get("code"))
@@ -111,10 +123,13 @@ func TestExchangeCode(t *testing.T) {
 	t.Run("empty oauth base url uses default token endpoint", func(t *testing.T) {
 		t.Parallel()
 
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			_, err := fmt.Fprint(w, `{"access_token":"access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"refresh-token"}`)
-			require.NoError(t, err)
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"refresh-token"}`,
+			)
+			assert.NoError(t, err)
 		}))
 		t.Cleanup(server.Close)
 
@@ -125,7 +140,7 @@ func TestExchangeCode(t *testing.T) {
 		_, err := ExchangeCode(context.Background(), cfg, "authorization-code", client)
 
 		require.NoError(t, err)
-		assert.Equal(t, defaultOAuthBaseURL+"/token", <-rewriteTransport.originalURLs)
+		assert.Equal(t, DefaultOAuthBaseURL+"/token", <-rewriteTransport.originalURLs)
 	})
 }
 

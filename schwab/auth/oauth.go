@@ -9,24 +9,20 @@ import (
 )
 
 const (
-	defaultOAuthBaseURL = "https://api.schwabapi.com/v1/oauth"
-	oauthStateBytes     = 32
+	oauthStateBytes = 32
 )
 
 // AuthorizeURL builds the Schwab OAuth2 authorization URL and returns the
 // generated state value that callers must verify during callback handling.
+//
+//nolint:nonamedreturns // Named returns document the three distinct string, string, and error return values.
 func AuthorizeURL(cfg Config) (authorizeURL string, state string, err error) {
 	state, err = randomOAuthState()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to generate OAuth state: %w", err)
 	}
 
-	baseURL := cfg.OAuthBaseURL
-	if baseURL == "" {
-		baseURL = defaultOAuthBaseURL
-	}
-
-	parsedURL, err := url.Parse(strings.TrimRight(baseURL, "/") + "/authorize")
+	parsedURL, err := url.Parse(strings.TrimRight(cfg.oauthBaseURL(), "/") + "/authorize")
 	if err != nil {
 		return "", "", fmt.Errorf("oauth authorization URL must be valid: %w", err)
 	}

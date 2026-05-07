@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,18 +17,18 @@ func TestAuthErrors(t *testing.T) {
 	}{
 		{
 			name: "required",
-			err:  &AuthRequiredError{},
-			want: "authentication required: run the login flow to obtain a token",
+			err:  &AuthRequiredError{Msg: "login required"},
+			want: "login required",
 		},
 		{
 			name: "expired",
-			err:  &AuthExpiredError{},
-			want: "authentication expired: refresh token is no longer valid, re-login required",
+			err:  &AuthExpiredError{Msg: "token expired"},
+			want: "token expired",
 		},
 		{
 			name: "callback",
-			err:  &AuthCallbackError{Reason: "state mismatch"},
-			want: "OAuth callback error: state mismatch",
+			err:  &AuthCallbackError{Msg: "state mismatch", Code: 400},
+			want: "state mismatch",
 		},
 	}
 
@@ -54,35 +53,39 @@ func TestAuthErrorsAs(t *testing.T) {
 	}{
 		{
 			name: "required",
-			err:  &AuthRequiredError{},
+			err:  &AuthRequiredError{Msg: "login required"},
 			check: func(t *testing.T, err error) {
 				t.Helper()
 
 				var target *AuthRequiredError
-				require.True(t, errors.As(err, &target))
+				require.ErrorAs(t, err, &target)
 				require.NotNil(t, target)
+				assert.Equal(t, "login required", target.Msg)
 			},
 		},
 		{
 			name: "expired",
-			err:  &AuthExpiredError{},
+			err:  &AuthExpiredError{Msg: "token expired"},
 			check: func(t *testing.T, err error) {
 				t.Helper()
 
 				var target *AuthExpiredError
-				require.True(t, errors.As(err, &target))
+				require.ErrorAs(t, err, &target)
 				require.NotNil(t, target)
+				assert.Equal(t, "token expired", target.Msg)
 			},
 		},
 		{
 			name: "callback",
-			err:  &AuthCallbackError{Reason: "state mismatch"},
+			err:  &AuthCallbackError{Msg: "state mismatch", Code: 400},
 			check: func(t *testing.T, err error) {
 				t.Helper()
 
 				var target *AuthCallbackError
-				require.True(t, errors.As(err, &target))
+				require.ErrorAs(t, err, &target)
 				require.NotNil(t, target)
+				assert.Equal(t, "state mismatch", target.Msg)
+				assert.Equal(t, 400, target.Code)
 			},
 		},
 	}

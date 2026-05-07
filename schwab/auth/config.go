@@ -2,10 +2,14 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 )
+
+// DefaultOAuthBaseURL is the default Schwab OAuth2 base URL.
+const DefaultOAuthBaseURL = "https://api.schwabapi.com/v1/oauth"
 
 // Config holds the OAuth2 client credentials and endpoint configuration
 // for the Schwab API. Construct it directly or load it from a JSON file
@@ -22,26 +26,28 @@ type Config struct {
 	CallbackURL string `json:"callback_url"`
 
 	// OAuthBaseURL overrides the OAuth endpoint base URL. When empty, callers
-	// should use https://api.schwabapi.com/v1/oauth.
+	// should use DefaultOAuthBaseURL.
 	OAuthBaseURL string `json:"oauth_base_url,omitempty"`
 }
 
 // Validate returns an error if any required Config field is missing or invalid.
 func (c Config) Validate() error {
 	if c.ClientID == "" {
-		return fmt.Errorf("client_id is required")
+		return errors.New("client_id is required")
 	}
 
 	if c.ClientSecret == "" {
-		return fmt.Errorf("client_secret is required")
+		return errors.New("client_secret is required")
 	}
 
-	if err := validateCallbackURL(c.CallbackURL); err != nil {
+	err := validateCallbackURL(c.CallbackURL)
+	if err != nil {
 		return err
 	}
 
 	if c.OAuthBaseURL != "" {
-		if _, err := parseAbsoluteURL("oauth_base_url", c.OAuthBaseURL); err != nil {
+		_, err = parseAbsoluteURL("oauth_base_url", c.OAuthBaseURL)
+		if err != nil {
 			return err
 		}
 	}
@@ -58,11 +64,13 @@ func LoadConfig(path string) (Config, error) {
 	}
 
 	var cfg Config
-	if err := json.Unmarshal(rawConfig, &cfg); err != nil {
+	err = json.Unmarshal(rawConfig, &cfg)
+	if err != nil {
 		return Config{}, fmt.Errorf("parse config %q: %w", path, err)
 	}
 
-	if err := cfg.Validate(); err != nil {
+	err = cfg.Validate()
+	if err != nil {
 		return Config{}, fmt.Errorf("validate config %q: %w", path, err)
 	}
 
@@ -71,7 +79,7 @@ func LoadConfig(path string) (Config, error) {
 
 func validateCallbackURL(rawURL string) error {
 	if rawURL == "" {
-		return fmt.Errorf("callback_url is required")
+		return errors.New("callback_url is required")
 	}
 
 	callbackURL, err := parseAbsoluteURL("callback_url", rawURL)
@@ -80,10 +88,19 @@ func validateCallbackURL(rawURL string) error {
 	}
 
 	if callbackURL.Hostname() != "127.0.0.1" {
-		return fmt.Errorf("callback_url host must be 127.0.0.1")
+		return errors.New("callback_url host must be 127.0.0.1")
 	}
 
 	return nil
+}
+
+// oauthBaseURL returns OAuthBaseURL if set, or DefaultOAuthBaseURL.
+func (c Config) oauthBaseURL() string {
+	if c.OAuthBaseURL != "" {
+		return c.OAuthBaseURL
+	}
+
+	return DefaultOAuthBaseURL
 }
 
 func parseAbsoluteURL(fieldName, rawURL string) (*url.URL, error) {

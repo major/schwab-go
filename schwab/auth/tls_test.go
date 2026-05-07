@@ -29,8 +29,8 @@ func TestGenerateSelfSignedCert(t *testing.T) {
 	t.Run("not valid for other ip", func(t *testing.T) {
 		t.Parallel()
 
-		err := parsedCert.VerifyHostname("192.168.1.1")
-		require.Error(t, err)
+		verifyErr := parsedCert.VerifyHostname("192.168.1.1")
+		require.Error(t, verifyErr)
 	})
 
 	t.Run("self signed", func(t *testing.T) {

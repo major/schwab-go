@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -54,7 +53,7 @@ func TestFileTokenStore(t *testing.T) {
 		require.Error(t, err)
 
 		var authRequired *AuthRequiredError
-		assert.True(t, errors.As(err, &authRequired))
+		assert.ErrorAs(t, err, &authRequired)
 	})
 
 	t.Run("load invalid json returns parse error", func(t *testing.T) {
@@ -69,7 +68,7 @@ func TestFileTokenStore(t *testing.T) {
 		require.Error(t, err)
 
 		var authRequired *AuthRequiredError
-		assert.False(t, errors.As(err, &authRequired))
+		assert.NotErrorAs(t, err, &authRequired)
 	})
 
 	t.Run("save removes temporary file after rename", func(t *testing.T) {

@@ -28,7 +28,12 @@ type CallbackResult struct {
 
 // StartCallbackServer starts a loopback-only HTTPS server for receiving the
 // OAuth2 authorization code callback.
-func StartCallbackServer(ctx context.Context, callbackURL string) (results <-chan CallbackResult, errs <-chan error, shutdown func(), err error) {
+//
+//nolint:nonamedreturns // Named returns document the result channel, error channel, shutdown function, and setup error.
+func StartCallbackServer(
+	ctx context.Context,
+	callbackURL string,
+) (results <-chan CallbackResult, errs <-chan error, shutdown func(), err error) {
 	addr, callbackPath, err := callbackListenAddress(callbackURL)
 	if err != nil {
 		return nil, nil, nil, err
@@ -94,20 +99,23 @@ func StartCallbackServer(ctx context.Context, callbackURL string) (results <-cha
 func callbackListenAddress(callbackURL string) (string, string, error) {
 	parsedURL, err := url.Parse(callbackURL)
 	if err != nil {
-		return "", "", &AuthCallbackError{Reason: fmt.Sprintf("invalid callback URL: %v", err)}
+		return "", "", &AuthCallbackError{Msg: fmt.Sprintf("invalid callback URL: %v", err), Code: 0}
 	}
 
 	if parsedURL.Scheme != "https" {
-		return "", "", &AuthCallbackError{Reason: "callback URL must use https"}
+		return "", "", &AuthCallbackError{Msg: "callback URL must use https", Code: 0}
 	}
 
 	host, port, err := net.SplitHostPort(parsedURL.Host)
 	if err != nil {
-		return "", "", &AuthCallbackError{Reason: fmt.Sprintf("callback URL must include host and port: %v", err)}
+		return "", "", &AuthCallbackError{
+			Msg:  fmt.Sprintf("callback URL must include host and port: %v", err),
+			Code: 0,
+		}
 	}
 
 	if host != callbackLoopbackHost {
-		return "", "", &AuthCallbackError{Reason: "callback server must bind to 127.0.0.1 only"}
+		return "", "", &AuthCallbackError{Msg: "callback server must bind to 127.0.0.1 only", Code: 0}
 	}
 
 	callbackPath := parsedURL.EscapedPath()
@@ -118,7 +126,12 @@ func callbackListenAddress(callbackURL string) (string, string, error) {
 	return net.JoinHostPort(host, port), callbackPath, nil
 }
 
-func callbackHandler(callbackPath string, results chan<- CallbackResult, errs chan<- error, sendOnce *sync.Once) http.Handler {
+func callbackHandler(
+	callbackPath string,
+	results chan<- CallbackResult,
+	errs chan<- error,
+	sendOnce *sync.Once,
+) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.EscapedPath() != callbackPath {
 			http.NotFound(w, r)
@@ -132,7 +145,7 @@ func callbackHandler(callbackPath string, results chan<- CallbackResult, errs ch
 		if code == "" {
 			http.Error(w, "missing code", http.StatusBadRequest)
 			sendOnce.Do(func() {
-				errs <- &AuthCallbackError{Reason: "OAuth callback missing code"}
+				errs <- &AuthCallbackError{Msg: "OAuth callback missing code", Code: http.StatusBadRequest}
 			})
 			return
 		}
@@ -140,7 +153,7 @@ func callbackHandler(callbackPath string, results chan<- CallbackResult, errs ch
 		if state == "" {
 			http.Error(w, "missing state", http.StatusBadRequest)
 			sendOnce.Do(func() {
-				errs <- &AuthCallbackError{Reason: "OAuth callback missing state"}
+				errs <- &AuthCallbackError{Msg: "OAuth callback missing state", Code: http.StatusBadRequest}
 			})
 			return
 		}

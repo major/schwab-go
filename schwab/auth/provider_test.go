@@ -22,13 +22,18 @@ func TestProvider(t *testing.T) {
 		t.Parallel()
 
 		var refreshCalls atomic.Int64
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			refreshCalls.Add(1)
 			http.Error(w, "unexpected refresh", http.StatusInternalServerError)
 		}))
 		t.Cleanup(server.Close)
 
-		store := newProviderMemoryStore(providerTokenFile("access-token", "refresh-token", time.Now().Add(time.Hour), time.Now()))
+		store := newProviderMemoryStore(providerTokenFile(
+			"access-token",
+			"refresh-token",
+			time.Now().Add(time.Hour),
+			time.Now(),
+		))
 		provider := newTestProvider(t, server.URL, store, server.Client())
 
 		accessToken, err := provider.Token(context.Background())
@@ -48,12 +53,20 @@ func TestProvider(t *testing.T) {
 			assert.Equal(t, "/token", r.URL.Path)
 
 			w.Header().Set("Content-Type", "application/json")
-			_, err := fmt.Fprint(w, `{"access_token":"new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"new-refresh-token","scope":"api"}`)
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"new-refresh-token","scope":"api"}`,
+			)
 			assert.NoError(t, err)
 		}))
 		t.Cleanup(server.Close)
 
-		store := newProviderMemoryStore(providerTokenFile("old-access-token", "old-refresh-token", time.Now().Add(-time.Hour), time.Now()))
+		store := newProviderMemoryStore(providerTokenFile(
+			"old-access-token",
+			"old-refresh-token",
+			time.Now().Add(-time.Hour),
+			time.Now(),
+		))
 		provider := newTestProvider(t, server.URL, store, server.Client())
 
 		accessToken, err := provider.Token(context.Background())
@@ -72,13 +85,18 @@ func TestProvider(t *testing.T) {
 		t.Parallel()
 
 		var refreshCalls atomic.Int64
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			refreshCalls.Add(1)
 			http.Error(w, "unexpected refresh", http.StatusInternalServerError)
 		}))
 		t.Cleanup(server.Close)
 
-		store := newProviderMemoryStore(providerTokenFile("old-access-token", "old-refresh-token", time.Now().Add(-time.Hour), time.Now().Add(-8*24*time.Hour)))
+		store := newProviderMemoryStore(providerTokenFile(
+			"old-access-token",
+			"old-refresh-token",
+			time.Now().Add(-time.Hour),
+			time.Now().Add(-8*24*time.Hour),
+		))
 		provider := newTestProvider(t, server.URL, store, server.Client())
 
 		accessToken, err := provider.Token(context.Background())
@@ -86,7 +104,7 @@ func TestProvider(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, accessToken)
 		var expiredErr *AuthExpiredError
-		assert.True(t, errors.As(err, &expiredErr), "Provider.Token() error = %v, want *AuthExpiredError", err)
+		require.ErrorAs(t, err, &expiredErr)
 		assert.Equal(t, int64(0), refreshCalls.Load())
 	})
 
@@ -94,7 +112,7 @@ func TestProvider(t *testing.T) {
 		t.Parallel()
 
 		store := newProviderMemoryStore(TokenFile{})
-		store.loadErr = &AuthRequiredError{}
+		store.loadErr = &AuthRequiredError{Msg: "no token file found, login required"}
 		provider := newTestProvider(t, "https://127.0.0.1:8182/oauth", store, nil)
 
 		accessToken, err := provider.Token(context.Background())
@@ -102,22 +120,27 @@ func TestProvider(t *testing.T) {
 		require.Error(t, err)
 		assert.Empty(t, accessToken)
 		var requiredErr *AuthRequiredError
-		assert.True(t, errors.As(err, &requiredErr), "Provider.Token() error = %v, want *AuthRequiredError", err)
+		require.ErrorAs(t, err, &requiredErr)
 	})
 
 	t.Run("concurrent expired token refreshes only once", func(t *testing.T) {
 		t.Parallel()
 
 		var refreshCalls atomic.Int64
-		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			refreshCalls.Add(1)
 			w.Header().Set("Content-Type", "application/json")
-			_, err := fmt.Fprint(w, `{"access_token":"shared-new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"shared-new-refresh-token","scope":"api"}`)
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"shared-new-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"shared-new-refresh-token","scope":"api"}`,
+			)
 			assert.NoError(t, err)
 		}))
 		t.Cleanup(server.Close)
 
-		store := newProviderMemoryStore(providerTokenFile("old-access-token", "old-refresh-token", time.Now().Add(-time.Hour), time.Now()))
+		store := newProviderMemoryStore(
+			providerTokenFile("old-access-token", "old-refresh-token", time.Now().Add(-time.Hour), time.Now()),
+		)
 		provider := newTestProvider(t, server.URL, store, server.Client())
 
 		const goroutines = 10

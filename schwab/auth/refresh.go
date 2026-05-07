@@ -20,7 +20,12 @@ type tokenErrorResponse struct {
 
 // RefreshAccessToken exchanges a Schwab OAuth2 refresh token for new access
 // and refresh tokens using the configured OAuth token endpoint.
-func RefreshAccessToken(ctx context.Context, cfg Config, refreshToken string, httpClient *http.Client) (TokenFile, error) {
+func RefreshAccessToken(
+	ctx context.Context,
+	cfg Config,
+	refreshToken string,
+	httpClient *http.Client,
+) (TokenFile, error) {
 	client := httpClient
 	if client == nil {
 		client = http.DefaultClient
@@ -33,7 +38,7 @@ func RefreshAccessToken(ctx context.Context, cfg Config, refreshToken string, ht
 	request, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		tokenExchangeURL(cfg.OAuthBaseURL),
+		tokenExchangeURL(cfg),
 		strings.NewReader(form.Encode()),
 	)
 	if err != nil {
@@ -55,7 +60,8 @@ func RefreshAccessToken(ctx context.Context, cfg Config, refreshToken string, ht
 	}
 
 	var token TokenData
-	if err := json.NewDecoder(response.Body).Decode(&token); err != nil {
+	err = json.NewDecoder(response.Body).Decode(&token)
+	if err != nil {
 		return TokenFile{}, fmt.Errorf("failed to parse token refresh response: %w", err)
 	}
 
@@ -71,15 +77,20 @@ func RefreshAccessToken(ctx context.Context, cfg Config, refreshToken string, ht
 }
 
 func tokenRefreshHTTPError(response *http.Response) error {
-	body, err := io.ReadAll(response.Body)
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxOAuthErrorBodyBytes))
 	if err != nil {
-		return fmt.Errorf("token refresh failed with status %d and unreadable response body: %w", response.StatusCode, err)
+		return fmt.Errorf(
+			"token refresh failed with status %d and unreadable response body: %w",
+			response.StatusCode,
+			err,
+		)
 	}
 
 	if response.StatusCode == http.StatusBadRequest {
 		var tokenErr tokenErrorResponse
-		if err := json.Unmarshal(body, &tokenErr); err == nil && tokenErr.Error == invalidGrantError {
-			return &AuthExpiredError{}
+		err = json.Unmarshal(body, &tokenErr)
+		if err == nil && tokenErr.Error == invalidGrantError {
+			return &AuthExpiredError{Msg: "refresh token expired or revoked"}
 		}
 	}
 

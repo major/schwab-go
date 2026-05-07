@@ -11,9 +11,10 @@ import (
 	"testing"
 	"time"
 
-	schwab "github.com/major/schwab-go/schwab"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	schwab "github.com/major/schwab-go/schwab"
 )
 
 func TestIntegration_FullOAuthFlow(t *testing.T) {
@@ -84,7 +85,12 @@ func TestIntegration_ProviderFromSaved(t *testing.T) {
 	ctx := context.Background()
 	store := NewFileTokenStore(filepath.Join(t.TempDir(), "tokens.json"))
 	cfg := providerTestConfig("https://127.0.0.1:8182/oauth")
-	require.NoError(t, store.Save(ctx, providerTokenFile("saved-access-token", "saved-refresh-token", time.Now().Add(time.Hour), time.Now())))
+	require.NoError(t, store.Save(ctx, providerTokenFile(
+		"saved-access-token",
+		"saved-refresh-token",
+		time.Now().Add(time.Hour),
+		time.Now(),
+	)))
 	provider, err := NewProvider(cfg, store, nil)
 	require.NoError(t, err)
 
@@ -97,7 +103,12 @@ func TestIntegration_ProviderFromSaved(t *testing.T) {
 func TestIntegration_WithTokenProvider(t *testing.T) {
 	t.Parallel()
 
-	store := newProviderMemoryStore(providerTokenFile("root-access-token", "root-refresh-token", time.Now().Add(time.Hour), time.Now()))
+	store := newProviderMemoryStore(providerTokenFile(
+		"root-access-token",
+		"root-refresh-token",
+		time.Now().Add(time.Hour),
+		time.Now(),
+	))
 	provider := newTestProvider(t, "https://127.0.0.1:8182/oauth", store, nil)
 
 	option := schwab.WithTokenProvider(provider)
@@ -141,10 +152,16 @@ func newIntegrationTokenServer(t *testing.T, requests chan<- integrationTokenReq
 		w.Header().Set("Content-Type", "application/json")
 		switch grantType {
 		case "authorization_code":
-			_, err := fmt.Fprint(w, `{"access_token":"integration-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"integration-refresh-token","scope":"api"}`)
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"integration-access-token","token_type":"Bearer","expires_in":1800,"refresh_token":"integration-refresh-token","scope":"api"}`,
+			)
 			assert.NoError(t, err)
 		case "refresh_token":
-			_, err := fmt.Fprint(w, `{"access_token":"integration-refreshed-token","token_type":"Bearer","expires_in":1800,"refresh_token":"integration-new-refresh-token","scope":"api"}`)
+			_, err := fmt.Fprint(
+				w,
+				`{"access_token":"integration-refreshed-token","token_type":"Bearer","expires_in":1800,"refresh_token":"integration-new-refresh-token","scope":"api"}`,
+			)
 			assert.NoError(t, err)
 		default:
 			http.Error(w, "unsupported grant", http.StatusBadRequest)
