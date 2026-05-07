@@ -52,3 +52,38 @@
 - CI also runs CodeQL, OpenSSF Scorecard, `govulncheck`, `go build ./...`, and Codecov coverage/test-results uploads when `CODECOV_TOKEN` is present.
 - Preserve high-signal guidance in `.github/copilot-instructions.md`, `.github/instructions/*.md`, `.coderabbit.yaml`, `Makefile`, and `.goreleaser.yml` when changing related areas.
 - Keep `README.md` up to date when adding, removing, or renaming public API methods, changing package structure, updating badges, or modifying build/install requirements.
+
+## Runnable examples
+
+- Public API additions or behavior changes should include or update runnable Go examples when the usage is non-obvious.
+- Prefer `Example...` functions in `*_test.go` files with `// Output:` comments so `go test ./...` verifies the examples.
+- Examples should demonstrate public API usage from a consumer perspective, using external test packages such as `trader_test` when practical.
+- Keep examples focused on common workflows. Use normal `Test...` functions for edge cases, error paths, and exact payload assertions.
+- When changing request/response models, order builders, auth helpers, or client options, review existing examples for drift.
+- Trader order examples must use fake data and local `httptest` servers only. Cover enum families with catalog examples when no documented payload exists, and do not present an order shape as Schwab-accepted unless it is backed by docs, fixtures, or observed API data.
+
+## Agent research modes
+
+### Search mode
+
+- Maximize search effort. Launch multiple background agents in parallel:
+  - Explore agents for codebase patterns, file structures, and AST-grep searches.
+  - Librarian agents for remote repositories, official docs, and GitHub examples.
+- Use direct tools as well: `Grep`, `rg`, and `sg` or AST-grep.
+- Never stop at the first result. Search exhaustively until repeated searches stop producing new useful context.
+
+### Analyze mode
+
+- Gather context before diving deep:
+  - Launch 1-2 explore agents for codebase patterns and implementations.
+  - Launch 1-2 librarian agents when external libraries, APIs, or docs are involved.
+  - Use direct tools such as `Grep`, AST-grep, and LSP for targeted searches.
+- If the problem is complex, consult specialists instead of struggling alone:
+  - Oracle for conventional architecture, debugging, or complex logic problems.
+  - Artistry for non-conventional problems that may need a different approach.
+- Synthesize findings before proceeding.
+
+### Delegation requirements
+
+- When delegating, always include `load_skills=[]` and `run_in_background`.
+- Example: `delegate_task(subagent_type="explore", prompt="...", run_in_background=true, load_skills=[])`.
