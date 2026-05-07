@@ -24,6 +24,15 @@ type responsePayload struct {
 	Price  int    `json:"price"`
 }
 
+type testTokenProvider struct {
+	token string
+	err   error
+}
+
+func (p *testTokenProvider) Token(context.Context) (string, error) {
+	return p.token, p.err
+}
+
 type doTestCase struct {
 	name                string
 	status              int
@@ -41,27 +50,65 @@ type doTestCase struct {
 	wantLimitError      bool
 }
 
+type newConfigTestCase struct {
+	name              string
+	defaultBase       *url.URL
+	defaultClient     *http.Client
+	opts              []schwab.Option
+	wantBase          string
+	wantClient        *http.Client
+	wantClientNonNil  bool
+	wantToken         string
+	wantOptionError   string
+	wantBodyLimit     int64
+	wantEmptyBase     bool
+	wantDistinctClone bool
+	wantProvider      schwab.TokenProvider
+}
+
+func assertNewConfigResult(t *testing.T, cfg Config, defaultClient *http.Client, tc newConfigTestCase) {
+	t.Helper()
+
+	require.NotNil(t, cfg.BaseURL)
+	if tc.wantEmptyBase {
+		assert.Empty(t, cfg.BaseURL.String())
+	} else {
+		assert.Equal(t, tc.wantBase, cfg.BaseURL.String())
+	}
+
+	if tc.wantClientNonNil {
+		require.NotNil(t, cfg.HTTPClient)
+	}
+	if tc.wantClient != nil {
+		assert.Same(t, tc.wantClient, cfg.HTTPClient)
+	}
+	if tc.wantDistinctClone {
+		assert.NotSame(t, defaultClient, cfg.HTTPClient)
+	}
+	assert.Equal(t, tc.wantToken, cfg.Token)
+	if tc.wantProvider == nil {
+		assert.Nil(t, cfg.TokenProvider)
+	} else {
+		assert.Same(t, tc.wantProvider, cfg.TokenProvider)
+	}
+	if tc.wantOptionError == "" {
+		require.NoError(t, cfg.OptionError)
+	} else {
+		require.Error(t, cfg.OptionError)
+		require.ErrorContains(t, cfg.OptionError, tc.wantOptionError)
+	}
+	assert.Equal(t, tc.wantBodyLimit, cfg.ResponseBodyLimit)
+}
+
 func TestNewConfig(t *testing.T) {
 	defaultBase, err := url.Parse("https://api.example.test/base")
 	require.NoError(t, err)
 
 	defaultClient := &http.Client{}
 	customClient := &http.Client{}
+	provider := &testTokenProvider{token: "dynamic"}
 
-	tests := []struct {
-		name              string
-		defaultBase       *url.URL
-		defaultClient     *http.Client
-		opts              []schwab.Option
-		wantBase          string
-		wantClient        *http.Client
-		wantClientNonNil  bool
-		wantToken         string
-		wantOptionError   string
-		wantBodyLimit     int64
-		wantEmptyBase     bool
-		wantDistinctClone bool
-	}{
+	tests := []newConfigTestCase{
 		{
 			name:             "happy path uses defaults",
 			defaultBase:      defaultBase,
@@ -98,6 +145,7 @@ func TestNewConfig(t *testing.T) {
 			defaultClient: defaultClient,
 			opts: []schwab.Option{
 				schwab.WithToken("tok"),
+				schwab.WithTokenProvider(provider),
 				schwab.WithBaseURL("http://example.com"),
 				schwab.WithHTTPClient(customClient),
 				schwab.WithResponseBodyLimit(512),
@@ -107,6 +155,7 @@ func TestNewConfig(t *testing.T) {
 			wantClientNonNil: true,
 			wantToken:        "tok",
 			wantBodyLimit:    512,
+			wantProvider:     provider,
 		},
 		{
 			name:          "invalid base URL option preserves default and stores error",
@@ -125,31 +174,7 @@ func TestNewConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := NewConfig(tt.defaultBase, tt.defaultClient, tt.opts)
-
-			require.NotNil(t, cfg.BaseURL)
-			if tt.wantEmptyBase {
-				assert.Empty(t, cfg.BaseURL.String())
-			} else {
-				assert.Equal(t, tt.wantBase, cfg.BaseURL.String())
-			}
-
-			if tt.wantClientNonNil {
-				require.NotNil(t, cfg.HTTPClient)
-			}
-			if tt.wantClient != nil {
-				assert.Same(t, tt.wantClient, cfg.HTTPClient)
-			}
-			if tt.wantDistinctClone {
-				assert.NotSame(t, defaultClient, cfg.HTTPClient)
-			}
-			assert.Equal(t, tt.wantToken, cfg.Token)
-			if tt.wantOptionError == "" {
-				require.NoError(t, cfg.OptionError)
-			} else {
-				require.Error(t, cfg.OptionError)
-				require.ErrorContains(t, cfg.OptionError, tt.wantOptionError)
-			}
-			assert.Equal(t, tt.wantBodyLimit, cfg.ResponseBodyLimit)
+			assertNewConfigResult(t, cfg, defaultClient, tt)
 		})
 	}
 }
@@ -300,6 +325,60 @@ func TestNewRequest(t *testing.T) {
 			assert.JSONEq(t, tt.wantBody, string(bodyBytes))
 		})
 	}
+}
+
+func TestNewRequest_DynamicToken(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{
+		BaseURL:       baseURL,
+		Token:         "static-token",
+		TokenProvider: &testTokenProvider{token: "dynamic-token"},
+	}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+
+	assert.Equal(t, "Bearer dynamic-token", req.Header.Get("Authorization"))
+}
+
+func TestNewRequest_StaticTokenFallback(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{BaseURL: baseURL, Token: "static-token"}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+	require.NoError(t, err)
+	require.NotNil(t, req)
+
+	assert.Equal(t, "Bearer static-token", req.Header.Get("Authorization"))
+}
+
+func TestNewRequest_TokenProviderError(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{BaseURL: baseURL, TokenProvider: &testTokenProvider{err: assert.AnError}}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+	require.Error(t, err)
+	require.ErrorIs(t, err, assert.AnError)
+	assert.Nil(t, req)
+}
+
+func TestNewRequest_TokenProviderEmptyToken(t *testing.T) {
+	baseURL, err := url.Parse("https://api.example.test/root")
+	require.NoError(t, err)
+
+	cfg := Config{BaseURL: baseURL, TokenProvider: &testTokenProvider{token: ""}}
+
+	req, err := NewRequest(context.Background(), cfg, http.MethodGet, "accounts", http.NoBody)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "empty token")
+	assert.Nil(t, req)
 }
 
 func TestNewRequest_AppliesConfiguredHeaders(t *testing.T) {

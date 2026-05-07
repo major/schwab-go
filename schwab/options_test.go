@@ -1,6 +1,7 @@
 package schwab
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -11,11 +12,35 @@ import (
 
 const relativeBaseURLError = "invalid base URL \"relative/path\": absolute URL with scheme and host required"
 
+type staticTokenProvider struct {
+	token string
+}
+
+func (p staticTokenProvider) Token(context.Context) (string, error) {
+	return p.token, nil
+}
+
 func TestWithToken(t *testing.T) {
 	cfg := &ClientConfig{}
 	opt := WithToken("test-token-123")
 	opt(cfg)
 	require.Equal(t, "test-token-123", cfg.Token)
+}
+
+func TestWithTokenProvider(t *testing.T) {
+	provider := staticTokenProvider{token: "dynamic-token-123"}
+	cfg := &ClientConfig{}
+	opt := WithTokenProvider(provider)
+	opt(cfg)
+	require.Equal(t, provider, cfg.TokenProvider)
+}
+
+func TestWithTokenProvider_Nil(t *testing.T) {
+	existingProvider := staticTokenProvider{token: "keep-me"}
+	cfg := &ClientConfig{TokenProvider: existingProvider}
+	opt := WithTokenProvider(nil)
+	opt(cfg)
+	require.Equal(t, existingProvider, cfg.TokenProvider)
 }
 
 func TestWithHTTPClient(t *testing.T) {

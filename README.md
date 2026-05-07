@@ -13,6 +13,7 @@ Go client library for the [Schwab API](https://developer.schwab.com/). Covers Ma
 
 - **Market Data** - quotes, price history, option chains, instruments, market hours, movers
 - **Trader** - accounts, orders (create/replace/cancel/preview), transactions, user preferences
+- **Auth** (`schwab/auth`) - OAuth2 authorization code flow, token refresh, and file-based token persistence
 - **Typed quote accessors** - asset-specific quote and reference types for equities, options, indices, mutual funds, forex, futures, and future options
 - **Structured errors** - `*schwab.APIError` with status code, message, and up to 1 MiB of the raw body
 - **Functional options** - `WithToken`, `WithHTTPClient`, `WithBaseURL`, `WithResponseBodyLimit`, `WithUserAgent`, `WithHeader`, and `WithHeaders` for flexible client configuration. Invalid base URL overrides fail when a request is created instead of falling back to the production Schwab API. Sub-clients append their own API path prefixes, so custom base URLs can point at the API root. Response bodies are capped at 10 MiB by default; non-positive custom limits are ignored.
@@ -129,7 +130,45 @@ if apiErr, ok := errors.AsType[*schwab.APIError](err); ok {
 
 ## Authentication
 
-This library does not handle OAuth or token refresh. Pass a valid bearer token with `schwab.WithToken()`. See the [Schwab developer docs](https://developer.schwab.com/) for obtaining tokens through their OAuth flow.
+The `schwab/auth` sub-module handles OAuth2 authorization code flow, token refresh, and persistence. It's a separate Go module with independent versioning.
+
+```bash
+go get github.com/major/schwab-go/schwab/auth
+```
+
+```go
+import (
+    "context"
+    "log"
+    "os/exec"
+
+    "github.com/major/schwab-go/schwab/auth"
+    schwab "github.com/major/schwab-go/schwab"
+    "github.com/major/schwab-go/schwab/marketdata"
+)
+
+cfg := auth.Config{
+    ClientID:     "your-app-key",
+    ClientSecret: "your-app-secret",
+    CallbackURL:  "https://127.0.0.1:8443/callback",
+}
+
+store := auth.NewFileTokenStore("/path/to/tokens.json")
+ctx := context.Background()
+
+// urlHandler receives the authorize URL. Open it in a browser or print it for SSH/headless use.
+openBrowser := func(url string) error { return exec.Command("xdg-open", url).Start() }
+provider, err := auth.Login(ctx, cfg, store, openBrowser)
+if err != nil {
+    log.Fatal(err)
+}
+
+client := marketdata.NewClient(schwab.WithTokenProvider(provider))
+```
+
+For headless or SSH environments, pass a `urlHandler` that prints the URL instead of opening a browser. Tokens are refreshed automatically and written back to the store.
+
+If you already have a valid bearer token, skip `schwab/auth` and pass it directly with `schwab.WithToken()`.
 
 ## API coverage
 
