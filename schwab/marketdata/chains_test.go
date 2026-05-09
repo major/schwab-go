@@ -90,6 +90,11 @@ func TestGetOptionChain(t *testing.T) {
 	assert.True(t, callContract.InTheMoney)
 	assert.True(t, callContract.PennyPilot)
 
+	require.Len(t, callContract.OptionDeliverablesList, 1)
+	assert.Equal(t, "EQUITY", callContract.OptionDeliverablesList[0].AssetType)
+	assert.Equal(t, "SPY", callContract.OptionDeliverablesList[0].Symbol)
+	assert.InDelta(t, 100.0, callContract.OptionDeliverablesList[0].DeliverableUnits, 0.000001)
+
 	putContract := result.PutExpDateMap["2024-01-19:5"]["470.0"][0]
 	assert.Equal(t, OptionChainContractTypePut, putContract.PutCall)
 	assert.Equal(t, "SPY_011924P470", putContract.Symbol)
@@ -347,6 +352,18 @@ func TestGetOptionChainError(t *testing.T) {
 	assert.Equal(t, "invalid option chain request", apiErr.Message)
 }
 
+func TestOptionDeliverableUnitsNumericUnmarshal(t *testing.T) {
+	payload := `{"optionDeliverablesList":[{"symbol":"SPY","assetType":"EQUITY","deliverableUnits":100,"currencyType":"USD"}]}`
+	var contract OptionContract
+	err := json.Unmarshal([]byte(payload), &contract)
+	require.NoError(t, err)
+	require.Len(t, contract.OptionDeliverablesList, 1)
+	assert.Equal(t, "SPY", contract.OptionDeliverablesList[0].Symbol)
+	assert.Equal(t, "EQUITY", contract.OptionDeliverablesList[0].AssetType)
+	assert.InDelta(t, 100.0, contract.OptionDeliverablesList[0].DeliverableUnits, 0.000001)
+	assert.Equal(t, "USD", contract.OptionDeliverablesList[0].CurrencyType)
+}
+
 func assertParamAbsent(t *testing.T, r *http.Request, name string) {
 	t.Helper()
 	_, ok := r.URL.Query()[name]
@@ -449,5 +466,13 @@ func optionContractFixture(putCall, symbol string, delta, intrinsicValue float64
 		"intrinsicValue":         intrinsicValue,
 		"extrinsicValue":         1.48,
 		"impliedYield":           0.0,
+		"optionDeliverablesList": []map[string]any{
+			{
+				"symbol":           symbol[:3],
+				"assetType":        "EQUITY",
+				"deliverableUnits": 100,
+				"currencyType":     "USD",
+			},
+		},
 	}
 }

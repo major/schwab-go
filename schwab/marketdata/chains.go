@@ -196,10 +196,10 @@ func decodeFlexibleString(raw json.RawMessage) string {
 
 // OptionDeliverable represents a single deliverable in an option contract.
 type OptionDeliverable struct {
-	AssetType        string `json:"assetType"`
-	CurrencyType     string `json:"currencyType"`
-	DeliverableUnits string `json:"deliverableUnits"`
-	Symbol           string `json:"symbol"`
+	AssetType        string  `json:"assetType"`
+	CurrencyType     string  `json:"currencyType"`
+	DeliverableUnits float64 `json:"deliverableUnits"`
+	Symbol           string  `json:"symbol"`
 }
 
 // Underlying represents the underlying quote returned with an option chain.
