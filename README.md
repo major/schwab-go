@@ -7,6 +7,9 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/major/schwab-go/badge)](https://scorecard.dev/viewer/?uri=github.com/major/schwab-go)
 [![License](https://img.shields.io/github/license/major/schwab-go)](LICENSE)
 
+> [!IMPORTANT]
+> This repository is archived and no longer maintained. Use [`schwab-rs`](https://github.com/major/schwab-rs) instead.
+
 Go client library for the [Schwab API](https://developer.schwab.com/). Covers Market Data and Trader API endpoints with typed responses, functional options, and structured error handling.
 
 ## Features
